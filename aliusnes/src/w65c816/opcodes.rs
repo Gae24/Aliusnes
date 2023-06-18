@@ -1,4 +1,4 @@
-use crate::{w65c816::cpu::AddressingMode, bus::Bus};
+use crate::{bus::Bus, w65c816::cpu::AddressingMode};
 use std::collections::HashMap;
 
 use super::{cpu::Cpu, instruction::brk};
@@ -9,7 +9,7 @@ pub struct OpCode {
     pub bytes: u8,
     pub cycles: u8,
     pub mode: AddressingMode,
-    pub function: for<'a, 'b, 'c> fn(&mut Cpu, &mut Bus, &AddressingMode),
+    pub function: for<'a, 'b, 'c> fn(&mut Cpu, &mut Bus, &AddressingMode) -> u8,
 }
 
 impl OpCode {
@@ -19,7 +19,7 @@ impl OpCode {
         bytes: u8,
         cycles: u8,
         mode: AddressingMode,
-        function: for<'a> fn(&mut Cpu, &mut Bus, &AddressingMode),
+        function: for<'a> fn(&mut Cpu, &mut Bus, &AddressingMode) -> u8,
     ) -> Self {
         OpCode {
             code,

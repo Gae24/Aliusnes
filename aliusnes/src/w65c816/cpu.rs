@@ -1,6 +1,5 @@
 // use super::opcodes::OPCODES_MAP;
 use crate::bus::Bus;
-use std::collections::HashMap;
 
 bitflags! {
     pub struct CpuFlags: u8 {
@@ -16,12 +15,12 @@ bitflags! {
 }
 
 pub struct Cpu {
-    pub register_a: u16,
-    pub register_x: u16,
-    pub register_y: u16,
+    pub accumulator: u16,
+    pub index_x: u16,
+    pub index_y: u16,
     pub stack_pointer: u16,
     pub program_couter: u16,
-    pub status: CpuFlags,
+    pub status_register: CpuFlags,
     pub dpr: u16,
     pub pbr: u8,
     pub dbr: u8,
@@ -57,11 +56,11 @@ pub enum AddressingMode {
 impl Cpu {
     pub fn new() -> Self {
         Cpu {
-            register_a: 0x00,
-            register_x: 0x00,
-            register_y: 0x00,
+            accumulator: 0x00,
+            index_x: 0x00,
+            index_y: 0x00,
             stack_pointer: 0x00,
-            status: CpuFlags::from_bits_truncate(0b10010000),
+            status_register: CpuFlags::from_bits_truncate(0b10010000),
             dpr: 0x00,
             pbr: 0x00,
             dbr: 0x00,
@@ -70,7 +69,7 @@ impl Cpu {
     }
 
     pub fn set_low_a(&mut self, val: u8) {
-        self.register_a = (self.register_a & 0xFF00) | (val as u16);
+        self.accumulator = (self.accumulator & 0xFF00) | (val as u16);
     }
 
     fn step(&mut self, bus: &mut Bus) -> usize {
@@ -84,17 +83,37 @@ impl Cpu {
         // let data = bus.read(self.get_operand_address(&opcode.mode));
 
         // instr(self, bus, &opcode.mode);
+        // get base cycle and add extras
         1
     }
 
-    pub(super) fn get_operand_address(&self, mode: &AddressingMode) -> u16 {
+    pub fn get_operand_address(
+        &mut self,
+        mode: &AddressingMode,
+        is_regs_8bit: bool,
+    ) -> (u16, u8) {
         match mode {
-            AddressingMode::Implied => self.program_couter,
-
-            AddressingMode::Immediate => self.program_couter,
-
-            AddressingMode::Relative => self.program_couter,
-            AddressingMode::RelativeLong => todo!(),
+            AddressingMode::Implied => {
+                self.program_couter += 1;
+                (0, 0)
+            }
+            AddressingMode::Immediate => {
+                if is_regs_8bit {
+                    self.program_couter += 1;
+                    return ((self.pbr << 16 | (self.program_couter as u8)).into(), 0);
+                } else {
+                    self.program_couter += 2;
+                    return ((self.pbr << 16 | ((self.program_couter - 1) as u8)).into(), 1);
+                }
+            }
+            AddressingMode::Relative => {
+                self.program_couter += 1;
+                return ((self.pbr << 16 | (self.program_couter as u8)).into(), 0);
+            }
+            AddressingMode::RelativeLong => {
+                self.program_couter += 2;
+                return ((self.pbr << 16 | ((self.program_couter - 1) as u8)).into(), 0);
+            }
             AddressingMode::Direct => todo!(),
             AddressingMode::DirectX => todo!(),
             AddressingMode::DirectY => todo!(),
