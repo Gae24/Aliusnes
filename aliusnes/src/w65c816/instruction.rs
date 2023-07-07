@@ -7,7 +7,7 @@ pub fn brk(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
 }
 
 pub fn ora(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
-    let (addr, extra_cycles) = cpu.get_operand_address(mode, cpu.status_register.contains(CpuFlags::A_REG_SIZE));
+    let (addr, extra_cycles) = cpu.get_operand_address(bus, mode, cpu.status_register.contains(CpuFlags::A_REG_SIZE));
     if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
         let data = bus.read(addr);
         let result = data | (cpu.accumulator as u8);
@@ -31,7 +31,7 @@ pub fn cop(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
 }
 
 pub fn tsb(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
-    let (addr, extra_cycles) = cpu.get_operand_address(mode, cpu.status_register.contains(CpuFlags::A_REG_SIZE));
+    let (addr, extra_cycles) = cpu.get_operand_address(bus,mode, cpu.status_register.contains(CpuFlags::A_REG_SIZE));
     if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
         let data = bus.read(addr);
         let result = data | (cpu.accumulator as u8);

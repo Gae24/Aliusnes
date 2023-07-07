@@ -89,6 +89,7 @@ impl Cpu {
 
     pub fn get_operand_address(
         &mut self,
+        bus: &Bus,
         mode: &AddressingMode,
         is_regs_8bit: bool,
     ) -> (u16, u8) {
@@ -114,9 +115,33 @@ impl Cpu {
                 self.program_couter += 2;
                 return ((self.pbr << 16 | ((self.program_couter - 1) as u8)).into(), 0);
             }
-            AddressingMode::Direct => todo!(),
-            AddressingMode::DirectX => todo!(),
-            AddressingMode::DirectY => todo!(),
+            AddressingMode::Direct => {
+                if is_regs_8bit {
+                    self.program_couter += 1;
+                    return (self.dpr | (bus.read(self.program_couter) as u16), 0);
+                } else {
+                    self.program_couter += 2;
+                    return (self.dpr | bus.read_16bit(self.program_couter), 1);
+                }
+            }
+            AddressingMode::DirectX => {
+                if is_regs_8bit {
+                    self.program_couter += 1;
+                    return (self.dpr | (bus.read(self.program_couter) as u16 + self.index_x), 0);
+                } else {
+                    self.program_couter += 2;
+                    return (self.dpr | (bus.read_16bit(self.program_couter) + self.index_x), 1);
+                }
+            },
+            AddressingMode::DirectY => {
+                if is_regs_8bit {
+                    self.program_couter += 1;
+                    return (self.dpr | (bus.read(self.program_couter) as u16 + self.index_y), 0);
+                } else {
+                    self.program_couter += 2;
+                    return (self.dpr | (bus.read_16bit(self.program_couter) + self.index_y), 1);
+                }
+            },
             AddressingMode::Indirect => todo!(),
             AddressingMode::IndirectX => todo!(),
             AddressingMode::IndirectY => todo!(),
