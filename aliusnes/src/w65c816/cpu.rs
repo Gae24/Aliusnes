@@ -1,6 +1,8 @@
 // use super::opcodes::OPCODES_MAP;
 use crate::bus::Bus;
 
+use super::regsize::RegSize;
+
 bitflags! {
     pub struct CpuFlags: u8 {
         const NEGATIVE = 0b10000000;
@@ -87,77 +89,93 @@ impl Cpu {
         1
     }
 
-    pub fn get_operand_address(
-        &mut self,
-        bus: &Bus,
-        mode: &AddressingMode,
-        is_regs_8bit: bool,
-    ) -> (u16, u8) {
+    pub fn read_8(bus: &Bus, addr: u32) -> u8 {
+        bus.read(addr)
+    }
+
+    pub fn read_16(bus: &Bus, addr: u32) -> u16 {
+        Self::read_8(bus, addr) as u16 | (Self::read_8(bus, addr + 1) as u16) << 8
+    }
+
+    pub fn get_direct_addr(&self, bus: &Bus) -> u16 {
+        self.dpr | bus.read(self.program_couter.into()) as u16
+    }
+
+    pub fn get_indirect_long_addr(bus: &Bus, addr: u32) -> u32 {
+        ((Self::read_16(bus, addr) | Self::read_8(bus, addr.wrapping_add(2)) as u16) as u32) << 16
+    }
+
+    pub fn get_absolute_addr(&self, bus: &Bus) -> u32 {
+        (self.dbr | bus.read(self.program_couter.into())).into()
+    }
+
+    pub fn get_absolute_long_addr(&self, bus: &Bus) -> u32 {
+        let addr1 = Self::read_16(bus, self.program_couter.into());
+        let addr2 = Self::read_8(bus, (self.program_couter + 2).into()) as u16;
+        (addr1 | addr2).into()
+    }
+
+    pub fn get_address(&mut self, bus: &Bus, mode: &AddressingMode) -> u32 {
         match mode {
-            AddressingMode::Implied => {
-                self.program_couter += 1;
-                (0, 0)
-            }
-            AddressingMode::Immediate => {
-                if is_regs_8bit {
-                    self.program_couter += 1;
-                    return ((self.pbr << 16 | (self.program_couter as u8)).into(), 0);
-                } else {
-                    self.program_couter += 2;
-                    return ((self.pbr << 16 | ((self.program_couter - 1) as u8)).into(), 1);
-                }
-            }
+            AddressingMode::Implied => unreachable!(),
+            AddressingMode::Immediate => todo!(),
             AddressingMode::Relative => {
-                self.program_couter += 1;
-                return ((self.pbr << 16 | (self.program_couter as u8)).into(), 0);
+                let addr = Self::read_8(bus, self.program_couter.into());
+                self.program_couter.wrapping_add(addr.into()).into()
             }
             AddressingMode::RelativeLong => {
-                self.program_couter += 2;
-                return ((self.pbr << 16 | ((self.program_couter - 1) as u8)).into(), 0);
+                let addr = Self::read_16(bus, self.program_couter.into());
+                self.program_couter.wrapping_add(addr).into()
             }
-            AddressingMode::Direct => {
-                if is_regs_8bit {
-                    self.program_couter += 1;
-                    return (self.dpr | (bus.read(self.program_couter) as u16), 0);
-                } else {
-                    self.program_couter += 2;
-                    return (self.dpr | bus.read_16bit(self.program_couter), 1);
-                }
+            AddressingMode::Direct => self.get_direct_addr(bus) as u32,
+            AddressingMode::DirectX => (self.get_direct_addr(bus) + self.index_x) as u32,
+            AddressingMode::DirectY => (self.get_direct_addr(bus) + self.index_y) as u32,
+            AddressingMode::Indirect => {
+                let indirect = self.get_direct_addr(bus) as u32;
+                (Cpu::read_16(&bus, indirect) | self.dbr as u16) as u32
             }
-            AddressingMode::DirectX => {
-                if is_regs_8bit {
-                    self.program_couter += 1;
-                    return (self.dpr | (bus.read(self.program_couter) as u16 + self.index_x), 0);
-                } else {
-                    self.program_couter += 2;
-                    return (self.dpr | (bus.read_16bit(self.program_couter) + self.index_x), 1);
-                }
-            },
-            AddressingMode::DirectY => {
-                if is_regs_8bit {
-                    self.program_couter += 1;
-                    return (self.dpr | (bus.read(self.program_couter) as u16 + self.index_y), 0);
-                } else {
-                    self.program_couter += 2;
-                    return (self.dpr | (bus.read_16bit(self.program_couter) + self.index_y), 1);
-                }
-            },
-            AddressingMode::Indirect => todo!(),
-            AddressingMode::IndirectX => todo!(),
-            AddressingMode::IndirectY => todo!(),
-            AddressingMode::IndirectLong => todo!(),
-            AddressingMode::IndirectLongY => todo!(),
-            AddressingMode::Absolute => todo!(),
-            AddressingMode::AbsoluteX => todo!(),
-            AddressingMode::AbsoluteY => todo!(),
-            AddressingMode::AbsoluteLong => todo!(),
-            AddressingMode::AbsoluteLongX => todo!(),
+            AddressingMode::IndirectX => {
+                let indirect = self.get_direct_addr(bus).wrapping_add(self.index_x) as u32;
+                (Cpu::read_16(&bus, indirect) | self.dbr as u16) as u32
+            }
+            AddressingMode::IndirectY => {
+                let indirect = self.get_direct_addr(bus) as u32;
+                ((Cpu::read_16(&bus, indirect) | self.dbr as u16) + self.index_y) as u32 & 0xFF_FFFF
+            }
+            AddressingMode::IndirectLong => {
+                let indirect = self.get_direct_addr(bus) as u32;
+                Self::get_indirect_long_addr(bus, indirect)
+            }
+            AddressingMode::IndirectLongY => {
+                let indirect = self.get_direct_addr(bus) as u32;
+                (Self::get_indirect_long_addr(bus, indirect) + self.index_y as u32) & 0xFF_FFFF
+            }
+            AddressingMode::Absolute => self.get_absolute_addr(bus),
+            AddressingMode::AbsoluteX => {
+                (self.get_absolute_addr(bus) + self.index_x as u32) & 0xFF_FFFF
+            }
+            AddressingMode::AbsoluteY => {
+                (self.get_absolute_addr(bus) + self.index_y as u32) & 0xFF_FFFF
+            }
+            AddressingMode::AbsoluteLong => self.get_absolute_long_addr(bus),
+            AddressingMode::AbsoluteLongX => {
+                (self.get_absolute_long_addr(bus) + self.index_x as u32) & 0xFF_FFFF
+            }
             AddressingMode::AbsoluteIndirect => todo!(),
             AddressingMode::AbsoluteIndirectLong => todo!(),
             AddressingMode::AbsoluteIndirectX => todo!(),
             AddressingMode::StackRelative => todo!(),
             AddressingMode::StackRelativeIndirectY => todo!(),
             AddressingMode::BlockMove => todo!(),
+        }
+    }
+
+    pub fn get_operand<T: RegSize>(&mut self, bus: &Bus, mode: &AddressingMode) -> (T, u8) {
+        let addr = self.get_address(bus, mode);
+        if T::IS_U16 {
+            (T::trunc_u16(Self::read_16(bus, addr)), 1)
+        } else {
+            (T::ext_u8(Self::read_8(bus, addr)), 0)
         }
     }
 }

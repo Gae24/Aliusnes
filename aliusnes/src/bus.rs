@@ -9,11 +9,7 @@ impl Bus {
         Self { cart }
     }
 
-    pub fn read_16bit(&self, addr: u16) -> u16 {
-        (self.read(addr) as u16) | ((self.read(addr + 1) as u16) << 8)
-    }
-
-    pub fn read(&self, addr: u16) -> u8 {
+    pub fn read(&self, addr: u32) -> u8 {
         4
     }
 
