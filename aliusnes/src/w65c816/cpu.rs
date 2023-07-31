@@ -101,6 +101,10 @@ impl Cpu {
         self.dpr | bus.read(self.program_couter.into()) as u16
     }
 
+    pub fn get_indirect_addr(&self, bus: &Bus, addr: u16) -> u32 {
+        (Self::read_16(bus, addr.into()) | self.dbr as u16).into()
+    }
+
     pub fn get_indirect_long_addr(bus: &Bus, addr: u32) -> u32 {
         ((Self::read_16(bus, addr) | Self::read_8(bus, addr.wrapping_add(2)) as u16) as u32) << 16
     }
@@ -113,6 +117,11 @@ impl Cpu {
         let addr1 = Self::read_16(bus, self.program_couter.into());
         let addr2 = Self::read_8(bus, (self.program_couter + 2).into()) as u16;
         (addr1 | addr2).into()
+    }
+
+    pub fn get_stack_relative_addr(&self, bus: &Bus) -> u16 {
+        self.stack_pointer
+            .wrapping_add(Self::read_8(bus, self.program_couter.into()).into())
     }
 
     pub fn get_address(&mut self, bus: &Bus, mode: &AddressingMode) -> u32 {
@@ -131,16 +140,16 @@ impl Cpu {
             AddressingMode::DirectX => (self.get_direct_addr(bus) + self.index_x) as u32,
             AddressingMode::DirectY => (self.get_direct_addr(bus) + self.index_y) as u32,
             AddressingMode::Indirect => {
-                let indirect = self.get_direct_addr(bus) as u32;
-                (Cpu::read_16(&bus, indirect) | self.dbr as u16) as u32
+                let indirect = self.get_direct_addr(bus);
+                self.get_indirect_addr(bus, indirect)
             }
             AddressingMode::IndirectX => {
-                let indirect = self.get_direct_addr(bus).wrapping_add(self.index_x) as u32;
-                (Cpu::read_16(&bus, indirect) | self.dbr as u16) as u32
+                let indirect = self.get_direct_addr(bus).wrapping_add(self.index_x);
+                self.get_indirect_addr(bus, indirect)
             }
             AddressingMode::IndirectY => {
-                let indirect = self.get_direct_addr(bus) as u32;
-                ((Cpu::read_16(&bus, indirect) | self.dbr as u16) + self.index_y) as u32 & 0xFF_FFFF
+                let indirect = self.get_direct_addr(bus);
+                (self.get_indirect_addr(bus, indirect) + self.index_y as u32) & 0xFF_FFFF
             }
             AddressingMode::IndirectLong => {
                 let indirect = self.get_direct_addr(bus) as u32;
@@ -164,8 +173,11 @@ impl Cpu {
             AddressingMode::AbsoluteIndirect => todo!(),
             AddressingMode::AbsoluteIndirectLong => todo!(),
             AddressingMode::AbsoluteIndirectX => todo!(),
-            AddressingMode::StackRelative => todo!(),
-            AddressingMode::StackRelativeIndirectY => todo!(),
+            AddressingMode::StackRelative => self.get_stack_relative_addr(bus).into(),
+            AddressingMode::StackRelativeIndirectY => {
+                let indirect = self.get_stack_relative_addr(bus);
+                (self.get_indirect_addr(bus, indirect) + self.index_y as u32) & 0xFF_FFFF
+            }
             AddressingMode::BlockMove => todo!(),
         }
     }
