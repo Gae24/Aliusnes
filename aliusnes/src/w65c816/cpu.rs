@@ -70,8 +70,8 @@ impl Cpu {
         }
     }
 
-    pub fn set_low_a(&mut self, val: u8) {
-        self.accumulator = (self.accumulator & 0xFF00) | (val as u16);
+    pub fn set_low_a(&mut self, val: u16) {
+        self.accumulator = (self.accumulator & 0xFF00) | val;
     }
 
     fn step(&mut self, bus: &mut Bus) -> usize {
