@@ -1,4 +1,7 @@
-use crate::{bus::Bus, w65c816::cpu::AddressingMode};
+use crate::{
+    bus::Bus,
+    w65c816::{cpu::AddressingMode, instruction::ora},
+};
 use std::collections::HashMap;
 
 use super::{cpu::Cpu, instruction::brk};
@@ -52,21 +55,21 @@ lazy_static! {
         OpCode::new(0x63, "ADC", 2, 4, AddressingMode::StackRelative),
         OpCode::new(0x73, "ADC", 2, 7, AddressingMode::StackRelativeIndirectY),
 
-        OpCode::new(0x09, "ORA", 2, 2, AddressingMode::Immediate),
-        OpCode::new(0x05, "ORA", 2, 3, AddressingMode::Direct),
-        OpCode::new(0x15, "ORA", 2, 4, AddressingMode::DirectX),
-        OpCode::new(0x0d, "ORA", 3, 4, AddressingMode::Absolute),
-        OpCode::new(0x1d, "ORA", 3, 4, AddressingMode::AbsoluteX), // *
-        OpCode::new(0x19, "ORA", 3, 4, AddressingMode::AbsoluteY), // *
-        OpCode::new(0x01, "ORA", 2, 6, AddressingMode::IndirectX),
-        OpCode::new(0x11, "ORA", 2, 5, AddressingMode::IndirectY), // *
-        OpCode::new(0x0f, "ORA", 4, 5, AddressingMode::AbsoluteLong),
-        OpCode::new(0x1f, "ORA", 4, 5, AddressingMode::AbsoluteLongX),
-        OpCode::new(0x12, "ORA", 2, 5, AddressingMode::Indirect),
-        OpCode::new(0x07, "ORA", 2, 6, AddressingMode::IndirectLong),
-        OpCode::new(0x17, "ORA", 2, 6, AddressingMode::IndirectLongY),
-        OpCode::new(0x03, "ORA", 2, 4, AddressingMode::StackRelative),
-        OpCode::new(0x13, "ORA", 2, 7, AddressingMode::StackRelativeIndirectY),
+        OpCode::new(0x09, "ORA", 2, 2, AddressingMode::Immediate, ora),
+        OpCode::new(0x05, "ORA", 2, 3, AddressingMode::Direct, ora),
+        OpCode::new(0x15, "ORA", 2, 4, AddressingMode::DirectX, ora),
+        OpCode::new(0x0d, "ORA", 3, 4, AddressingMode::Absolute, ora),
+        OpCode::new(0x1d, "ORA", 3, 4, AddressingMode::AbsoluteX, ora), // *
+        OpCode::new(0x19, "ORA", 3, 4, AddressingMode::AbsoluteY, ora), // *
+        OpCode::new(0x01, "ORA", 2, 6, AddressingMode::IndirectX, ora),
+        OpCode::new(0x11, "ORA", 2, 5, AddressingMode::IndirectY, ora), // *
+        OpCode::new(0x0f, "ORA", 4, 5, AddressingMode::AbsoluteLong, ora),
+        OpCode::new(0x1f, "ORA", 4, 5, AddressingMode::AbsoluteLongX, ora),
+        OpCode::new(0x12, "ORA", 2, 5, AddressingMode::Indirect, ora),
+        OpCode::new(0x07, "ORA", 2, 6, AddressingMode::IndirectLong, ora),
+        OpCode::new(0x17, "ORA", 2, 6, AddressingMode::IndirectLongY, ora),
+        OpCode::new(0x03, "ORA", 2, 4, AddressingMode::StackRelative, ora),
+        OpCode::new(0x13, "ORA", 2, 7, AddressingMode::StackRelativeIndirectY, ora),
 
         OpCode::new(0x02, "COP", 2, 7, AddressingMode::Immediate), // maybe 8 cycles
 

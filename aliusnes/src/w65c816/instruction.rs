@@ -22,7 +22,7 @@ fn do_bin_adc<A: RegSize>(cpu: &mut Cpu, operand: A) {
         let result = src + operand + cpu.status_register.contains(CpuFlags::CARRY) as u16;
         let is_overflow = !(src ^ operand) & (src ^ result) & 1 << 15 != 0;
 
-        cpu.status_register.set(CpuFlags::CARRY, result >> 16 != 0);
+        cpu.status_register.set(CpuFlags::CARRY, result >> 8 != 0);
         cpu.status_register.set(CpuFlags::OVERFLOW, is_overflow);
         cpu.status_register
             .set(CpuFlags::NEGATIVE, result.is_negative());
@@ -69,7 +69,7 @@ fn do_dec_adc<A: RegSize>(cpu: &mut Cpu, operand: A) {
         if result > 0x9FFF {
             result += 0x6000;
         }
-        cpu.status_register.set(CpuFlags::CARRY, result >> 16 != 0);
+        cpu.status_register.set(CpuFlags::CARRY, result >> 8 != 0);
         cpu.status_register
             .set(CpuFlags::NEGATIVE, result.is_negative());
         cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
