@@ -215,6 +215,65 @@ pub fn sbc<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u
     extra_cycles
 }
 
+pub fn sec(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    cpu.status_register.insert(CpuFlags::CARRY);
+    0
+}
+
+pub fn sed(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    cpu.status_register.insert(CpuFlags::DECIMAL);
+    0
+}
+
+pub fn sei(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    todo!();
+    0
+}
+
+pub fn sta<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let data = A::trunc_u16(cpu.accumulator);
+    let addr = cpu.get_address(bus, mode);
+    if A::IS_U16 {
+        Cpu::write_16(bus, addr, data.as_u16());
+    } else {
+        Cpu::write_8(&bus, addr, data.as_u8());
+    }
+    0
+}
+
+pub fn stx<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let data = A::trunc_u16(cpu.index_x);
+    let addr = cpu.get_address(bus, mode);
+    if A::IS_U16 {
+        Cpu::write_16(bus, addr, data.as_u16());
+    } else {
+        Cpu::write_8(&bus, addr, data.as_u8());
+    }
+    0
+}
+
+pub fn sty<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let data = A::trunc_u16(cpu.index_y);
+    let addr = cpu.get_address(bus, mode);
+    if A::IS_U16 {
+        Cpu::write_16(bus, addr, data.as_u16());
+    } else {
+        Cpu::write_8(&bus, addr, data.as_u8());
+    }
+    0
+}
+
+pub fn stz<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let data = A::trunc_u16(0);
+    let addr = cpu.get_address(bus, mode);
+    if A::IS_U16 {
+        Cpu::write_16(bus, addr, data.as_u16());
+    } else {
+        Cpu::write_8(&bus, addr, data.as_u8());
+    }
+    0
+}
+
 // pub fn tsb<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
 //     let (addr, extra_cycles) = cpu.get_operand_address(
 //         bus,
