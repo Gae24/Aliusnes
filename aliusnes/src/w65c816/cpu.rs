@@ -93,8 +93,17 @@ impl Cpu {
         bus.read(addr)
     }
 
+    pub fn write_8(bus: &Bus, addr: u32, data: u8) {
+        bus.write(addr, data);
+    }
+
     pub fn read_16(bus: &Bus, addr: u32) -> u16 {
         Self::read_8(bus, addr) as u16 | (Self::read_8(bus, addr + 1) as u16) << 8
+    }
+
+    pub fn write_16(bus: &Bus, addr: u32, data: u16) {
+        Self::write_8(bus, addr, data as u8);
+        Self::write_8(bus, addr.wrapping_add(1), (data >> 8) as u8);
     }
 
     pub fn get_direct_addr(&self, bus: &Bus) -> u16 {
@@ -124,7 +133,7 @@ impl Cpu {
             .wrapping_add(Self::read_8(bus, self.program_couter.into()).into())
     }
 
-    pub fn get_address(&mut self, bus: &Bus, mode: &AddressingMode) -> u32 {
+    fn get_address(&mut self, bus: &Bus, mode: &AddressingMode) -> u32 {
         match mode {
             AddressingMode::Implied => unreachable!(),
             AddressingMode::Immediate => todo!(),
@@ -188,6 +197,24 @@ impl Cpu {
             (T::trunc_u16(Self::read_16(bus, addr)), 1)
         } else {
             (T::ext_u8(Self::read_8(bus, addr)), 0)
+        }
+    }
+
+    pub fn do_rmw<T: RegSize>(
+        &mut self,
+        bus: &Bus,
+        mode: &AddressingMode,
+        f: fn(&mut Cpu, T) -> T,
+    ) {
+        let addr = self.get_address(bus, mode);
+        if T::IS_U16 {
+            let data = Self::read_16(bus, addr);
+            let result = f(self, T::trunc_u16(data)).as_u16();
+            Self::write_16(bus, addr, result);
+        } else {
+            let data = Self::read_8(bus, addr);
+            let result = f(self, T::ext_u8(data)).as_u8();
+            Self::write_8(bus, addr, result);
         }
     }
 }
