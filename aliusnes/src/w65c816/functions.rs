@@ -243,3 +243,15 @@ pub(super) fn do_dec_sbc<T: RegSize>(cpu: &mut Cpu, operand: T) {
         cpu.set_low_a(result);
     }
 }
+
+pub(super) fn do_trb<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
+    let result = !T::trunc_u16(cpu.accumulator) & operand;
+    cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
+    result
+}
+
+pub(super) fn do_tsb<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
+    let result = T::trunc_u16(cpu.accumulator) | operand;
+    cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
+    result
+}

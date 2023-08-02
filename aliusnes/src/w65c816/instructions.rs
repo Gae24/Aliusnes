@@ -274,23 +274,114 @@ pub fn stz<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u
     0
 }
 
-// pub fn tsb<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
-//     let (addr, extra_cycles) = cpu.get_operand_address(
-//         bus,
-//         mode,
-//         cpu.status_register.contains(CpuFlags::A_REG_SIZE),
-//     );
-//     if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
-//         let data = bus.read(addr);
-//         let result = data | (cpu.accumulator as u8);
-//         bus.write(addr, result);
-//         cpu.status_register.set(CpuFlags::ZERO, result == 0x00);
-//     } else {
-//         let data = bus.read_16bit(addr);
-//         let result = data | cpu.accumulator;
-//         bus.write_16bit(addr, result);
-//         cpu.status_register.set(CpuFlags::ZERO, result == 0x00);
-//     }
-//     let (operand, extra_cycles) = cpu.get_operand::<A>(bus, mode);
-//     extra_cycles
-// }
+pub fn tax<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let value = A::trunc_u16(cpu.accumulator);
+    cpu.index_x = value.as_u16();
+    cpu.status_register.set(CpuFlags::ZERO, value.is_zero());
+    cpu.status_register
+        .set(CpuFlags::NEGATIVE, value.is_negative());
+    0
+}
+
+pub fn tay<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let value = A::trunc_u16(cpu.accumulator);
+    cpu.index_y = value.as_u16();
+    cpu.status_register.set(CpuFlags::ZERO, value.is_zero());
+    cpu.status_register
+        .set(CpuFlags::NEGATIVE, value.is_negative());
+    0
+}
+
+pub fn tcd<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let value = A::trunc_u16(cpu.accumulator);
+    cpu.dpr = value.as_u16();
+    cpu.status_register.set(CpuFlags::ZERO, value.is_zero());
+    cpu.status_register
+        .set(CpuFlags::NEGATIVE, value.is_negative());
+    0
+}
+
+pub fn tcs<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let value = A::trunc_u16(cpu.accumulator);
+    cpu.stack_pointer = value.as_u16();
+    0
+}
+
+pub fn tdc<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let value = A::trunc_u16(cpu.dpr);
+    cpu.accumulator = value.as_u16();
+    cpu.status_register.set(CpuFlags::ZERO, value.is_zero());
+    cpu.status_register
+        .set(CpuFlags::NEGATIVE, value.is_negative());
+    0
+}
+
+pub fn trb<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    cpu.do_rmw(bus, mode, do_trb::<A>);
+    0
+}
+
+pub fn tsb<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    cpu.do_rmw(bus, mode, do_tsb::<A>);
+    0
+}
+
+pub fn tsc<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let value = A::trunc_u16(cpu.stack_pointer);
+    cpu.accumulator = value.as_u16();
+    cpu.status_register.set(CpuFlags::ZERO, value.is_zero());
+    cpu.status_register
+        .set(CpuFlags::NEGATIVE, value.is_negative());
+    0
+}
+
+pub fn tsx<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let value = A::trunc_u16(cpu.stack_pointer);
+    cpu.index_x = value.as_u16();
+    cpu.status_register.set(CpuFlags::ZERO, value.is_zero());
+    cpu.status_register
+        .set(CpuFlags::NEGATIVE, value.is_negative());
+    0
+}
+
+pub fn txa<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let value = A::trunc_u16(cpu.index_x);
+    cpu.accumulator = value.as_u16();
+    cpu.status_register.set(CpuFlags::ZERO, value.is_zero());
+    cpu.status_register
+        .set(CpuFlags::NEGATIVE, value.is_negative());
+    0
+}
+
+pub fn txs<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let value = A::trunc_u16(cpu.index_x);
+    cpu.stack_pointer = value.as_u16();
+    0
+}
+
+pub fn txy<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let value = A::trunc_u16(cpu.index_x);
+    cpu.index_y = value.as_u16();
+    cpu.status_register.set(CpuFlags::ZERO, value.is_zero());
+    cpu.status_register
+        .set(CpuFlags::NEGATIVE, value.is_negative());
+    0
+}
+
+pub fn tya<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let value = A::trunc_u16(cpu.index_y);
+    cpu.accumulator = value.as_u16();
+    cpu.status_register.set(CpuFlags::ZERO, value.is_zero());
+    cpu.status_register
+        .set(CpuFlags::NEGATIVE, value.is_negative());
+    0
+}
+
+pub fn tyx<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let value = A::trunc_u16(cpu.index_y);
+    cpu.index_x = value.as_u16();
+    cpu.status_register.set(CpuFlags::ZERO, value.is_zero());
+    cpu.status_register
+        .set(CpuFlags::NEGATIVE, value.is_negative());
+    0
+}
