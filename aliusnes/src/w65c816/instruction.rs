@@ -130,6 +130,26 @@ fn do_inc<A: RegSize>(cpu: &mut Cpu, src: A) -> A {
     result
 }
 
+fn do_lsr<A: RegSize>(cpu: &mut Cpu, operand: A) -> A {
+    if A::IS_U16 {
+        let operand = operand.as_u16();
+        let result = operand >> 1;
+        cpu.status_register.set(CpuFlags::CARRY, result & 1 != 0);
+        cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
+        cpu.status_register
+            .set(CpuFlags::NEGATIVE, result.is_negative());
+        A::trunc_u16(result)
+    } else {
+        let operand = operand.as_u8();
+        let result = operand >> 1;
+        cpu.status_register.set(CpuFlags::CARRY, result & 1 != 0);
+        cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
+        cpu.status_register
+            .set(CpuFlags::NEGATIVE, result.is_negative());
+        A::ext_u8(result)
+    }
+}
+
 pub fn adc<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
     let (operand, extra_cycles) = cpu.get_operand::<A>(bus, mode);
     if cpu.status_register.contains(CpuFlags::DECIMAL) {
@@ -270,6 +290,35 @@ pub fn inx<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u
 pub fn iny<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
     let result = do_inc(cpu, A::trunc_u16(cpu.index_y));
     cpu.index_y = result.as_u16();
+    0
+}
+
+pub fn lda<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let (operand, extra_cycles) = cpu.get_operand::<A>(bus, mode);
+    cpu.accumulator = operand.as_u16();
+    extra_cycles
+}
+
+pub fn ldx<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let (operand, extra_cycles) = cpu.get_operand::<A>(bus, mode);
+    cpu.index_x = operand.as_u16();
+    extra_cycles
+}
+
+pub fn ldy<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let (operand, extra_cycles) = cpu.get_operand::<A>(bus, mode);
+    cpu.index_y = operand.as_u16();
+    extra_cycles
+}
+
+pub fn lsr<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    cpu.do_rmw(bus, mode, do_lsr::<A>);
+    0
+}
+
+pub fn lsr_a<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let result = do_lsr(cpu, A::trunc_u16(cpu.accumulator));
+    cpu.accumulator = result.as_u16();
     0
 }
 
