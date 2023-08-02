@@ -114,6 +114,14 @@ fn do_cmp<A: RegSize>(cpu: &mut Cpu, src: A, operand: A) {
         .set(CpuFlags::NEGATIVE, result.is_negative());
 }
 
+fn do_dec<A: RegSize>(cpu: &mut Cpu, src: A) -> A {
+    let result = src.wrapping_sub(A::ext_u8(1));
+    cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
+    cpu.status_register
+        .set(CpuFlags::NEGATIVE, result.is_negative());
+    result
+}
+
 pub fn adc<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
     let (operand, extra_cycles) = cpu.get_operand::<A>(bus, mode);
     if cpu.status_register.contains(CpuFlags::DECIMAL) {
@@ -199,6 +207,29 @@ pub fn cpy<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u
     let (operand, extra_cycles) = cpu.get_operand::<A>(bus, mode);
     do_cmp(cpu, A::trunc_u16(cpu.index_y), operand);
     extra_cycles
+}
+
+pub fn dec<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    cpu.do_rmw(bus, mode, do_dec::<A>);
+    0
+}
+
+pub fn dec_a<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let result = do_dec(cpu, A::trunc_u16(cpu.accumulator));
+    cpu.accumulator = result.as_u16();
+    0
+}
+
+pub fn dex<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let result = do_dec(cpu, A::trunc_u16(cpu.index_x));
+    cpu.index_x = result.as_u16();
+    0
+}
+
+pub fn dey<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let result = do_dec(cpu, A::trunc_u16(cpu.index_y));
+    cpu.index_y = result.as_u16();
+    0
 }
 
 // pub fn tsb<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
