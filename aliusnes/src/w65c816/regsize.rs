@@ -16,6 +16,7 @@ pub trait RegSize:
     fn as_u8(self) -> u8;
     fn is_zero(self) -> bool;
     fn is_negative(self) -> bool;
+    fn wrapping_add(self, other: Self) -> Self;
     fn wrapping_sub(self, other: Self) -> Self;
 }
 
@@ -44,6 +45,10 @@ impl RegSize for u8 {
 
     fn is_negative(self) -> bool {
         self >> 7 != 0
+    }
+
+    fn wrapping_add(self, other: Self) -> Self {
+        u8::wrapping_add(self, other)
     }
 
     fn wrapping_sub(self, other: Self) -> Self {
@@ -76,6 +81,10 @@ impl RegSize for u16 {
 
     fn is_negative(self) -> bool {
         self >> 15 != 0
+    }
+
+    fn wrapping_add(self, other: Self) -> Self {
+        u16::wrapping_add(self, other)
     }
 
     fn wrapping_sub(self, other: Self) -> Self {

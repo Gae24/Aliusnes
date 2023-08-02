@@ -122,6 +122,14 @@ fn do_dec<A: RegSize>(cpu: &mut Cpu, src: A) -> A {
     result
 }
 
+fn do_inc<A: RegSize>(cpu: &mut Cpu, src: A) -> A {
+    let result = src.wrapping_add(A::ext_u8(1));
+    cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
+    cpu.status_register
+        .set(CpuFlags::NEGATIVE, result.is_negative());
+    result
+}
+
 pub fn adc<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
     let (operand, extra_cycles) = cpu.get_operand::<A>(bus, mode);
     if cpu.status_register.contains(CpuFlags::DECIMAL) {
@@ -134,7 +142,7 @@ pub fn adc<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u
 
 pub fn and<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
     let (operand, extra_cycles) = cpu.get_operand::<A>(bus, mode);
-    let result = operand & A::trunc_u16(cpu.accumulator);
+    let result = A::trunc_u16(cpu.accumulator) & operand;
     cpu.status_register
         .set(CpuFlags::NEGATIVE, result.is_negative());
     cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
@@ -159,7 +167,7 @@ pub fn brk<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u
 
 pub fn ora<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
     let (operand, extra_cycles) = cpu.get_operand::<A>(bus, mode);
-    let result = operand | A::trunc_u16(cpu.accumulator);
+    let result = A::trunc_u16(cpu.accumulator) | operand;
     cpu.status_register
         .set(CpuFlags::NEGATIVE, result.is_negative());
     cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
@@ -228,6 +236,39 @@ pub fn dex<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u
 
 pub fn dey<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
     let result = do_dec(cpu, A::trunc_u16(cpu.index_y));
+    cpu.index_y = result.as_u16();
+    0
+}
+
+pub fn eor<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let (operand, extra_cycles) = cpu.get_operand::<A>(bus, mode);
+    let result = A::trunc_u16(cpu.accumulator) ^ operand;
+    cpu.status_register
+        .set(CpuFlags::NEGATIVE, result.is_negative());
+    cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
+    cpu.accumulator = result.as_u16();
+    extra_cycles
+}
+
+pub fn inc<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    cpu.do_rmw(bus, mode, do_inc::<A>);
+    0
+}
+
+pub fn inc_a<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let result = do_inc(cpu, A::trunc_u16(cpu.accumulator));
+    cpu.accumulator = result.as_u16();
+    0
+}
+
+pub fn inx<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let result = do_inc(cpu, A::trunc_u16(cpu.index_x));
+    cpu.index_x = result.as_u16();
+    0
+}
+
+pub fn iny<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let result = do_inc(cpu, A::trunc_u16(cpu.index_y));
     cpu.index_y = result.as_u16();
     0
 }
