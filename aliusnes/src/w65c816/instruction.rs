@@ -150,6 +150,46 @@ fn do_lsr<A: RegSize>(cpu: &mut Cpu, operand: A) -> A {
     }
 }
 
+fn do_rol<A: RegSize>(cpu: &mut Cpu, operand: A) -> A {
+    if A::IS_U16 {
+        let operand = operand.as_u16();
+        let result = operand << 1 | cpu.status_register.contains(CpuFlags::CARRY) as u16;
+        cpu.status_register.set(CpuFlags::CARRY, result >> 15 != 0);
+        cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
+        cpu.status_register
+            .set(CpuFlags::NEGATIVE, result.is_negative());
+        A::trunc_u16(result)
+    } else {
+        let operand = operand.as_u8();
+        let result = operand << 1 | cpu.status_register.contains(CpuFlags::CARRY) as u8;
+        cpu.status_register.set(CpuFlags::CARRY, result >> 7 != 0);
+        cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
+        cpu.status_register
+            .set(CpuFlags::NEGATIVE, result.is_negative());
+        A::ext_u8(result)
+    }
+}
+
+fn do_ror<A: RegSize>(cpu: &mut Cpu, operand: A) -> A {
+    if A::IS_U16 {
+        let operand = operand.as_u16();
+        let result = operand >> 1 | cpu.status_register.contains(CpuFlags::CARRY) as u16;
+        cpu.status_register.set(CpuFlags::CARRY, result >> 15 != 0);
+        cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
+        cpu.status_register
+            .set(CpuFlags::NEGATIVE, result.is_negative());
+        A::trunc_u16(result)
+    } else {
+        let operand = operand.as_u8();
+        let result = operand >> 1 | cpu.status_register.contains(CpuFlags::CARRY) as u8;
+        cpu.status_register.set(CpuFlags::CARRY, result >> 7 != 0);
+        cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
+        cpu.status_register
+            .set(CpuFlags::NEGATIVE, result.is_negative());
+        A::ext_u8(result)
+    }
+}
+
 pub fn adc<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
     let (operand, extra_cycles) = cpu.get_operand::<A>(bus, mode);
     if cpu.status_register.contains(CpuFlags::DECIMAL) {
@@ -183,16 +223,6 @@ pub fn asl_a<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) ->
 
 pub fn brk<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
     0
-}
-
-pub fn ora<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
-    let (operand, extra_cycles) = cpu.get_operand::<A>(bus, mode);
-    let result = A::trunc_u16(cpu.accumulator) | operand;
-    cpu.status_register
-        .set(CpuFlags::NEGATIVE, result.is_negative());
-    cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
-    cpu.accumulator = result.as_u16();
-    extra_cycles
 }
 
 pub fn cop<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
@@ -318,6 +348,43 @@ pub fn lsr<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u
 
 pub fn lsr_a<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
     let result = do_lsr(cpu, A::trunc_u16(cpu.accumulator));
+    cpu.accumulator = result.as_u16();
+    0
+}
+
+pub fn nop(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    todo!();
+    0
+}
+
+pub fn ora<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let (operand, extra_cycles) = cpu.get_operand::<A>(bus, mode);
+    let result = A::trunc_u16(cpu.accumulator) | operand;
+    cpu.status_register
+        .set(CpuFlags::NEGATIVE, result.is_negative());
+    cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
+    cpu.accumulator = result.as_u16();
+    extra_cycles
+}
+
+pub fn rol<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    cpu.do_rmw(bus, mode, do_rol::<A>);
+    0
+}
+
+pub fn rol_a<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let result = do_rol(cpu, A::trunc_u16(cpu.accumulator));
+    cpu.accumulator = result.as_u16();
+    0
+}
+
+pub fn ror<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    cpu.do_rmw(bus, mode, do_ror::<A>);
+    0
+}
+
+pub fn ror_a<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let result = do_ror(cpu, A::trunc_u16(cpu.accumulator));
     cpu.accumulator = result.as_u16();
     0
 }
