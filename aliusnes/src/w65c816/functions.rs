@@ -1,3 +1,5 @@
+use crate::bus::Bus;
+
 use super::{
     cpu::{Cpu, CpuFlags},
     regsize::RegSize,
@@ -145,6 +147,33 @@ pub(super) fn do_lsr<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
         cpu.status_register
             .set(CpuFlags::NEGATIVE, result.is_negative());
         T::ext_u8(result)
+    }
+}
+
+pub(super) fn do_push<T: RegSize>(cpu: &mut Cpu, bus: &Bus, value: T) {
+    if T::IS_U16 {
+        cpu.stack_pointer = cpu.stack_pointer.wrapping_sub(2);
+        Cpu::write_16(
+            bus,
+            cpu.stack_pointer.wrapping_add(1).into(),
+            value.as_u16(),
+        );
+    } else {
+        cpu.stack_pointer = cpu.stack_pointer.wrapping_sub(1);
+        Cpu::write_8(bus, cpu.stack_pointer.wrapping_add(1).into(), value.as_u8());
+    }
+}
+
+pub(super) fn do_pull<T: RegSize>(cpu: &mut Cpu, bus: &Bus) -> T {
+    if T::IS_U16 {
+        let low = Cpu::read_8(bus, cpu.stack_pointer.wrapping_add(1).into());
+        let high = Cpu::read_8(bus, cpu.stack_pointer.wrapping_add(2).into());
+        cpu.stack_pointer = cpu.stack_pointer.wrapping_add(2);
+        T::trunc_u16(low as u16 | (high as u16) << 8)
+    } else {
+        let value = Cpu::read_8(bus, cpu.stack_pointer.wrapping_add(1).into());
+        cpu.stack_pointer = cpu.stack_pointer.wrapping_add(1);
+        T::ext_u8(value)
     }
 }
 

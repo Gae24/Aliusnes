@@ -183,6 +183,110 @@ pub fn ora<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u
     extra_cycles
 }
 
+pub fn pea<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let result = bus.read(cpu.program_couter.into()) as u16;
+    do_push(cpu, bus, result);
+    todo!();
+    0
+}
+
+pub fn pei<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let addr = cpu.get_address(bus, mode) as u16;
+    do_push(cpu, bus, addr);
+    0
+}
+
+pub fn per<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let addr = cpu.get_address(bus, mode) as u16;
+    do_push(cpu, bus, addr);
+    0
+}
+
+pub fn pha<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    do_push(cpu, bus, cpu.accumulator);
+    0
+}
+
+pub fn phb<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    do_push(cpu, bus, cpu.dbr);
+    0
+}
+
+pub fn phd<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    do_push(cpu, bus, cpu.dpr);
+    0
+}
+
+pub fn phk<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    do_push(cpu, bus, cpu.pbr);
+    0
+}
+
+pub fn php<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    do_push::<u8>(cpu, bus, cpu.status_register.bits());
+    0
+}
+
+pub fn phx<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    do_push(cpu, bus, cpu.index_x);
+    0
+}
+
+pub fn phy<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    do_push(cpu, bus, cpu.index_y);
+    0
+}
+
+pub fn pla<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let result = do_pull::<A>(cpu, bus);
+    cpu.accumulator = result.as_u16();
+    cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
+    cpu.status_register
+        .set(CpuFlags::NEGATIVE, result.is_negative());
+    0
+}
+
+pub fn plb<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let result = do_pull::<u8>(cpu, bus);
+    cpu.dbr = result;
+    cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
+    cpu.status_register
+        .set(CpuFlags::NEGATIVE, result.is_negative());
+    0
+}
+
+pub fn pld<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let result = do_pull::<u16>(cpu, bus);
+    cpu.dpr = result;
+    cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
+    cpu.status_register
+        .set(CpuFlags::NEGATIVE, result.is_negative());
+    0
+}
+
+pub fn plp<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    todo!();
+    0
+}
+
+pub fn plx<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let result = do_pull::<A>(cpu, bus);
+    cpu.index_x = result.as_u16();
+    cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
+    cpu.status_register
+        .set(CpuFlags::NEGATIVE, result.is_negative());
+    0
+}
+
+pub fn ply<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let result = do_pull::<A>(cpu, bus);
+    cpu.index_y = result.as_u16();
+    cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
+    cpu.status_register
+        .set(CpuFlags::NEGATIVE, result.is_negative());
+    0
+}
+
 pub fn rol<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
     cpu.do_rmw(bus, mode, do_rol::<A>);
     0
