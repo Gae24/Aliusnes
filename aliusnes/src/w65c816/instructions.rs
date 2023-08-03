@@ -139,6 +139,34 @@ pub fn iny<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u
     0
 }
 
+pub fn jml<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let addr = cpu.get_address(bus, mode) as u16;
+    cpu.program_couter = addr;
+    cpu.pbr = ((addr >> 16) & 0xff) as u8;
+    0
+}
+
+pub fn jmp<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let addr = cpu.get_address(bus, mode) as u16;
+    cpu.program_couter = addr;
+    0
+}
+
+pub fn jsl<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let addr = cpu.get_address(bus, mode) as u16;
+    do_push(cpu, bus, cpu.pbr);
+    do_push(cpu, bus, cpu.program_couter);
+    cpu.program_couter = addr;
+    0
+}
+
+pub fn jsr<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let addr = cpu.get_address(bus, mode) as u16;
+    do_push(cpu, bus, cpu.program_couter);
+    cpu.program_couter = addr;
+    0
+}
+
 pub fn lda<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
     let (operand, extra_cycles) = cpu.get_operand::<A>(bus, mode);
     cpu.accumulator = operand.as_u16();
@@ -287,6 +315,14 @@ pub fn ply<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u
     0
 }
 
+pub fn rep<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let (mask, extra_cycles) = cpu.get_operand::<u8>(bus, mode);
+    let src = cpu.status_register.bits();
+    cpu.status_register
+        .insert(CpuFlags::from_bits_truncate(src & !mask));
+    extra_cycles
+}
+
 pub fn rol<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
     cpu.do_rmw(bus, mode, do_rol::<A>);
     0
@@ -330,8 +366,16 @@ pub fn sed(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
 }
 
 pub fn sei(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
-    todo!();
+    cpu.status_register.insert(CpuFlags::IRQ_DISABLE);
     0
+}
+
+pub fn sep<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let (mask, extra_cycles) = cpu.get_operand::<u8>(bus, mode);
+    let src = cpu.status_register.bits();
+    cpu.status_register
+        .insert(CpuFlags::from_bits_truncate(src | mask));
+    extra_cycles
 }
 
 pub fn sta<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
