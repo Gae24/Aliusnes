@@ -345,6 +345,26 @@ pub fn ror_a<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) ->
     0
 }
 
+pub fn rti(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    let new_status = do_pull::<u8>(cpu, bus);
+    cpu.program_couter = do_pull::<u16>(cpu, bus);
+    cpu.pbr = do_pull::<u8>(cpu, bus);
+    cpu.status_register
+        .insert(CpuFlags::from_bits_truncate(new_status));
+    0
+}
+
+pub fn rtl(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    cpu.program_couter = do_pull::<u16>(cpu, bus).wrapping_add(1);
+    cpu.pbr = do_pull::<u8>(cpu, bus);
+    0
+}
+
+pub fn rts(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    cpu.program_couter = do_pull::<u16>(cpu, bus).wrapping_add(1);
+    0
+}
+
 pub fn sbc<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
     let (operand, extra_cycles) = cpu.get_operand::<A>(bus, mode);
     if cpu.status_register.contains(CpuFlags::DECIMAL) {
