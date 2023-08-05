@@ -37,6 +37,91 @@ pub fn asl_a<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) ->
     0
 }
 
+pub fn bcc(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    do_branch(
+        cpu,
+        bus,
+        mode,
+        !cpu.status_register.contains(CpuFlags::CARRY),
+    );
+    0
+}
+
+pub fn bcs(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    do_branch(
+        cpu,
+        bus,
+        mode,
+        cpu.status_register.contains(CpuFlags::CARRY),
+    );
+    0
+}
+
+pub fn beq(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    do_branch(cpu, bus, mode, cpu.status_register.contains(CpuFlags::ZERO));
+    0
+}
+
+pub fn bmi(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    do_branch(
+        cpu,
+        bus,
+        mode,
+        cpu.status_register.contains(CpuFlags::NEGATIVE),
+    );
+    0
+}
+
+pub fn bne(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    do_branch(
+        cpu,
+        bus,
+        mode,
+        !cpu.status_register.contains(CpuFlags::ZERO),
+    );
+    0
+}
+
+pub fn bpl(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    do_branch(
+        cpu,
+        bus,
+        mode,
+        !cpu.status_register.contains(CpuFlags::NEGATIVE),
+    );
+    0
+}
+
+pub fn bra(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    do_branch(cpu, bus, mode, true);
+    0
+}
+
+pub fn brl(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    do_branch(cpu, bus, mode, true);
+    0
+}
+
+pub fn bvc(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    do_branch(
+        cpu,
+        bus,
+        mode,
+        !cpu.status_register.contains(CpuFlags::OVERFLOW),
+    );
+    0
+}
+
+pub fn bvs(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
+    do_branch(
+        cpu,
+        bus,
+        mode,
+        cpu.status_register.contains(CpuFlags::OVERFLOW),
+    );
+    0
+}
+
 pub fn brk<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) -> u8 {
     0
 }

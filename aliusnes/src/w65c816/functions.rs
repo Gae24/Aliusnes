@@ -1,7 +1,7 @@
 use crate::bus::Bus;
 
 use super::{
-    cpu::{Cpu, CpuFlags},
+    cpu::{AddressingMode, Cpu, CpuFlags},
     regsize::RegSize,
 };
 
@@ -103,6 +103,14 @@ pub(super) fn do_asl<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
         cpu.status_register
             .set(CpuFlags::NEGATIVE, result.is_negative());
         T::ext_u8(result)
+    }
+}
+
+pub(super) fn do_branch(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode, cond: bool) {
+    let (value, extra_cycles) = cpu.get_operand::<u8>(bus, mode);
+    let offset = value as i8;
+    if cond {
+        cpu.program_couter = cpu.program_couter.wrapping_add(offset as u16);
     }
 }
 
