@@ -107,9 +107,9 @@ pub(super) fn do_asl<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
 }
 
 pub(super) fn do_branch(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode, cond: bool) {
-    let (value, extra_cycles) = cpu.get_operand::<u8>(bus, mode);
-    let offset = value as i8;
+    let offset = cpu.get_operand::<u8>(bus, mode) as i8;
     if cond {
+        cpu.extra_cycles += 1;
         cpu.program_couter = cpu.program_couter.wrapping_add(offset as u16);
     }
 }
@@ -160,6 +160,7 @@ pub(super) fn do_lsr<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
 
 pub(super) fn do_push<T: RegSize>(cpu: &mut Cpu, bus: &Bus, value: T) {
     if T::IS_U16 {
+        cpu.extra_cycles += 1;
         cpu.stack_pointer = cpu.stack_pointer.wrapping_sub(2);
         Cpu::write_16(
             bus,
@@ -174,6 +175,7 @@ pub(super) fn do_push<T: RegSize>(cpu: &mut Cpu, bus: &Bus, value: T) {
 
 pub(super) fn do_pull<T: RegSize>(cpu: &mut Cpu, bus: &Bus) -> T {
     if T::IS_U16 {
+        cpu.extra_cycles += 1;
         let low = Cpu::read_8(bus, cpu.stack_pointer.wrapping_add(1).into());
         let high = Cpu::read_8(bus, cpu.stack_pointer.wrapping_add(2).into());
         cpu.stack_pointer = cpu.stack_pointer.wrapping_add(2);

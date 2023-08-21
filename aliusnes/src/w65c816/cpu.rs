@@ -26,6 +26,7 @@ pub struct Cpu {
     pub dpr: u16,
     pub pbr: u8,
     pub dbr: u8,
+    pub extra_cycles: u8,
 }
 
 #[derive(Debug)]
@@ -67,6 +68,7 @@ impl Cpu {
             pbr: 0x00,
             dbr: 0x00,
             program_couter: 0x00,
+            extra_cycles: 0,
         }
     }
 
@@ -74,18 +76,19 @@ impl Cpu {
         self.accumulator = (self.accumulator & 0xFF00) | val;
     }
 
-    fn step(&mut self, bus: &mut Bus) -> usize {
-        let op = self.pbr;
+    fn step(&mut self, bus: &mut Bus) -> u8 {
+        self.extra_cycles = 0;
+        let op = self.get_imm::<u8>(bus);
 
         // let opcode = OPCODES_MAP
         //     .get(&op)
         //     .expect(&format!("OpCode {:x} is not recognized", op));
+
         // let instr = opcode.function;
-
-        // let data = bus.read(self.get_operand_address(&opcode.mode));
-
         // instr(self, bus, &opcode.mode);
-        // get base cycle and add extras
+
+        // let cycles = opcode.cycles + self.extra_cycles;
+        // cycles
         1
     }
 
@@ -106,8 +109,33 @@ impl Cpu {
         Self::write_8(bus, addr.wrapping_add(1), (data >> 8) as u8);
     }
 
-    fn get_direct_addr(&self, bus: &Bus) -> u16 {
-        self.dpr | bus.read(self.program_couter.into()) as u16
+    fn add_extra_cycles<const WRITE: bool>(&mut self, unindexed: u32, indexed: u32) {
+        if WRITE || unindexed >> 8 != indexed >> 8 {
+            self.extra_cycles += 1;
+        }
+    }
+
+    pub fn get_imm<T: RegSize>(&mut self, bus: &Bus) -> T {
+        if T::IS_U16 {
+            self.extra_cycles += 1;
+            let pbr = self.pbr as u16;
+            let res = Self::read_16(bus, (pbr | self.program_couter).into());
+            self.program_couter = self.program_couter.wrapping_add(2);
+            T::trunc_u16(res)
+        } else {
+            let pbr = self.pbr as u16;
+            let res = Self::read_8(bus, (pbr | self.program_couter).into());
+            self.program_couter = self.program_couter.wrapping_add(1);
+            T::ext_u8(res)
+        }
+    }
+
+    fn get_direct_addr(&mut self, bus: &Bus) -> u16 {
+        let dpr = self.dpr;
+        if dpr as u8 != 0 {
+            self.extra_cycles += 1;
+        }
+        dpr.wrapping_add(self.get_imm::<u8>(bus).into())
     }
 
     fn get_indirect_addr(&self, bus: &Bus, addr: u16) -> u32 {
@@ -118,33 +146,25 @@ impl Cpu {
         ((Self::read_16(bus, addr) | Self::read_8(bus, addr.wrapping_add(2)) as u16) as u32) << 16
     }
 
-    fn get_absolute_addr(&self, bus: &Bus) -> u32 {
-        (self.dbr | bus.read(self.program_couter.into())).into()
+    fn get_absolute_addr(&mut self, bus: &Bus) -> u16 {
+        self.dbr as u16 | self.get_imm::<u16>(bus)
     }
 
-    fn get_absolute_long_addr(&self, bus: &Bus) -> u32 {
-        let addr1 = Self::read_16(bus, self.program_couter.into());
-        let addr2 = Self::read_8(bus, (self.program_couter + 2).into()) as u16;
-        (addr1 | addr2).into()
+    fn get_absolute_long_addr(&mut self, bus: &Bus) -> u32 {
+        self.get_imm::<u16>(bus) as u32 | self.get_imm::<u8>(bus) as u32
     }
 
-    fn get_stack_relative_addr(&self, bus: &Bus) -> u16 {
+    fn get_stack_relative_addr(&mut self, bus: &Bus) -> u16 {
         self.stack_pointer
-            .wrapping_add(Self::read_8(bus, self.program_couter.into()).into())
+            .wrapping_add(self.get_imm::<u8>(bus).into())
     }
 
-    pub fn get_address(&mut self, bus: &Bus, mode: &AddressingMode) -> u32 {
+    pub fn get_address<const WRITE: bool>(&mut self, bus: &Bus, mode: &AddressingMode) -> u32 {
         match mode {
             AddressingMode::Implied => unreachable!(),
-            AddressingMode::Immediate => todo!(),
-            AddressingMode::Relative => {
-                let addr = Self::read_8(bus, self.program_couter.into());
-                self.program_couter.wrapping_add(addr.into()).into()
-            }
-            AddressingMode::RelativeLong => {
-                let addr = Self::read_16(bus, self.program_couter.into());
-                self.program_couter.wrapping_add(addr).into()
-            }
+            AddressingMode::Immediate => unreachable!(),
+            AddressingMode::Relative => unreachable!(),
+            AddressingMode::RelativeLong => unreachable!(),
             AddressingMode::Direct => self.get_direct_addr(bus) as u32,
             AddressingMode::DirectX => (self.get_direct_addr(bus) + self.index_x) as u32,
             AddressingMode::DirectY => (self.get_direct_addr(bus) + self.index_y) as u32,
@@ -158,7 +178,10 @@ impl Cpu {
             }
             AddressingMode::IndirectY => {
                 let indirect = self.get_direct_addr(bus);
-                (self.get_indirect_addr(bus, indirect) + self.index_y as u32) & 0xFF_FFFF
+                let unindexed = self.get_indirect_addr(bus, indirect);
+                let indexed = (unindexed + self.index_y as u32) & 0xFF_FFFF;
+                self.add_extra_cycles::<WRITE>(unindexed, indexed);
+                indexed
             }
             AddressingMode::IndirectLong => {
                 let indirect = self.get_direct_addr(bus) as u32;
@@ -168,35 +191,64 @@ impl Cpu {
                 let indirect = self.get_direct_addr(bus) as u32;
                 (Self::get_indirect_long_addr(bus, indirect) + self.index_y as u32) & 0xFF_FFFF
             }
-            AddressingMode::Absolute => self.get_absolute_addr(bus),
+            AddressingMode::Absolute => self.get_absolute_addr(bus) as u32,
             AddressingMode::AbsoluteX => {
-                (self.get_absolute_addr(bus) + self.index_x as u32) & 0xFF_FFFF
+                let unindexed = self.get_absolute_addr(bus) as u32;
+                let indexed = unindexed + (self.index_x as u32) & 0xFF_FFFF;
+                self.add_extra_cycles::<WRITE>(unindexed, indexed);
+                indexed
             }
             AddressingMode::AbsoluteY => {
-                (self.get_absolute_addr(bus) + self.index_y as u32) & 0xFF_FFFF
+                let unindexed = self.get_absolute_addr(bus) as u32;
+                let indexed = unindexed + (self.index_y as u32) & 0xFF_FFFF;
+                self.add_extra_cycles::<WRITE>(unindexed, indexed);
+                indexed
             }
             AddressingMode::AbsoluteLong => self.get_absolute_long_addr(bus),
             AddressingMode::AbsoluteLongX => {
                 (self.get_absolute_long_addr(bus) + self.index_x as u32) & 0xFF_FFFF
             }
-            AddressingMode::AbsoluteIndirect => todo!(),
+            AddressingMode::AbsoluteIndirect => {
+                let indirect = self.get_absolute_addr(bus) as u16;
+                self.get_indirect_addr(bus, indirect)
+            }
             AddressingMode::AbsoluteIndirectLong => todo!(),
-            AddressingMode::AbsoluteIndirectX => todo!(),
+            AddressingMode::AbsoluteIndirectX => {
+                let indirect = self.get_absolute_addr(bus) + self.index_x;
+                self.get_indirect_addr(bus, indirect)
+            }
             AddressingMode::StackRelative => self.get_stack_relative_addr(bus).into(),
             AddressingMode::StackRelativeIndirectY => {
                 let indirect = self.get_stack_relative_addr(bus);
                 (self.get_indirect_addr(bus, indirect) + self.index_y as u32) & 0xFF_FFFF
             }
-            AddressingMode::BlockMove => todo!(),
+            AddressingMode::BlockMove => unreachable!(),
         }
     }
 
-    pub fn get_operand<T: RegSize>(&mut self, bus: &Bus, mode: &AddressingMode) -> (T, u8) {
-        let addr = self.get_address(bus, mode);
+    pub fn get_operand<T: RegSize>(&mut self, bus: &Bus, mode: &AddressingMode) -> T {
+        match mode {
+            AddressingMode::Immediate
+            | AddressingMode::Relative
+            | AddressingMode::RelativeLong
+            | AddressingMode::BlockMove => self.get_imm(bus),
+            _ => {
+                let addr = self.get_address::<false>(bus, mode);
+                if T::IS_U16 {
+                    T::trunc_u16(Self::read_16(bus, addr))
+                } else {
+                    T::ext_u8(Self::read_8(bus, addr))
+                }
+            }
+        }
+    }
+
+    pub fn do_write<T: RegSize>(&mut self, bus: &mut Bus, mode: &AddressingMode, val: T) {
+        let addr = self.get_address::<true>(bus, mode);
         if T::IS_U16 {
-            (T::trunc_u16(Self::read_16(bus, addr)), 1)
+            Cpu::write_16(bus, addr, val.as_u16());
         } else {
-            (T::ext_u8(Self::read_8(bus, addr)), 0)
+            Cpu::write_8(bus, addr, val.as_u8());
         }
     }
 
@@ -206,7 +258,7 @@ impl Cpu {
         mode: &AddressingMode,
         f: fn(&mut Cpu, T) -> T,
     ) {
-        let addr = self.get_address(bus, mode);
+        let addr = self.get_address::<true>(bus, mode);
         if T::IS_U16 {
             let data = Self::read_16(bus, addr);
             let result = f(self, T::trunc_u16(data)).as_u16();
