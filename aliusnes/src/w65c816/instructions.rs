@@ -55,6 +55,23 @@ pub fn beq(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     do_branch(cpu, bus, mode, cpu.status_register.contains(CpuFlags::ZERO));
 }
 
+pub fn bit<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
+    let operand = cpu.get_operand(bus, mode);
+    let result = A::trunc_u16(cpu.accumulator) & operand;
+    match mode {
+        AddressingMode::Immediate => {
+            cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
+        }
+        _ => {
+            cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
+            cpu.status_register
+                .set(CpuFlags::NEGATIVE, result.is_negative());
+            cpu.status_register
+                .set(CpuFlags::OVERFLOW, result.is_overflow());
+        }
+    }
+}
+
 pub fn bmi(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     do_branch(
         cpu,
@@ -237,6 +254,40 @@ pub fn lsr<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 pub fn lsr_a<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let result = do_lsr(cpu, A::trunc_u16(cpu.accumulator));
     cpu.accumulator = result.as_u16();
+}
+
+pub fn mvn(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
+    let banks = cpu.get_operand::<u16>(bus, mode);
+    let dst_bank = (banks >> 8) as u8;
+    let src_bank = (banks & 0xFF) as u8;
+    loop {
+        let src = Cpu::read_8(bus, cpu.index_x as u32 | (src_bank as u32) << 16);
+        let dst = cpu.index_y as u32 | (dst_bank as u32) << 16;
+        Cpu::write_8(bus, dst, src);
+        cpu.index_x = cpu.index_x.wrapping_add(1);
+        cpu.index_y = cpu.index_y.wrapping_add(1);
+        cpu.accumulator = cpu.accumulator.wrapping_sub(1);
+        if cpu.accumulator == 0xFFFF {
+            break;
+        }
+    }
+}
+
+pub fn mvp(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
+    let banks = cpu.get_operand::<u16>(bus, mode);
+    let dst_bank = (banks >> 8) as u8;
+    let src_bank = (banks & 0xFF) as u8;
+    loop {
+        let src = Cpu::read_8(bus, cpu.index_x as u32 | (src_bank as u32) << 16);
+        let dst = cpu.index_y as u32 | (dst_bank as u32) << 16;
+        Cpu::write_8(bus, dst, src);
+        cpu.index_x = cpu.index_x.wrapping_sub(1);
+        cpu.index_y = cpu.index_y.wrapping_sub(1);
+        cpu.accumulator = cpu.accumulator.wrapping_sub(1);
+        if cpu.accumulator == 0xFFFF {
+            break;
+        }
+    }
 }
 
 pub fn nop(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
@@ -520,6 +571,14 @@ pub fn tya<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 pub fn tyx<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let value = A::trunc_u16(cpu.index_y);
     cpu.index_x = value.as_u16();
+    cpu.status_register.set(CpuFlags::ZERO, value.is_zero());
+    cpu.status_register
+        .set(CpuFlags::NEGATIVE, value.is_negative());
+}
+
+pub fn xba(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
+    cpu.accumulator = cpu.accumulator.swap_bytes();
+    let value = cpu.accumulator as u8;
     cpu.status_register.set(CpuFlags::ZERO, value.is_zero());
     cpu.status_register
         .set(CpuFlags::NEGATIVE, value.is_negative());
