@@ -304,9 +304,8 @@ pub fn ora<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn pea<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    let result = bus.read(cpu.program_couter.into()) as u16;
-    do_push(cpu, bus, result);
-    todo!();
+    let value = cpu.get_operand::<u16>(bus, mode);
+    do_push(cpu, bus, value);
 }
 
 pub fn pei<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
@@ -315,9 +314,8 @@ pub fn pei<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn per<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    let addr = cpu.get_imm::<u16>(bus);
-    do_push(cpu, bus, addr);
-    todo!()
+    let value = cpu.get_operand::<u16>(bus, mode);
+    do_push(cpu, bus, cpu.program_couter.wrapping_add(value));
 }
 
 pub fn pha<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
@@ -582,4 +580,11 @@ pub fn xba(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     cpu.status_register.set(CpuFlags::ZERO, value.is_zero());
     cpu.status_register
         .set(CpuFlags::NEGATIVE, value.is_negative());
+}
+
+pub fn xce(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
+    let carry = cpu.status_register.contains(CpuFlags::CARRY);
+    cpu.status_register
+        .set(CpuFlags::CARRY, cpu.emulation_mode());
+    cpu.set_emulation_mode(carry);
 }
