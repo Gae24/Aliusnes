@@ -26,6 +26,7 @@ pub struct Cpu {
     pub dpr: u16,
     pub pbr: u8,
     pub dbr: u8,
+    emulation_mode: bool,
     pub extra_cycles: u8,
 }
 
@@ -68,12 +69,29 @@ impl Cpu {
             pbr: 0x00,
             dbr: 0x00,
             program_couter: 0x00,
+            emulation_mode: true,
             extra_cycles: 0,
         }
     }
 
     pub fn set_low_a(&mut self, val: u16) {
-        self.accumulator = (self.accumulator & 0xFF00) | val;
+        self.accumulator = (self.accumulator & 0xFF) | val;
+    }
+
+    pub fn emulation_mode(&self) -> bool {
+        self.emulation_mode
+    }
+
+    pub fn set_emulation_mode(&mut self, val: bool) {
+        if val {
+            // not supported
+            self.status_register.insert(CpuFlags::A_REG_SIZE);
+            self.status_register.insert(CpuFlags::INDEX_REGS_SIZE);
+            self.stack_pointer = (self.stack_pointer & 0xFF00) | 0x01 << 8;
+            self.index_x = (self.index_x & 0xFF00) | 0x00 << 8;
+            self.index_y = (self.index_y & 0xFF00) | 0x00 << 8;
+        }
+        self.emulation_mode = val;
     }
 
     fn step(&mut self, bus: &mut Bus) -> u8 {
@@ -146,8 +164,8 @@ impl Cpu {
         ((Self::read_16(bus, addr) | Self::read_8(bus, addr.wrapping_add(2)) as u16) as u32) << 16
     }
 
-    fn get_absolute_addr(&mut self, bus: &Bus) -> u16 {
-        self.dbr as u16 | self.get_imm::<u16>(bus)
+    fn get_absolute_addr(&mut self, bus: &Bus) -> u32 {
+        (self.dbr as u16 | self.get_imm::<u16>(bus)) as u32
     }
 
     fn get_absolute_long_addr(&mut self, bus: &Bus) -> u32 {
@@ -191,15 +209,15 @@ impl Cpu {
                 let indirect = self.get_direct_addr(bus) as u32;
                 (Self::get_indirect_long_addr(bus, indirect) + self.index_y as u32) & 0xFF_FFFF
             }
-            AddressingMode::Absolute => self.get_absolute_addr(bus) as u32,
+            AddressingMode::Absolute => self.get_absolute_addr(bus),
             AddressingMode::AbsoluteX => {
-                let unindexed = self.get_absolute_addr(bus) as u32;
+                let unindexed = self.get_absolute_addr(bus);
                 let indexed = unindexed + (self.index_x as u32) & 0xFF_FFFF;
                 self.add_extra_cycles::<WRITE>(unindexed, indexed);
                 indexed
             }
             AddressingMode::AbsoluteY => {
-                let unindexed = self.get_absolute_addr(bus) as u32;
+                let unindexed = self.get_absolute_addr(bus);
                 let indexed = unindexed + (self.index_y as u32) & 0xFF_FFFF;
                 self.add_extra_cycles::<WRITE>(unindexed, indexed);
                 indexed
@@ -212,9 +230,12 @@ impl Cpu {
                 let indirect = self.get_absolute_addr(bus) as u16;
                 self.get_indirect_addr(bus, indirect)
             }
-            AddressingMode::AbsoluteIndirectLong => todo!(),
+            AddressingMode::AbsoluteIndirectLong => {
+                let indirect = self.get_absolute_addr(bus);
+                Self::get_indirect_long_addr(bus, indirect)
+            }
             AddressingMode::AbsoluteIndirectX => {
-                let indirect = self.get_absolute_addr(bus) + self.index_x;
+                let indirect = self.get_absolute_addr(bus) as u16 + self.index_x;
                 self.get_indirect_addr(bus, indirect)
             }
             AddressingMode::StackRelative => self.get_stack_relative_addr(bus).into(),
