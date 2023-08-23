@@ -274,7 +274,7 @@ impl Cpu {
                 let indirect = self.get_direct_addr(bus) as u32;
                 (Self::get_indirect_long_addr(bus, indirect) + self.index_y as u32) & 0xFF_FFFF
             }
-            AddressingMode::Absolute => self.get_absolute_addr(bus) as u32,
+            AddressingMode::Absolute => self.get_absolute_addr(bus),
             AddressingMode::AbsoluteX => {
                 let unindexed = self.get_absolute_addr(bus);
                 let indexed = unindexed + (self.index_x as u32) & 0xFF_FFFF;
