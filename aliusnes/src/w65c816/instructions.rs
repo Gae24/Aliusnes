@@ -126,9 +126,13 @@ pub fn bvs(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     );
 }
 
-pub fn brk<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {}
+pub fn brk<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
+    todo!()
+}
 
-pub fn cop<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {}
+pub fn cop<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
+    todo!()
+}
 
 pub fn clc(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     cpu.status_register.remove(CpuFlags::CARRY);
@@ -139,7 +143,7 @@ pub fn cld(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn cli(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    todo!();
+    cpu.status_register.remove(CpuFlags::IRQ_DISABLE);
 }
 
 pub fn clv(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
@@ -290,9 +294,7 @@ pub fn mvp(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     }
 }
 
-pub fn nop(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    todo!();
-}
+pub fn nop(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {}
 
 pub fn ora<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let operand = cpu.get_operand::<A>(bus, mode);
@@ -371,7 +373,8 @@ pub fn pld<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn plp<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    todo!();
+    let result = do_pull::<u8>(cpu, bus);
+    cpu.status_register = CpuFlags::from_bits_truncate(result);
 }
 
 pub fn plx<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
