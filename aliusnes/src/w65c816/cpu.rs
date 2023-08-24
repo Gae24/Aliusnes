@@ -1,7 +1,11 @@
 // use super::opcodes::OPCODES_MAP;
 use crate::bus::Bus;
 
-use super::regsize::RegSize;
+use super::{
+    functions::do_push,
+    regsize::RegSize,
+    vectors::{EmulationVectors, NativeVectors},
+};
 
 bitflags! {
     pub struct CpuFlags: u8 {
@@ -27,6 +31,7 @@ pub struct Cpu {
     pub pbr: u8,
     pub dbr: u8,
     emulation_mode: bool,
+    pub stopped: bool,
     pub extra_cycles: u8,
 }
 
@@ -70,6 +75,7 @@ impl Cpu {
             dbr: 0x00,
             program_couter: 0x00,
             emulation_mode: true,
+            stopped: false,
             extra_cycles: 0,
         }
     }
@@ -94,7 +100,15 @@ impl Cpu {
         self.emulation_mode = val;
     }
 
-    fn step(&mut self, bus: &mut Bus) -> u8 {
+    pub fn reset(&mut self, bus: &Bus) {
+        self.stopped = false;
+        self.set_emulation_mode(true);
+        self.dpr = 0;
+        self.dbr = 0;
+        self.handle_emulation_interrupt(bus, &EmulationVectors::RESET);
+    }
+
+    pub fn step(&mut self, bus: &mut Bus) -> u8 {
         self.extra_cycles = 0;
         let op = self.get_imm::<u8>(bus);
 
@@ -108,6 +122,25 @@ impl Cpu {
         // let cycles = opcode.cycles + self.extra_cycles;
         // cycles
         1
+    }
+
+    pub fn handle_native_interrupt(&mut self, bus: &Bus, interrupt: &NativeVectors) {
+        do_push(self, bus, self.pbr);
+        do_push(self, bus, self.program_couter);
+        do_push(self, bus, self.status_register.bits());
+        self.status_register.remove(CpuFlags::DECIMAL);
+        self.status_register.insert(CpuFlags::IRQ_DISABLE);
+        self.pbr = 0;
+        self.program_couter = Self::read_16(bus, interrupt.get_interrupt_addr());
+    }
+
+    pub fn handle_emulation_interrupt(&mut self, bus: &Bus, interrupt: &EmulationVectors) {
+        do_push(self, bus, self.program_couter);
+        do_push(self, bus, self.status_register.bits());
+        self.status_register.remove(CpuFlags::DECIMAL);
+        self.status_register.insert(CpuFlags::IRQ_DISABLE);
+        self.pbr = 0;
+        self.program_couter = Self::read_16(bus, interrupt.get_interrupt_addr());
     }
 
     pub fn read_8(bus: &Bus, addr: u32) -> u8 {

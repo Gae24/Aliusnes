@@ -4,6 +4,7 @@ use super::{
     cpu::{AddressingMode, Cpu, CpuFlags},
     functions::*,
     regsize::RegSize,
+    vectors::NativeVectors,
 };
 
 pub fn adc<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
@@ -127,11 +128,17 @@ pub fn bvs(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn brk<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    todo!()
+    let _thrown = cpu.get_operand::<u8>(bus, mode);
+    if !cpu.emulation_mode() {
+        cpu.handle_native_interrupt(bus, &NativeVectors::BRK);
+    }
 }
 
 pub fn cop<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    todo!()
+    let _thrown = cpu.get_operand::<u8>(bus, mode);
+    if !cpu.emulation_mode() {
+        cpu.handle_native_interrupt(bus, &NativeVectors::COP);
+    }
 }
 
 pub fn clc(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
@@ -465,6 +472,10 @@ pub fn sep<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 
 pub fn sta<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     cpu.do_write(bus, mode, A::trunc_u16(cpu.accumulator));
+}
+
+pub fn stp(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
+    cpu.stopped = true;
 }
 
 pub fn stx<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
