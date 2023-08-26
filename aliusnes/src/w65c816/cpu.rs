@@ -82,8 +82,38 @@ impl Cpu {
         }
     }
 
+    pub fn set_nz<T: RegSize>(&mut self, val: T) {
+        self.status_register
+            .set(CpuFlags::NEGATIVE, val.is_negative());
+        self.status_register.set(CpuFlags::ZERO, val.is_zero());
+    }
+
     pub fn set_low_a(&mut self, val: u16) {
         self.accumulator = (self.accumulator & 0xFF) | val;
+    }
+
+    pub fn set_accumulator<T: RegSize>(&mut self, val: T) {
+        if T::IS_U16 {
+            self.accumulator = val.as_u16();
+        } else {
+            (self.accumulator & 0xFF) | val.as_u16();
+        }
+    }
+
+    pub fn set_index_x<T: RegSize>(&mut self, val: T) {
+        if T::IS_U16 {
+            self.index_x = val.as_u16();
+        } else {
+            (self.index_x & 0xFF) | val.as_u16();
+        }
+    }
+
+    pub fn set_index_y<T: RegSize>(&mut self, val: T) {
+        if T::IS_U16 {
+            self.index_y = val.as_u16();
+        } else {
+            (self.index_y & 0xFF) | val.as_u16();
+        }
     }
 
     pub fn emulation_mode(&self) -> bool {
