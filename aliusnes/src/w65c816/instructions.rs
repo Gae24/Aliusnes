@@ -588,6 +588,14 @@ pub fn tyx<A: RegSize>(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
         .set(CpuFlags::NEGATIVE, value.is_negative());
 }
 
+pub fn wai(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
+    cpu.waiting_interrupt = true;
+}
+
+pub fn wdm(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
+    let _thrown = cpu.get_operand::<u8>(bus, mode);
+}
+
 pub fn xba(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     cpu.accumulator = cpu.accumulator.swap_bytes();
     let value = cpu.accumulator as u8;

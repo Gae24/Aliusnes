@@ -32,6 +32,7 @@ pub struct Cpu {
     pub dbr: u8,
     emulation_mode: bool,
     pub stopped: bool,
+    pub waiting_interrupt: bool,
     pub extra_cycles: u8,
 }
 
@@ -76,6 +77,7 @@ impl Cpu {
             program_couter: 0x00,
             emulation_mode: true,
             stopped: false,
+            waiting_interrupt: false,
             extra_cycles: 0,
         }
     }
@@ -102,6 +104,7 @@ impl Cpu {
 
     pub fn reset(&mut self, bus: &Bus) {
         self.stopped = false;
+        self.waiting_interrupt = false;
         self.set_emulation_mode(true);
         self.dpr = 0;
         self.dbr = 0;
