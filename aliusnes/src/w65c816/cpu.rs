@@ -58,8 +58,11 @@ pub enum AddressingMode {
     AbsoluteIndirect,
     AbsoluteIndirectLong,
     AbsoluteIndirectX,
+    AbsoluteJMP,
+    AbsoluteLongJSL,
     StackRelative,
     StackRelativeIndirectY,
+    StackPEI,
     BlockMove,
 }
 
@@ -96,7 +99,7 @@ impl Cpu {
         if T::IS_U16 {
             self.accumulator = val.as_u16();
         } else {
-            (self.accumulator & 0xFF) | val.as_u16();
+            self.accumulator = (self.accumulator & 0xFF) | val.as_u16();
         }
     }
 
@@ -104,7 +107,7 @@ impl Cpu {
         if T::IS_U16 {
             self.index_x = val.as_u16();
         } else {
-            (self.index_x & 0xFF) | val.as_u16();
+            self.index_x = (self.index_x & 0xFF) | val.as_u16();
         }
     }
 
@@ -112,7 +115,7 @@ impl Cpu {
         if T::IS_U16 {
             self.index_y = val.as_u16();
         } else {
-            (self.index_y & 0xFF) | val.as_u16();
+            self.index_y = (self.index_y & 0xFF) | val.as_u16();
         }
     }
 
@@ -199,7 +202,7 @@ impl Cpu {
         }
     }
 
-    pub fn get_imm<T: RegSize>(&mut self, bus: &Bus) -> T {
+    fn get_imm<T: RegSize>(&mut self, bus: &Bus) -> T {
         if T::IS_U16 {
             self.extra_cycles += 1;
             let pbr = self.pbr as u16;
@@ -243,12 +246,8 @@ impl Cpu {
             .wrapping_add(self.get_imm::<u8>(bus).into())
     }
 
-    pub fn get_address<const WRITE: bool>(&mut self, bus: &Bus, mode: &AddressingMode) -> u32 {
+    fn get_address<const WRITE: bool>(&mut self, bus: &Bus, mode: &AddressingMode) -> u32 {
         match mode {
-            AddressingMode::Implied => unreachable!(),
-            AddressingMode::Immediate => unreachable!(),
-            AddressingMode::Relative => unreachable!(),
-            AddressingMode::RelativeLong => unreachable!(),
             AddressingMode::Direct => self.get_direct_addr(bus) as u32,
             AddressingMode::DirectX => (self.get_direct_addr(bus) + self.index_x) as u32,
             AddressingMode::DirectY => (self.get_direct_addr(bus) + self.index_y) as u32,
@@ -292,24 +291,17 @@ impl Cpu {
             AddressingMode::AbsoluteLongX => {
                 (self.get_absolute_long_addr(bus) + self.index_x as u32) & 0xFF_FFFF
             }
-            AddressingMode::AbsoluteIndirect => {
-                let indirect = self.get_absolute_addr(bus) as u16;
-                self.get_indirect_addr(bus, indirect)
-            }
-            AddressingMode::AbsoluteIndirectLong => {
-                let indirect = self.get_absolute_addr(bus);
-                Self::get_indirect_long_addr(bus, indirect)
-            }
+            AddressingMode::AbsoluteIndirect => self.get_imm::<u16>(bus) as u32,
             AddressingMode::AbsoluteIndirectX => {
-                let indirect = self.get_absolute_addr(bus) as u16 + self.index_x;
-                self.get_indirect_addr(bus, indirect)
+                self.pbr as u32 | self.get_imm::<u16>(bus).wrapping_add(self.index_x) as u32
             }
             AddressingMode::StackRelative => self.get_stack_relative_addr(bus).into(),
             AddressingMode::StackRelativeIndirectY => {
                 let indirect = self.get_stack_relative_addr(bus);
                 (self.get_indirect_addr(bus, indirect) + self.index_y as u32) & 0xFF_FFFF
             }
-            AddressingMode::BlockMove => unreachable!(),
+            AddressingMode::StackPEI => self.get_direct_addr(bus) as u32,
+            _ => unreachable!(),
         }
     }
 
@@ -318,6 +310,9 @@ impl Cpu {
             AddressingMode::Immediate
             | AddressingMode::Relative
             | AddressingMode::RelativeLong
+            | AddressingMode::AbsoluteJMP
+            | AddressingMode::AbsoluteLongJSL
+            | AddressingMode::AbsoluteIndirectLong
             | AddressingMode::BlockMove => self.get_imm(bus),
             _ => {
                 let addr = self.get_address::<false>(bus, mode);
