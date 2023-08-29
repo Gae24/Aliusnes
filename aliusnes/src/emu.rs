@@ -8,10 +8,18 @@ pub struct Emu {
 }
 
 impl Emu {
-    fn new(cart: Cart) -> Self {
+    pub fn new(cart: Cart) -> Self {
         Self {
             bus: Bus::new(cart),
             cpu: Cpu::new(),
         }
+    }
+
+    pub fn step(&mut self) {
+        let Emu {
+            ref mut bus,
+            ref mut cpu,
+        } = self;
+        let ticks = cpu.step(bus);
     }
 }

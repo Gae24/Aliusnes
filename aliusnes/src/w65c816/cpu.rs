@@ -74,7 +74,7 @@ impl Cpu {
         self.accumulator = (self.accumulator & 0xFF00) | val;
     }
 
-    fn step(&mut self, bus: &mut Bus) -> usize {
+    pub fn step(&mut self, bus: &mut Bus) -> usize {
         let op = self.pbr;
 
         // let opcode = OPCODES_MAP
