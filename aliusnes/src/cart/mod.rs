@@ -1,3 +1,3 @@
 pub mod cart;
-mod header;
+pub mod header;
 mod info;
