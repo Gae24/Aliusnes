@@ -1,4 +1,4 @@
-// use super::opcodes::OPCODES_MAP;
+use super::opcodes::OPCODES_MAP;
 use crate::bus::Bus;
 
 use super::{
@@ -148,16 +148,15 @@ impl Cpu {
         self.extra_cycles = 0;
         let op = self.get_imm::<u8>(bus);
 
-        // let opcode = OPCODES_MAP
-        //     .get(&op)
-        //     .expect(&format!("OpCode {:x} is not recognized", op));
+        let opcode = OPCODES_MAP
+            .get(&op)
+            .expect(&format!("OpCode {:x} is not recognized", op));
 
-        // let instr = opcode.function;
-        // instr(self, bus, &opcode.mode);
+        let instr = opcode.function;
+        instr(self, bus, &opcode.mode);
 
-        // let cycles = opcode.cycles + self.extra_cycles;
-        // cycles
-        1
+        let cycles = opcode.cycles + self.extra_cycles;
+        cycles
     }
 
     pub fn handle_native_interrupt(&mut self, bus: &Bus, interrupt: &NativeVectors) {
