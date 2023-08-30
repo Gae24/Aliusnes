@@ -128,9 +128,9 @@ impl Cpu {
             // not supported
             self.status_register.insert(CpuFlags::A_REG_SIZE);
             self.status_register.insert(CpuFlags::INDEX_REGS_SIZE);
-            self.stack_pointer = (self.stack_pointer & 0xFF00) | 0x01 << 8;
-            self.index_x = (self.index_x & 0xFF00) | 0x00 << 8;
-            self.index_y = (self.index_y & 0xFF00) | 0x00 << 8;
+            self.stack_pointer &= 0x01FF;
+            self.index_x &= 0x00FF;
+            self.index_y &= 0x00FF;
         }
         self.emulation_mode = val;
     }
@@ -150,13 +150,12 @@ impl Cpu {
 
         let opcode = OPCODES_MAP
             .get(&op)
-            .expect(&format!("OpCode {:x} is not recognized", op));
+            .unwrap_or_else(|| panic!("OpCode {:x} is not recognized", op));
 
         let instr = opcode.function;
         instr(self, bus, &opcode.mode);
 
-        let cycles = opcode.cycles + self.extra_cycles;
-        cycles
+        opcode.cycles + self.extra_cycles
     }
 
     pub fn handle_native_interrupt(&mut self, bus: &Bus, interrupt: &NativeVectors) {

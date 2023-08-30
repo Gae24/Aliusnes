@@ -88,7 +88,7 @@ impl Header {
         })
     }
 
-    pub fn guess_from_rom(rom: &Vec<u8>) -> Option<Self> {
+    pub fn guess_from_rom(rom: &[u8]) -> Option<Self> {
         let header = rom[..]
             .get(0x7FB0..0x8000)
             .and_then(|header_bytes| Header::new(header_bytes, Mapper::LoROM))
