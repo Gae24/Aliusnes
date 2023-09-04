@@ -1,4 +1,4 @@
-use crate::bus::Bus;
+use crate::bus::bus::Bus;
 use crate::cart::cart::Cart;
 use crate::w65c816::cpu::Cpu;
 
