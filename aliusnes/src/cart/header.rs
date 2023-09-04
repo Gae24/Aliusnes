@@ -67,6 +67,8 @@ impl Header {
 
         let dev_id = bytes[0x2A];
         let version = bytes[0x2B];
+        let checksum = (bytes[0x2D] as u16) << 8 | bytes[0x2C] as u16;
+        let complement = (bytes[0x2F] as u16) << 8 | bytes[0x2E] as u16;
 
         println!("Title: {title}");
         println!("Mapper: {:?}", mapper);
@@ -74,6 +76,8 @@ impl Header {
         println!("Rom size: {rom_size}");
         println!("Ram size: {ram_size}");
         println!("Country: {:?}", country);
+        println!("checksum: {checksum}");
+        println!("complement: {complement}");
 
         Some(Header {
             title,
