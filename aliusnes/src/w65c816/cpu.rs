@@ -1,5 +1,5 @@
 use super::opcodes::OPCODES_MAP;
-use crate::bus::Bus;
+use crate::bus::bus::Bus;
 
 use super::{
     functions::do_push,
@@ -135,7 +135,7 @@ impl Cpu {
         self.emulation_mode = val;
     }
 
-    pub fn reset(&mut self, bus: &Bus) {
+    pub fn reset(&mut self, bus: &mut Bus) {
         self.stopped = false;
         self.waiting_interrupt = false;
         self.set_emulation_mode(true);
@@ -158,7 +158,7 @@ impl Cpu {
         opcode.cycles + self.extra_cycles
     }
 
-    pub fn handle_native_interrupt(&mut self, bus: &Bus, interrupt: &NativeVectors) {
+    pub fn handle_native_interrupt(&mut self, bus: &mut Bus, interrupt: &NativeVectors) {
         do_push(self, bus, self.pbr);
         do_push(self, bus, self.program_couter);
         do_push(self, bus, self.status_register.bits());
@@ -168,7 +168,7 @@ impl Cpu {
         self.program_couter = Self::read_16(bus, interrupt.get_interrupt_addr());
     }
 
-    pub fn handle_emulation_interrupt(&mut self, bus: &Bus, interrupt: &EmulationVectors) {
+    pub fn handle_emulation_interrupt(&mut self, bus: &mut Bus, interrupt: &EmulationVectors) {
         do_push(self, bus, self.program_couter);
         do_push(self, bus, self.status_register.bits());
         self.status_register.remove(CpuFlags::DECIMAL);
@@ -181,7 +181,7 @@ impl Cpu {
         bus.read(addr)
     }
 
-    pub fn write_8(bus: &Bus, addr: u32, data: u8) {
+    pub fn write_8(bus: &mut Bus, addr: u32, data: u8) {
         bus.write(addr, data);
     }
 
@@ -189,7 +189,7 @@ impl Cpu {
         Self::read_8(bus, addr) as u16 | (Self::read_8(bus, addr + 1) as u16) << 8
     }
 
-    pub fn write_16(bus: &Bus, addr: u32, data: u16) {
+    pub fn write_16(bus: &mut Bus, addr: u32, data: u16) {
         Self::write_8(bus, addr, data as u8);
         Self::write_8(bus, addr.wrapping_add(1), (data >> 8) as u8);
     }
@@ -334,7 +334,7 @@ impl Cpu {
 
     pub fn do_rmw<T: RegSize>(
         &mut self,
-        bus: &Bus,
+        bus: &mut Bus,
         mode: &AddressingMode,
         f: fn(&mut Cpu, T) -> T,
     ) {

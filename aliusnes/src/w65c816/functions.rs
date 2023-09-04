@@ -1,4 +1,4 @@
-use crate::bus::Bus;
+use crate::bus::bus::Bus;
 
 use super::{
     cpu::{AddressingMode, Cpu, CpuFlags},
@@ -158,7 +158,7 @@ pub(super) fn do_lsr<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
     }
 }
 
-pub(super) fn do_push<T: RegSize>(cpu: &mut Cpu, bus: &Bus, value: T) {
+pub(super) fn do_push<T: RegSize>(cpu: &mut Cpu, bus: &mut Bus, value: T) {
     if T::IS_U16 {
         cpu.extra_cycles += 1;
         cpu.stack_pointer = cpu.stack_pointer.wrapping_sub(2);

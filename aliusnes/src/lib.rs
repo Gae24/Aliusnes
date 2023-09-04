@@ -12,13 +12,13 @@ extern crate lazy_static;
 #[macro_use]
 extern crate bitflags;
 
-pub fn run_emu(rom: Vec<u8>, ram: Vec<u8>) {
+pub fn run_emu(rom: &[u8], ram: Vec<u8>) {
     let playing = true;
     let header = Header::guess_from_rom(&rom).expect("Cartridge not recognised");
-    let cart = Cart::new(header, rom, ram);
+    let cart = Cart::new(header, &rom, ram);
 
     let mut emu = Emu::new(cart);
-    if playing {
+    while playing {
         emu.step();
     }
 }

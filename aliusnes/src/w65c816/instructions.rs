@@ -1,4 +1,4 @@
-use crate::bus::Bus;
+use crate::bus::bus::Bus;
 
 use super::{
     cpu::{AddressingMode, Cpu, CpuFlags},
