@@ -32,7 +32,7 @@ impl Header {
             return None;
         }
 
-        let raw_chipset = bytes[0x26];
+        let _raw_chipset = bytes[0x26];
         // todo chipset recognition
         let chipset = Chipset {
             has_coprocessor: false,

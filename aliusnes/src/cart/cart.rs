@@ -40,15 +40,18 @@ impl Cart {
             && addr < 0x8000
             && self.header.chipset.has_ram
         {
-            return self.ram[((((bank & 0xF) << 15) as u32 | addr as u32)
-                & (self.header.ram_size - 1)) as usize];
+            return self.ram[((((bank & 0xF) as u16) << 15) as u32 | addr as u32) as usize];
         }
         bank &= 0x7F;
         if addr >= 0x8000 || bank >= 0x40 {
-            return self.rom[(((bank << 15) as u32 | (addr & 0x7FFF) as u32)
-                & (self.header.ram_size - 1)) as usize];
+            return self.rom[(((bank as u16) << 15) as u32 | (addr & 0x7FFF) as u32) as usize];
         }
-        return todo!();
+        println!(
+            "Attempt to read at 0x{:02x}{:04x}",
+            ((bank as u16) << 15),
+            (addr & 0x7FFF)
+        );
+        return 0;
     }
 
     pub fn write_lo_rom(&mut self, bank: u8, addr: u16, val: u8) {
@@ -56,8 +59,7 @@ impl Cart {
             && addr < 0x8000
             && self.header.chipset.has_ram
         {
-            self.ram[((((bank & 0xF) << 15) as u32 | addr as u32) & (self.header.ram_size - 1))
-                as usize] = val;
+            self.ram[((((bank & 0xF) as u16) << 15) as u32 | addr as u32) as usize] = val;
         }
     }
 }
