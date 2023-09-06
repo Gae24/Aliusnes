@@ -9,10 +9,16 @@ pub struct Emu {
 
 impl Emu {
     pub fn new(cart: Cart) -> Self {
-        Self {
+        let mut emu = Emu {
             bus: Bus::new(cart),
             cpu: Cpu::new(),
-        }
+        };
+        emu.reset();
+        emu
+    }
+
+    pub fn reset(&mut self) {
+        self.cpu.reset(&mut self.bus);
     }
 
     pub fn step(&mut self) {
@@ -20,6 +26,6 @@ impl Emu {
             ref mut bus,
             ref mut cpu,
         } = self;
-        let ticks = cpu.step(bus);
+        let _ticks = cpu.step(bus);
     }
 }
