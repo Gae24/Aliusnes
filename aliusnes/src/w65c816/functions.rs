@@ -14,9 +14,7 @@ pub(super) fn do_bin_adc<T: RegSize>(cpu: &mut Cpu, operand: T) {
 
         cpu.status_register.set(CpuFlags::CARRY, result >> 15 != 0);
         cpu.status_register.set(CpuFlags::OVERFLOW, is_overflow);
-        cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
-        cpu.status_register
-            .set(CpuFlags::NEGATIVE, result.is_negative());
+        cpu.set_nz(result);
         cpu.accumulator = result;
     } else {
         let src = cpu.accumulator & 0xFF;
@@ -25,10 +23,8 @@ pub(super) fn do_bin_adc<T: RegSize>(cpu: &mut Cpu, operand: T) {
         let is_overflow = !(src ^ operand) & (src ^ result) & 1 << 7 != 0;
         cpu.status_register.set(CpuFlags::CARRY, result >> 8 != 0);
         cpu.status_register.set(CpuFlags::OVERFLOW, is_overflow);
-        cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
-        cpu.status_register
-            .set(CpuFlags::NEGATIVE, result.is_negative());
-        cpu.set_low_a(result);
+        cpu.set_nz(result);
+        cpu.set_accumulator(result);
     }
 }
 
@@ -60,9 +56,7 @@ pub(super) fn do_dec_adc<T: RegSize>(cpu: &mut Cpu, operand: T) {
             result += 0x6000;
         }
         cpu.status_register.set(CpuFlags::CARRY, result >> 15 != 0);
-        cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
-        cpu.status_register
-            .set(CpuFlags::NEGATIVE, result.is_negative());
+        cpu.set_nz(result);
         cpu.accumulator = result;
     } else {
         let src = cpu.accumulator & 0xFF;
@@ -79,10 +73,8 @@ pub(super) fn do_dec_adc<T: RegSize>(cpu: &mut Cpu, operand: T) {
             result += 0x60;
         }
         cpu.status_register.set(CpuFlags::CARRY, result >> 8 != 0);
-        cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
-        cpu.status_register
-            .set(CpuFlags::NEGATIVE, result.is_negative());
-        cpu.set_low_a(result);
+        cpu.set_nz(result);
+        cpu.set_accumulator(result);
     }
 }
 
@@ -91,17 +83,13 @@ pub(super) fn do_asl<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
         let operand = operand.as_u16();
         let result = operand << 1;
         cpu.status_register.set(CpuFlags::CARRY, result >> 15 != 0);
-        cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
-        cpu.status_register
-            .set(CpuFlags::NEGATIVE, result.is_negative());
+        cpu.set_nz(result);
         T::trunc_u16(result)
     } else {
         let operand = operand.as_u8();
         let result = operand << 1;
         cpu.status_register.set(CpuFlags::CARRY, result >> 7 != 0);
-        cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
-        cpu.status_register
-            .set(CpuFlags::NEGATIVE, result.is_negative());
+        cpu.set_nz(result);
         T::ext_u8(result)
     }
 }
@@ -117,24 +105,18 @@ pub(super) fn do_branch(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode, con
 pub(super) fn do_cmp<T: RegSize>(cpu: &mut Cpu, src: T, operand: T) {
     let result = src.wrapping_sub(operand);
     cpu.status_register.set(CpuFlags::CARRY, src >= operand);
-    cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
-    cpu.status_register
-        .set(CpuFlags::NEGATIVE, result.is_negative());
+    cpu.set_nz(result);
 }
 
 pub(super) fn do_dec<T: RegSize>(cpu: &mut Cpu, src: T) -> T {
     let result = src.wrapping_sub(T::ext_u8(1));
-    cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
-    cpu.status_register
-        .set(CpuFlags::NEGATIVE, result.is_negative());
+    cpu.set_nz(result);
     result
 }
 
 pub(super) fn do_inc<T: RegSize>(cpu: &mut Cpu, src: T) -> T {
     let result = src.wrapping_add(T::ext_u8(1));
-    cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
-    cpu.status_register
-        .set(CpuFlags::NEGATIVE, result.is_negative());
+    cpu.set_nz(result);
     result
 }
 
@@ -143,17 +125,13 @@ pub(super) fn do_lsr<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
         let operand = operand.as_u16();
         let result = operand >> 1;
         cpu.status_register.set(CpuFlags::CARRY, result & 1 != 0);
-        cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
-        cpu.status_register
-            .set(CpuFlags::NEGATIVE, result.is_negative());
+        cpu.set_nz(operand);
         T::trunc_u16(result)
     } else {
         let operand = operand.as_u8();
         let result = operand >> 1;
         cpu.status_register.set(CpuFlags::CARRY, result & 1 != 0);
-        cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
-        cpu.status_register
-            .set(CpuFlags::NEGATIVE, result.is_negative());
+        cpu.set_nz(operand);
         T::ext_u8(result)
     }
 }
@@ -192,17 +170,13 @@ pub(super) fn do_rol<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
         let operand = operand.as_u16();
         let result = operand << 1 | cpu.status_register.contains(CpuFlags::CARRY) as u16;
         cpu.status_register.set(CpuFlags::CARRY, result >> 15 != 0);
-        cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
-        cpu.status_register
-            .set(CpuFlags::NEGATIVE, result.is_negative());
+        cpu.set_nz(result);
         T::trunc_u16(result)
     } else {
         let operand = operand.as_u8();
         let result = operand << 1 | cpu.status_register.contains(CpuFlags::CARRY) as u8;
         cpu.status_register.set(CpuFlags::CARRY, result >> 7 != 0);
-        cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
-        cpu.status_register
-            .set(CpuFlags::NEGATIVE, result.is_negative());
+        cpu.set_nz(result);
         T::ext_u8(result)
     }
 }
@@ -212,17 +186,13 @@ pub(super) fn do_ror<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
         let operand = operand.as_u16();
         let result = operand >> 1 | cpu.status_register.contains(CpuFlags::CARRY) as u16;
         cpu.status_register.set(CpuFlags::CARRY, result >> 15 != 0);
-        cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
-        cpu.status_register
-            .set(CpuFlags::NEGATIVE, result.is_negative());
+        cpu.set_nz(result);
         T::trunc_u16(result)
     } else {
         let operand = operand.as_u8();
         let result = operand >> 1 | cpu.status_register.contains(CpuFlags::CARRY) as u8;
         cpu.status_register.set(CpuFlags::CARRY, result >> 7 != 0);
-        cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
-        cpu.status_register
-            .set(CpuFlags::NEGATIVE, result.is_negative());
+        cpu.set_nz(result);
         T::ext_u8(result)
     }
 }
@@ -256,9 +226,7 @@ pub(super) fn do_dec_sbc<T: RegSize>(cpu: &mut Cpu, operand: T) {
         }
         cpu.status_register.set(CpuFlags::CARRY, result > 0xFFFF);
         let result = result as u16;
-        cpu.status_register
-            .set(CpuFlags::NEGATIVE, result.is_negative());
-        cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
+        cpu.set_nz(result);
         cpu.accumulator = result;
     } else {
         let src = cpu.accumulator as i16 & 0xFF;
@@ -276,10 +244,8 @@ pub(super) fn do_dec_sbc<T: RegSize>(cpu: &mut Cpu, operand: T) {
         }
         cpu.status_register.set(CpuFlags::CARRY, result > 0xFF);
         let result = result as u16;
-        cpu.status_register
-            .set(CpuFlags::NEGATIVE, result.is_negative());
-        cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
-        cpu.set_low_a(result);
+        cpu.set_nz(result);
+        cpu.set_accumulator(result);
     }
 }
 

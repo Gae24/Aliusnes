@@ -292,8 +292,10 @@ pub fn jml(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 pub fn jmp(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     match mode {
         AddressingMode::AbsoluteLong => {
-            cpu.program_couter = cpu.get_operand::<u16>(bus, &AddressingMode::AbsoluteJMP);
-            cpu.pbr = cpu.get_operand::<u8>(bus, &AddressingMode::AbsoluteJMP);
+            let new_pc = cpu.get_operand::<u16>(bus, &AddressingMode::AbsoluteJMP);
+            let new_pbr = cpu.get_operand::<u8>(bus, &AddressingMode::AbsoluteJMP);
+            cpu.program_couter = new_pc;
+            cpu.pbr = new_pbr;
         }
         _ => {
             cpu.program_couter = cpu.get_operand::<u16>(bus, mode);
@@ -331,9 +333,11 @@ pub fn lda(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
         let operand = cpu.get_operand::<u8>(bus, mode);
         cpu.set_accumulator(operand);
+        cpu.set_nz(operand);
     } else {
         let operand = cpu.get_operand::<u16>(bus, mode);
         cpu.set_accumulator(operand);
+        cpu.set_nz(operand);
     }
 }
 
@@ -341,9 +345,11 @@ pub fn ldx(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
         let operand = cpu.get_operand::<u8>(bus, mode);
         cpu.set_index_x(operand);
+        cpu.set_nz(operand);
     } else {
         let operand = cpu.get_operand::<u16>(bus, mode);
         cpu.set_index_x(operand);
+        cpu.set_nz(operand);
     }
 }
 
@@ -351,9 +357,11 @@ pub fn ldy(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
         let operand = cpu.get_operand::<u8>(bus, mode);
         cpu.set_index_y(operand);
+        cpu.set_nz(operand);
     } else {
         let operand = cpu.get_operand::<u16>(bus, mode);
         cpu.set_index_y(operand);
+        cpu.set_nz(operand);
     }
 }
 
@@ -519,8 +527,7 @@ pub fn ply(cpu: &mut Cpu, bus: &mut Bus, _mode: &AddressingMode) {
 pub fn rep(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let mask = cpu.get_operand::<u8>(bus, mode);
     let src = cpu.status_register.bits();
-    cpu.status_register
-        .insert(CpuFlags::from_bits_truncate(src & !mask));
+    cpu.status_register = CpuFlags::from_bits_truncate(src & !mask);
 }
 
 pub fn rol(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
@@ -599,8 +606,7 @@ pub fn sei(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
 pub fn sep(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let mask = cpu.get_operand::<u8>(bus, mode);
     let src = cpu.status_register.bits();
-    cpu.status_register
-        .insert(CpuFlags::from_bits_truncate(src | mask));
+    cpu.status_register = CpuFlags::from_bits_truncate(src | mask);
 }
 
 pub fn sta(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
