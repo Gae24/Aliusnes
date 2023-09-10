@@ -88,9 +88,11 @@ pub fn bit(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
                 cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
             }
             _ => {
-                cpu.set_nz(result);
                 cpu.status_register
-                    .set(CpuFlags::OVERFLOW, result.is_overflow());
+                    .set(CpuFlags::NEGATIVE, operand.is_negative());
+                cpu.status_register
+                    .set(CpuFlags::OVERFLOW, operand.is_overflow());
+                cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
             }
         }
     } else {
@@ -101,9 +103,11 @@ pub fn bit(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
                 cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
             }
             _ => {
-                cpu.set_nz(result);
                 cpu.status_register
-                    .set(CpuFlags::OVERFLOW, result.is_overflow());
+                    .set(CpuFlags::NEGATIVE, operand.is_negative());
+                cpu.status_register
+                    .set(CpuFlags::OVERFLOW, operand.is_overflow());
+                cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
             }
         }
     }
