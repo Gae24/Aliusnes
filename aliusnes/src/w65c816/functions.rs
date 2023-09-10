@@ -7,13 +7,13 @@ use super::{
 
 pub(super) fn do_bin_adc<T: RegSize>(cpu: &mut Cpu, operand: T) {
     if T::IS_U16 {
-        let src = cpu.accumulator;
-        let operand = operand.as_u16();
-        let result = src + operand + cpu.status_register.contains(CpuFlags::CARRY) as u16;
+        let src = cpu.accumulator as u32;
+        let operand = operand.as_u16() as u32;
+        let result = src + operand + cpu.status_register.contains(CpuFlags::CARRY) as u32;
         let is_overflow = !(src ^ operand) & (src ^ result) & 1 << 15 != 0;
-
-        cpu.status_register.set(CpuFlags::CARRY, result >> 15 != 0);
+        cpu.status_register.set(CpuFlags::CARRY, result >> 16 != 0);
         cpu.status_register.set(CpuFlags::OVERFLOW, is_overflow);
+        let result = result as u16;
         cpu.set_nz(result);
         cpu.accumulator = result;
     } else {
@@ -23,6 +23,7 @@ pub(super) fn do_bin_adc<T: RegSize>(cpu: &mut Cpu, operand: T) {
         let is_overflow = !(src ^ operand) & (src ^ result) & 1 << 7 != 0;
         cpu.status_register.set(CpuFlags::CARRY, result >> 8 != 0);
         cpu.status_register.set(CpuFlags::OVERFLOW, is_overflow);
+        let result = result as u8;
         cpu.set_nz(result);
         cpu.set_accumulator(result);
     }
@@ -30,32 +31,33 @@ pub(super) fn do_bin_adc<T: RegSize>(cpu: &mut Cpu, operand: T) {
 
 pub(super) fn do_dec_adc<T: RegSize>(cpu: &mut Cpu, operand: T) {
     if T::IS_U16 {
-        let src = cpu.accumulator;
-        let operand = operand.as_u16();
+        let src = cpu.accumulator as u32;
+        let operand = operand.as_u16() as u32;
         let mut result =
-            (src & 0xF) + (operand & 0xF) + cpu.status_register.contains(CpuFlags::CARRY) as u16;
+            (src & 0xF) + (operand & 0xF) + cpu.status_register.contains(CpuFlags::CARRY) as u32;
         if result > 9 {
             result += 6;
         }
-        result = (src & 0xF0) + (operand & 0xF0) + (result & 0xF) + (((result > 0xF) as u16) << 4);
+        result = (src & 0xF0) + (operand & 0xF0) + (result & 0xF) + (((result > 0xF) as u32) << 4);
         if result > 0x9F {
             result += 0x60;
         }
         result =
-            (src & 0xF00) + (operand & 0xF00) + (result & 0xFF) + (((result > 0xFF) as u16) << 8);
+            (src & 0xF00) + (operand & 0xF00) + (result & 0xFF) + (((result > 0xFF) as u32) << 8);
         if result > 0x9FF {
             result += 0x600;
         }
         result = (src & 0xF000)
             + (operand & 0xF000)
             + (result & 0xFFF)
-            + (((result > 0xFFF) as u16) << 12);
+            + (((result > 0xFFF) as u32) << 12);
         let is_overflow = !(src ^ operand) & (src ^ result) & 1 << 15 != 0;
         cpu.status_register.set(CpuFlags::OVERFLOW, is_overflow);
         if result > 0x9FFF {
             result += 0x6000;
         }
-        cpu.status_register.set(CpuFlags::CARRY, result >> 15 != 0);
+        cpu.status_register.set(CpuFlags::CARRY, result >> 16 != 0);
+        let result = result as u16;
         cpu.set_nz(result);
         cpu.accumulator = result;
     } else {
@@ -73,6 +75,7 @@ pub(super) fn do_dec_adc<T: RegSize>(cpu: &mut Cpu, operand: T) {
             result += 0x60;
         }
         cpu.status_register.set(CpuFlags::CARRY, result >> 8 != 0);
+        let result = result as u8;
         cpu.set_nz(result);
         cpu.set_accumulator(result);
     }
@@ -124,14 +127,14 @@ pub(super) fn do_lsr<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
     if T::IS_U16 {
         let operand = operand.as_u16();
         let result = operand >> 1;
-        cpu.status_register.set(CpuFlags::CARRY, result & 1 != 0);
-        cpu.set_nz(operand);
+        cpu.status_register.set(CpuFlags::CARRY, operand & 1 != 0);
+        cpu.set_nz(result);
         T::trunc_u16(result)
     } else {
         let operand = operand.as_u8();
         let result = operand >> 1;
-        cpu.status_register.set(CpuFlags::CARRY, result & 1 != 0);
-        cpu.set_nz(operand);
+        cpu.status_register.set(CpuFlags::CARRY, operand & 1 != 0);
+        cpu.set_nz(result);
         T::ext_u8(result)
     }
 }
@@ -169,13 +172,13 @@ pub(super) fn do_rol<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
     if T::IS_U16 {
         let operand = operand.as_u16();
         let result = operand << 1 | cpu.status_register.contains(CpuFlags::CARRY) as u16;
-        cpu.status_register.set(CpuFlags::CARRY, result >> 15 != 0);
+        cpu.status_register.set(CpuFlags::CARRY, operand >> 15 != 0);
         cpu.set_nz(result);
         T::trunc_u16(result)
     } else {
         let operand = operand.as_u8();
         let result = operand << 1 | cpu.status_register.contains(CpuFlags::CARRY) as u8;
-        cpu.status_register.set(CpuFlags::CARRY, result >> 7 != 0);
+        cpu.status_register.set(CpuFlags::CARRY, operand >> 7 != 0);
         cpu.set_nz(result);
         T::ext_u8(result)
     }
@@ -184,14 +187,14 @@ pub(super) fn do_rol<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
 pub(super) fn do_ror<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
     if T::IS_U16 {
         let operand = operand.as_u16();
-        let result = operand >> 1 | cpu.status_register.contains(CpuFlags::CARRY) as u16;
-        cpu.status_register.set(CpuFlags::CARRY, result >> 15 != 0);
+        let result = operand >> 1 | (cpu.status_register.contains(CpuFlags::CARRY) as u16) << 15;
+        cpu.status_register.set(CpuFlags::CARRY, operand & 1 != 0);
         cpu.set_nz(result);
         T::trunc_u16(result)
     } else {
         let operand = operand.as_u8();
-        let result = operand >> 1 | cpu.status_register.contains(CpuFlags::CARRY) as u8;
-        cpu.status_register.set(CpuFlags::CARRY, result >> 7 != 0);
+        let result = operand >> 1 | (cpu.status_register.contains(CpuFlags::CARRY) as u8) << 7;
+        cpu.status_register.set(CpuFlags::CARRY, operand & 1 != 0);
         cpu.set_nz(result);
         T::ext_u8(result)
     }

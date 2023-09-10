@@ -49,7 +49,7 @@ impl RegSize for u8 {
     }
 
     fn is_overflow(self) -> bool {
-        self >> 6 == 0
+        self >> 6 != 0
     }
 
     fn wrapping_add(self, other: Self) -> Self {
@@ -89,7 +89,7 @@ impl RegSize for u16 {
     }
 
     fn is_overflow(self) -> bool {
-        self >> 14 == 0
+        self >> 14 != 0
     }
 
     fn wrapping_add(self, other: Self) -> Self {

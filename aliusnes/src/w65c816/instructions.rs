@@ -378,8 +378,13 @@ pub fn lsr(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn lsr_a(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    let result = do_lsr(cpu, cpu.accumulator);
-    cpu.set_accumulator(result);
+    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+        let result = do_lsr::<u8>(cpu, cpu.accumulator as u8);
+        cpu.set_accumulator(result);
+    } else {
+        let result = do_lsr::<u16>(cpu, cpu.accumulator);
+        cpu.set_accumulator(result);
+    }
 }
 
 pub fn mvn(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
@@ -543,8 +548,13 @@ pub fn rol(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn rol_a(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    let result = do_rol(cpu, cpu.accumulator);
-    cpu.set_accumulator(result);
+    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+        let result = do_rol::<u8>(cpu, cpu.accumulator as u8);
+        cpu.set_accumulator(result);
+    } else {
+        let result = do_rol::<u16>(cpu, cpu.accumulator);
+        cpu.set_accumulator(result);
+    }
 }
 
 pub fn ror(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
@@ -556,8 +566,13 @@ pub fn ror(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn ror_a(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    let result = do_ror(cpu, cpu.accumulator);
-    cpu.set_accumulator(result);
+    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+        let result = do_ror::<u8>(cpu, cpu.accumulator as u8);
+        cpu.set_accumulator(result);
+    } else {
+        let result = do_ror::<u16>(cpu, cpu.accumulator);
+        cpu.set_accumulator(result);
+    }
 }
 
 pub fn rti(cpu: &mut Cpu, bus: &mut Bus, _mode: &AddressingMode) {
