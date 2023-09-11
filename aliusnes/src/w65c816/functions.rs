@@ -85,13 +85,13 @@ pub(super) fn do_asl<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
     if T::IS_U16 {
         let operand = operand.as_u16();
         let result = operand << 1;
-        cpu.status_register.set(CpuFlags::CARRY, result >> 15 != 0);
+        cpu.status_register.set(CpuFlags::CARRY, operand >> 15 != 0);
         cpu.set_nz(result);
         T::trunc_u16(result)
     } else {
         let operand = operand.as_u8();
         let result = operand << 1;
-        cpu.status_register.set(CpuFlags::CARRY, result >> 7 != 0);
+        cpu.status_register.set(CpuFlags::CARRY, operand >> 7 != 0);
         cpu.set_nz(result);
         T::ext_u8(result)
     }
@@ -253,13 +253,15 @@ pub(super) fn do_dec_sbc<T: RegSize>(cpu: &mut Cpu, operand: T) {
 }
 
 pub(super) fn do_trb<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
-    let result = !T::trunc_u16(cpu.accumulator) & operand;
-    cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
-    result
+    let a = T::trunc_u16(cpu.accumulator);
+    cpu.status_register
+        .set(CpuFlags::ZERO, (operand & a).is_zero());
+    operand & !a
 }
 
 pub(super) fn do_tsb<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
-    let result = T::trunc_u16(cpu.accumulator) | operand;
-    cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
-    result
+    let a = T::trunc_u16(cpu.accumulator);
+    cpu.status_register
+        .set(CpuFlags::ZERO, (operand & a).is_zero());
+    operand | a
 }
