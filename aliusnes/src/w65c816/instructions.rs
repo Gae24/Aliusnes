@@ -236,18 +236,33 @@ pub fn dec(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn dec_a(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    let result = do_dec(cpu, cpu.accumulator);
-    cpu.set_accumulator(result);
+    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+        let result = do_dec::<u8>(cpu, cpu.accumulator as u8);
+        cpu.set_accumulator(result);
+    } else {
+        let result = do_dec::<u16>(cpu, cpu.accumulator);
+        cpu.set_accumulator(result);
+    }
 }
 
 pub fn dex(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    let result = do_dec(cpu, cpu.index_x);
-    cpu.set_index_x(result);
+    if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+        let result = do_dec::<u8>(cpu, cpu.index_x as u8);
+        cpu.set_index_x(result);
+    } else {
+        let result = do_dec::<u16>(cpu, cpu.index_x);
+        cpu.set_index_x(result);
+    }
 }
 
 pub fn dey(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    let result = do_dec(cpu, cpu.index_y);
-    cpu.set_index_y(result);
+    if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+        let result = do_dec::<u8>(cpu, cpu.index_y as u8);
+        cpu.set_index_y(result);
+    } else {
+        let result = do_dec::<u16>(cpu, cpu.index_y);
+        cpu.set_index_y(result);
+    }
 }
 
 pub fn eor(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
@@ -273,18 +288,33 @@ pub fn inc(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn inc_a(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    let result = do_inc(cpu, cpu.accumulator);
-    cpu.set_accumulator(result);
+    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+        let result = do_inc::<u8>(cpu, cpu.accumulator as u8);
+        cpu.set_accumulator(result);
+    } else {
+        let result = do_inc::<u16>(cpu, cpu.accumulator);
+        cpu.set_accumulator(result);
+    }
 }
 
 pub fn inx(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    let result = do_inc(cpu, cpu.index_x);
-    cpu.set_index_x(result);
+    if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+        let result = do_inc::<u8>(cpu, cpu.index_x as u8);
+        cpu.set_index_x(result);
+    } else {
+        let result = do_inc::<u16>(cpu, cpu.index_x);
+        cpu.set_index_x(result);
+    }
 }
 
 pub fn iny(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    let result = do_inc(cpu, cpu.index_y);
-    cpu.set_index_y(result);
+    if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+        let result = do_inc::<u8>(cpu, cpu.index_y as u8);
+        cpu.set_index_y(result);
+    } else {
+        let result = do_inc::<u16>(cpu, cpu.index_y);
+        cpu.set_index_y(result);
+    }
 }
 
 pub fn jml(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
@@ -670,9 +700,8 @@ pub fn tax(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
         cpu.set_nz(value);
         cpu.set_index_x(value);
     } else {
-        let value = cpu.accumulator;
-        cpu.set_nz(value);
-        cpu.set_index_x(value);
+        cpu.set_nz(cpu.accumulator);
+        cpu.set_index_x(cpu.accumulator);
     }
 }
 
@@ -682,9 +711,8 @@ pub fn tay(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
         cpu.set_nz(value);
         cpu.set_index_y(value);
     } else {
-        let value = cpu.accumulator;
-        cpu.set_nz(value);
-        cpu.set_index_y(value);
+        cpu.set_nz(cpu.accumulator);
+        cpu.set_index_y(cpu.accumulator);
     }
 }
 
@@ -694,6 +722,7 @@ pub fn tcd(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
 }
 
 pub fn tcs(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
+    //todo in emulation mode only 8bit are transferred
     cpu.stack_pointer = cpu.accumulator;
 }
 
@@ -727,11 +756,10 @@ pub fn tsx(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
     if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
         let value = cpu.stack_pointer as u8;
         cpu.set_nz(value);
-        cpu.set_index_x(value);
+        cpu.set_index_x(value as u16);
     } else {
-        let value = cpu.stack_pointer;
-        cpu.set_nz(value);
-        cpu.set_index_x(value);
+        cpu.set_nz(cpu.stack_pointer);
+        cpu.set_index_x(cpu.stack_pointer);
     }
 }
 
@@ -741,13 +769,19 @@ pub fn txa(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
         cpu.set_nz(value);
         cpu.set_accumulator(value);
     } else {
-        let value = cpu.index_x;
-        cpu.set_nz(value);
-        cpu.set_accumulator(value);
+        if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+            let value = cpu.index_x as u8;
+            cpu.set_nz(value);
+            cpu.set_accumulator(value as u16);
+        } else {
+            cpu.set_nz(cpu.index_x);
+            cpu.set_accumulator(cpu.index_x);
+        }
     }
 }
 
 pub fn txs(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
+    //todo in emulation mode only 8bit are transferred
     cpu.stack_pointer = cpu.index_x;
 }
 
@@ -757,9 +791,8 @@ pub fn txy(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
         cpu.set_nz(value);
         cpu.set_index_y(value);
     } else {
-        let value = cpu.index_x;
-        cpu.set_nz(value);
-        cpu.set_index_y(value);
+        cpu.set_nz(cpu.index_x);
+        cpu.set_index_y(cpu.index_x);
     }
 }
 
@@ -769,9 +802,14 @@ pub fn tya(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
         cpu.set_nz(value);
         cpu.set_accumulator(value);
     } else {
-        let value = cpu.index_y;
-        cpu.set_nz(value);
-        cpu.set_accumulator(value);
+        if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+            let value = cpu.index_y as u8;
+            cpu.set_nz(value);
+            cpu.set_accumulator(value as u16);
+        } else {
+            cpu.set_nz(cpu.index_y);
+            cpu.set_accumulator(cpu.index_y);
+        }
     }
 }
 
@@ -781,9 +819,8 @@ pub fn tyx(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
         cpu.set_nz(value);
         cpu.set_index_x(value);
     } else {
-        let value = cpu.index_y;
-        cpu.set_nz(value);
-        cpu.set_index_x(value);
+        cpu.set_nz(cpu.index_y);
+        cpu.set_index_x(cpu.index_y);
     }
 }
 
