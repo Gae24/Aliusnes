@@ -322,7 +322,7 @@ lazy_static! {
         OpCode::new(0x04, "TSB", 3, AddressingMode::Direct, tsb),
 
         OpCode::new(0xcb, "WAI", 3, AddressingMode::Implied, wai), // maybe more than 3
-        OpCode::new(0xff, "WDM", 2, AddressingMode::Immediate, wdm),
+        OpCode::new(0x42, "WDM", 2, AddressingMode::Immediate, wdm),
 
         OpCode::new(0xeb, "XBA", 3, AddressingMode::Implied, xba),
         OpCode::new(0xfb, "XCE", 2, AddressingMode::Implied, xce),
