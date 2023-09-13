@@ -101,7 +101,7 @@ pub(super) fn do_branch(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode, con
     let offset = cpu.get_operand::<u8>(bus, mode) as i8;
     if cond {
         cpu.extra_cycles += 1;
-        cpu.program_couter = cpu.program_couter.wrapping_add(offset as u16);
+        cpu.program_counter = cpu.program_counter.wrapping_add(offset as u16);
     }
 }
 

@@ -146,7 +146,7 @@ pub fn bra(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 
 pub fn brl(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let offset = cpu.get_operand::<u16>(bus, mode) as i16;
-    cpu.program_couter = cpu.program_couter.wrapping_add(offset as u16);
+    cpu.program_counter = cpu.program_counter.wrapping_add(offset as u16);
 }
 
 pub fn bvc(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
@@ -319,7 +319,7 @@ pub fn iny(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
 
 pub fn jml(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let addr = cpu.get_operand::<u16>(bus, mode);
-    cpu.program_couter = Cpu::read_16(bus, addr.into());
+    cpu.program_counter = Cpu::read_16(bus, addr.into());
     cpu.pbr = Cpu::read_8(bus, addr.wrapping_add(2).into());
 }
 
@@ -328,11 +328,11 @@ pub fn jmp(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
         AddressingMode::AbsoluteLong => {
             let new_pc = cpu.get_operand::<u16>(bus, &AddressingMode::AbsoluteJMP);
             let new_pbr = cpu.get_operand::<u8>(bus, &AddressingMode::AbsoluteJMP);
-            cpu.program_couter = new_pc;
+            cpu.program_counter = new_pc;
             cpu.pbr = new_pbr;
         }
         _ => {
-            cpu.program_couter = cpu.get_operand::<u16>(bus, mode);
+            cpu.program_counter = cpu.get_operand::<u16>(bus, mode);
         }
     }
 }
@@ -341,8 +341,8 @@ pub fn jsl(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let new_pc = cpu.get_operand::<u16>(bus, mode);
     do_push(cpu, bus, cpu.pbr);
     let new_pbr = cpu.get_operand::<u8>(bus, mode);
-    do_push(cpu, bus, cpu.program_couter.wrapping_sub(1));
-    cpu.program_couter = new_pc;
+    do_push(cpu, bus, cpu.program_counter.wrapping_sub(1));
+    cpu.program_counter = new_pc;
     cpu.pbr = new_pbr;
 }
 
@@ -350,15 +350,15 @@ pub fn jsr(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     match mode {
         AddressingMode::AbsoluteIndirectX => {
             let low = cpu.get_operand::<u8>(bus, &AddressingMode::AbsoluteJMP);
-            do_push(cpu, bus, cpu.program_couter);
+            do_push(cpu, bus, cpu.program_counter);
             let high = cpu.get_operand::<u8>(bus, &AddressingMode::AbsoluteJMP);
             let addr = (low as u16 | (high as u16) << 8).wrapping_add(cpu.index_x);
-            cpu.program_couter = Cpu::read_16(bus, cpu.pbr as u32 | addr as u32);
+            cpu.program_counter = Cpu::read_16(bus, cpu.pbr as u32 | addr as u32);
         }
         _ => {
             let val = cpu.get_operand::<u16>(bus, mode);
-            do_push(cpu, bus, cpu.program_couter.wrapping_sub(1));
-            cpu.program_couter = val;
+            do_push(cpu, bus, cpu.program_counter.wrapping_sub(1));
+            cpu.program_counter = val;
         }
     }
 }
@@ -479,7 +479,7 @@ pub fn pei(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 
 pub fn per(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let value = cpu.get_operand::<u16>(bus, mode);
-    do_push(cpu, bus, cpu.program_couter.wrapping_add(value));
+    do_push(cpu, bus, cpu.program_counter.wrapping_add(value));
 }
 
 pub fn pha(cpu: &mut Cpu, bus: &mut Bus, _mode: &AddressingMode) {
@@ -619,18 +619,18 @@ pub fn ror_a(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
 
 pub fn rti(cpu: &mut Cpu, bus: &mut Bus, _mode: &AddressingMode) {
     let new_status = do_pull::<u8>(cpu, bus);
-    cpu.program_couter = do_pull::<u16>(cpu, bus);
+    cpu.program_counter = do_pull::<u16>(cpu, bus);
     cpu.pbr = do_pull::<u8>(cpu, bus);
     cpu.set_status_register(new_status);
 }
 
 pub fn rtl(cpu: &mut Cpu, bus: &mut Bus, _mode: &AddressingMode) {
-    cpu.program_couter = do_pull::<u16>(cpu, bus).wrapping_add(1);
+    cpu.program_counter = do_pull::<u16>(cpu, bus).wrapping_add(1);
     cpu.pbr = do_pull::<u8>(cpu, bus);
 }
 
 pub fn rts(cpu: &mut Cpu, bus: &mut Bus, _mode: &AddressingMode) {
-    cpu.program_couter = do_pull::<u16>(cpu, bus).wrapping_add(1);
+    cpu.program_counter = do_pull::<u16>(cpu, bus).wrapping_add(1);
 }
 
 pub fn sbc(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {

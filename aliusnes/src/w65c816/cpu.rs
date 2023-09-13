@@ -25,7 +25,7 @@ pub struct Cpu {
     pub index_x: u16,
     pub index_y: u16,
     pub stack_pointer: u16,
-    pub program_couter: u16,
+    pub program_counter: u16,
     pub status_register: CpuFlags,
     pub dpr: u16,
     pub pbr: u8,
@@ -77,7 +77,7 @@ impl Cpu {
             dpr: 0x00,
             pbr: 0x00,
             dbr: 0x00,
-            program_couter: 0x00,
+            program_counter: 0x00,
             emulation_mode: true,
             stopped: false,
             waiting_interrupt: false,
@@ -149,7 +149,7 @@ impl Cpu {
         self.status_register.remove(CpuFlags::DECIMAL);
         self.status_register.insert(CpuFlags::IRQ_DISABLE);
         self.pbr = 0;
-        self.program_couter = Self::read_16(bus, 0xFFFC);
+        self.program_counter = Self::read_16(bus, 0xFFFC);
     }
 
     pub fn step(&mut self, bus: &mut Bus) -> u8 {
@@ -168,21 +168,21 @@ impl Cpu {
 
     pub fn handle_native_interrupt(&mut self, bus: &mut Bus, interrupt: &NativeVectors) {
         do_push(self, bus, self.pbr);
-        do_push(self, bus, self.program_couter);
+        do_push(self, bus, self.program_counter);
         do_push(self, bus, self.status_register.bits());
         self.status_register.remove(CpuFlags::DECIMAL);
         self.status_register.insert(CpuFlags::IRQ_DISABLE);
         self.pbr = 0;
-        self.program_couter = Self::read_16(bus, interrupt.get_interrupt_addr());
+        self.program_counter = Self::read_16(bus, interrupt.get_interrupt_addr());
     }
 
     pub fn handle_emulation_interrupt(&mut self, bus: &mut Bus, interrupt: &EmulationVectors) {
-        do_push(self, bus, self.program_couter);
+        do_push(self, bus, self.program_counter);
         do_push(self, bus, self.status_register.bits());
         self.status_register.remove(CpuFlags::DECIMAL);
         self.status_register.insert(CpuFlags::IRQ_DISABLE);
         self.pbr = 0;
-        self.program_couter = Self::read_16(bus, interrupt.get_interrupt_addr());
+        self.program_counter = Self::read_16(bus, interrupt.get_interrupt_addr());
     }
 
     pub fn read_8(bus: &Bus, addr: u32) -> u8 {
@@ -212,13 +212,13 @@ impl Cpu {
         if T::IS_U16 {
             self.extra_cycles += 1;
             let pbr = self.pbr as u16;
-            let res = Self::read_16(bus, (pbr | self.program_couter) as u32);
-            self.program_couter = self.program_couter.wrapping_add(2);
+            let res = Self::read_16(bus, (pbr | self.program_counter) as u32);
+            self.program_counter = self.program_counter.wrapping_add(2);
             T::trunc_u16(res)
         } else {
             let pbr = self.pbr as u16;
-            let res = Self::read_8(bus, (pbr | self.program_couter) as u32);
-            self.program_couter = self.program_couter.wrapping_add(1);
+            let res = Self::read_8(bus, (pbr | self.program_counter) as u32);
+            self.program_counter = self.program_counter.wrapping_add(1);
             T::ext_u8(res)
         }
     }
