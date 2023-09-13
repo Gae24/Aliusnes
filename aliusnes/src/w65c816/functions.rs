@@ -246,7 +246,7 @@ pub(super) fn do_dec_sbc<T: RegSize>(cpu: &mut Cpu, operand: T) {
             result = result.wrapping_sub(0x60);
         }
         cpu.status_register.set(CpuFlags::CARRY, result > 0xFF);
-        let result = result as u16;
+        let result = result as u8;
         cpu.set_nz(result);
         cpu.set_accumulator(result);
     }
