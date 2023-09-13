@@ -73,7 +73,7 @@ impl Cpu {
             index_x: 0x00,
             index_y: 0x00,
             stack_pointer: 0x00,
-            status_register: CpuFlags::from_bits_truncate(0b10010000),
+            status_register: CpuFlags::from_bits_truncate(0b00000000),
             dpr: 0x00,
             pbr: 0x00,
             dbr: 0x00,
@@ -85,21 +85,25 @@ impl Cpu {
         }
     }
 
+    pub fn set_status_register(&mut self, bits: u8) {
+        self.status_register = CpuFlags::from_bits_truncate(bits);
+        if self.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+            self.index_x &= 0xFF;
+            self.index_y &= 0xFF;
+        }
+    }
+
     pub fn set_nz<T: RegSize>(&mut self, val: T) {
         self.status_register
             .set(CpuFlags::NEGATIVE, val.is_negative());
         self.status_register.set(CpuFlags::ZERO, val.is_zero());
     }
 
-    pub fn set_low_a(&mut self, val: u16) {
-        self.accumulator = (self.accumulator & 0xFF) | val;
-    }
-
     pub fn set_accumulator<T: RegSize>(&mut self, val: T) {
         if T::IS_U16 {
             self.accumulator = val.as_u16();
         } else {
-            self.accumulator = (self.accumulator & 0xFF) | val.as_u16();
+            self.accumulator = (self.accumulator & !0xFF) | val.as_u16();
         }
     }
 
@@ -107,7 +111,7 @@ impl Cpu {
         if T::IS_U16 {
             self.index_x = val.as_u16();
         } else {
-            self.index_x = (self.index_x & 0xFF) | val.as_u16();
+            self.index_x = (self.index_x & !0xFF) | val.as_u16();
         }
     }
 
@@ -115,7 +119,7 @@ impl Cpu {
         if T::IS_U16 {
             self.index_y = val.as_u16();
         } else {
-            self.index_y = (self.index_y & 0xFF) | val.as_u16();
+            self.index_y = (self.index_y & !0xFF) | val.as_u16();
         }
     }
 
@@ -141,7 +145,11 @@ impl Cpu {
         self.set_emulation_mode(true);
         self.dpr = 0;
         self.dbr = 0;
-        self.handle_emulation_interrupt(bus, &EmulationVectors::RESET);
+        self.stack_pointer = 0x1FF;
+        self.status_register.remove(CpuFlags::DECIMAL);
+        self.status_register.insert(CpuFlags::IRQ_DISABLE);
+        self.pbr = 0;
+        self.program_couter = Self::read_16(bus, 0xFFFC);
     }
 
     pub fn step(&mut self, bus: &mut Bus) -> u8 {
@@ -186,7 +194,7 @@ impl Cpu {
     }
 
     pub fn read_16(bus: &Bus, addr: u32) -> u16 {
-        Self::read_8(bus, addr) as u16 | (Self::read_8(bus, addr + 1) as u16) << 8
+        Self::read_8(bus, addr) as u16 | (Self::read_8(bus, addr.wrapping_add(1)) as u16) << 8
     }
 
     pub fn write_16(bus: &mut Bus, addr: u32, data: u16) {
@@ -204,12 +212,12 @@ impl Cpu {
         if T::IS_U16 {
             self.extra_cycles += 1;
             let pbr = self.pbr as u16;
-            let res = Self::read_16(bus, (pbr | self.program_couter).into());
+            let res = Self::read_16(bus, (pbr | self.program_couter) as u32);
             self.program_couter = self.program_couter.wrapping_add(2);
             T::trunc_u16(res)
         } else {
             let pbr = self.pbr as u16;
-            let res = Self::read_8(bus, (pbr | self.program_couter).into());
+            let res = Self::read_8(bus, (pbr | self.program_couter) as u32);
             self.program_couter = self.program_couter.wrapping_add(1);
             T::ext_u8(res)
         }
@@ -220,7 +228,7 @@ impl Cpu {
         if dpr as u8 != 0 {
             self.extra_cycles += 1;
         }
-        dpr.wrapping_add(self.get_imm::<u8>(bus).into())
+        dpr.wrapping_add(self.get_imm::<u8>(bus) as u16)
     }
 
     fn get_indirect_addr(&self, bus: &Bus, addr: u16) -> u32 {
@@ -228,7 +236,7 @@ impl Cpu {
     }
 
     fn get_indirect_long_addr(bus: &Bus, addr: u32) -> u32 {
-        ((Self::read_16(bus, addr) | Self::read_8(bus, addr.wrapping_add(2)) as u16) as u32) << 16
+        Self::read_16(bus, addr) as u32 | (Self::read_8(bus, addr.wrapping_add(2)) as u32) << 16
     }
 
     fn get_absolute_addr(&mut self, bus: &Bus) -> u32 {
@@ -275,13 +283,13 @@ impl Cpu {
             AddressingMode::Absolute => self.get_absolute_addr(bus),
             AddressingMode::AbsoluteX => {
                 let unindexed = self.get_absolute_addr(bus);
-                let indexed = unindexed + (self.index_x as u32) & 0xFF_FFFF;
+                let indexed = (unindexed + self.index_x as u32) & 0xFF_FFFF;
                 self.add_extra_cycles::<WRITE>(unindexed, indexed);
                 indexed
             }
             AddressingMode::AbsoluteY => {
                 let unindexed = self.get_absolute_addr(bus);
-                let indexed = unindexed + (self.index_y as u32) & 0xFF_FFFF;
+                let indexed = (unindexed + self.index_y as u32) & 0xFF_FFFF;
                 self.add_extra_cycles::<WRITE>(unindexed, indexed);
                 indexed
             }
@@ -306,6 +314,7 @@ impl Cpu {
     pub fn get_operand<T: RegSize>(&mut self, bus: &Bus, mode: &AddressingMode) -> T {
         match mode {
             AddressingMode::Immediate
+            | AddressingMode::Implied
             | AddressingMode::Relative
             | AddressingMode::RelativeLong
             | AddressingMode::AbsoluteJMP
