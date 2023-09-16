@@ -28,4 +28,12 @@ impl Emu {
         } = self;
         let _ticks = cpu.step(bus);
     }
+
+    pub fn step(&mut self) {
+        let Emu {
+            ref mut bus,
+            ref mut cpu,
+        } = self;
+        let ticks = cpu.step(bus);
+    }
 }

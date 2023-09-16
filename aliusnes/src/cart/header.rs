@@ -20,6 +20,7 @@ impl Header {
 
         let raw_mapper = bytes[0x25];
         let fast_rom = raw_mapper & 0x10 != 0;
+
         let mapper = match raw_mapper & 0xF {
             0 => Mapper::LoROM,
             1 => Mapper::HiROM,
