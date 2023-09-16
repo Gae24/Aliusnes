@@ -1,9 +1,8 @@
-use crate::bus::bus::Bus;
-
 use super::{
     cpu::{AddressingMode, Cpu, CpuFlags},
     regsize::RegSize,
 };
+use crate::bus::bus::Bus;
 
 pub(super) fn do_bin_adc<T: RegSize>(cpu: &mut Cpu, operand: T) {
     if T::IS_U16 {

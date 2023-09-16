@@ -170,18 +170,18 @@ pub fn bvs(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 pub fn brk(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let _thrown = cpu.get_operand::<u8>(bus, mode);
     if !cpu.emulation_mode() {
-        cpu.handle_interrupt(bus, &Vectors::BRK);
+        cpu.handle_interrupt(bus, &Vectors::Brk);
     } else {
-        cpu.handle_interrupt(bus, &Vectors::EMU_BRK);
+        cpu.handle_interrupt(bus, &Vectors::EmuBrk);
     }
 }
 
 pub fn cop(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let _thrown = cpu.get_operand::<u8>(bus, mode);
     if !cpu.emulation_mode() {
-        cpu.handle_interrupt(bus, &Vectors::COP);
+        cpu.handle_interrupt(bus, &Vectors::Cop);
     } else {
-        cpu.handle_interrupt(bus, &Vectors::EMU_COP);
+        cpu.handle_interrupt(bus, &Vectors::EmuCop);
     }
 }
 

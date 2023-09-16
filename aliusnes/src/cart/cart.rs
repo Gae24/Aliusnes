@@ -36,7 +36,7 @@ impl Cart {
     }
 
     pub fn read_lo_rom(&self, mut bank: u8, addr: u16) -> u8 {
-        if ((bank >= 0x70 && bank < 0x7E) || bank >= 0xF0)
+        if ((0x70..0x7E).contains(&bank) || bank >= 0xF0)
             && addr < 0x8000
             && self.header.chipset.has_ram
         {
@@ -51,11 +51,11 @@ impl Cart {
             ((bank as u16) << 15),
             (addr & 0x7FFF)
         );
-        return 0;
+        0
     }
 
     pub fn write_lo_rom(&mut self, bank: u8, addr: u16, val: u8) {
-        if ((bank >= 0x70 && bank < 0x7E) || bank >= 0xF0)
+        if ((0x70..0x7E).contains(&bank) || bank >= 0xF0)
             && addr < 0x8000
             && self.header.chipset.has_ram
         {
