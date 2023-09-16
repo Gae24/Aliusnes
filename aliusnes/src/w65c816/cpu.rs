@@ -1,11 +1,5 @@
-use super::opcodes::OPCODES_MAP;
+use super::{functions::do_push, opcodes::OPCODES_MAP, regsize::RegSize, vectors::Vectors};
 use crate::bus::bus::Bus;
-
-use super::{
-    functions::do_push,
-    regsize::RegSize,
-    vectors::{EmulationVectors, NativeVectors},
-};
 
 bitflags! {
     pub struct CpuFlags: u8 {
@@ -133,8 +127,8 @@ impl Cpu {
             self.status_register.insert(CpuFlags::A_REG_SIZE);
             self.status_register.insert(CpuFlags::INDEX_REGS_SIZE);
             self.stack_pointer &= 0x01FF;
-            self.index_x &= 0x00FF;
-            self.index_y &= 0x00FF;
+            self.index_y &= 0xFF;
+            self.index_x &= 0xFF;
         }
         self.emulation_mode = val;
     }
@@ -166,17 +160,10 @@ impl Cpu {
         opcode.cycles + self.extra_cycles
     }
 
-    pub fn handle_native_interrupt(&mut self, bus: &mut Bus, interrupt: &NativeVectors) {
-        do_push(self, bus, self.pbr);
-        do_push(self, bus, self.program_counter);
-        do_push(self, bus, self.status_register.bits());
-        self.status_register.remove(CpuFlags::DECIMAL);
-        self.status_register.insert(CpuFlags::IRQ_DISABLE);
-        self.pbr = 0;
-        self.program_counter = Self::read_16(bus, interrupt.get_interrupt_addr());
-    }
-
-    pub fn handle_emulation_interrupt(&mut self, bus: &mut Bus, interrupt: &EmulationVectors) {
+    pub fn handle_interrupt(&mut self, bus: &mut Bus, interrupt: &Vectors) {
+        if !self.emulation_mode {
+            do_push(self, bus, self.pbr);
+        }
         do_push(self, bus, self.program_counter);
         do_push(self, bus, self.status_register.bits());
         self.status_register.remove(CpuFlags::DECIMAL);

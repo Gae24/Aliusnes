@@ -1,39 +1,29 @@
-pub enum NativeVectors {
+pub enum Vectors {
     COP,
     BRK,
     ABORT,
     NMI,
     IRQ,
+    EMU_COP,
+    EMU_ABORT,
+    EMU_NMI,
+    EMU_RESET,
+    EMU_BRK,
 }
 
-pub enum EmulationVectors {
-    COP,
-    ABORT,
-    NMI,
-    RESET,
-    BRK,
-}
-
-impl NativeVectors {
+impl Vectors {
     pub fn get_interrupt_addr(&self) -> u32 {
         match self {
-            NativeVectors::COP => 0xFFE4,
-            NativeVectors::BRK => 0xFFE6,
-            NativeVectors::ABORT => 0xFFE8,
-            NativeVectors::NMI => 0xFFEA,
-            NativeVectors::IRQ => 0xFFEE,
-        }
-    }
-}
-
-impl EmulationVectors {
-    pub fn get_interrupt_addr(&self) -> u32 {
-        match self {
-            EmulationVectors::COP => 0xFFF4,
-            EmulationVectors::ABORT => 0xFFF8,
-            EmulationVectors::NMI => 0xFFFA,
-            EmulationVectors::RESET => 0xFFFC,
-            EmulationVectors::BRK => 0xFFFE,
+            Vectors::COP => 0xFFE4,
+            Vectors::BRK => 0xFFE6,
+            Vectors::ABORT => 0xFFE8,
+            Vectors::NMI => 0xFFEA,
+            Vectors::IRQ => 0xFFEE,
+            Vectors::EMU_COP => 0xFFF4,
+            Vectors::EMU_ABORT => 0xFFF8,
+            Vectors::EMU_NMI => 0xFFFA,
+            Vectors::EMU_RESET => 0xFFFC,
+            Vectors::EMU_BRK => 0xFFFE,
         }
     }
 }

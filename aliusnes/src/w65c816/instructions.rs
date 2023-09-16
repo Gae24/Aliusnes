@@ -4,7 +4,7 @@ use super::{
     cpu::{AddressingMode, Cpu, CpuFlags},
     functions::*,
     regsize::RegSize,
-    vectors::NativeVectors,
+    vectors::Vectors,
 };
 
 pub fn adc(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
@@ -170,14 +170,18 @@ pub fn bvs(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 pub fn brk(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let _thrown = cpu.get_operand::<u8>(bus, mode);
     if !cpu.emulation_mode() {
-        cpu.handle_native_interrupt(bus, &NativeVectors::BRK);
+        cpu.handle_interrupt(bus, &Vectors::BRK);
+    } else {
+        cpu.handle_interrupt(bus, &Vectors::EMU_BRK);
     }
 }
 
 pub fn cop(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let _thrown = cpu.get_operand::<u8>(bus, mode);
     if !cpu.emulation_mode() {
-        cpu.handle_native_interrupt(bus, &NativeVectors::COP);
+        cpu.handle_interrupt(bus, &Vectors::COP);
+    } else {
+        cpu.handle_interrupt(bus, &Vectors::EMU_COP);
     }
 }
 
@@ -620,7 +624,9 @@ pub fn ror_a(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
 pub fn rti(cpu: &mut Cpu, bus: &mut Bus, _mode: &AddressingMode) {
     let new_status = do_pull::<u8>(cpu, bus);
     cpu.program_counter = do_pull::<u16>(cpu, bus);
-    cpu.pbr = do_pull::<u8>(cpu, bus);
+    if !cpu.emulation_mode() {
+        cpu.pbr = do_pull::<u8>(cpu, bus);
+    }
     cpu.set_status_register(new_status);
 }
 
