@@ -1,4 +1,4 @@
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Mapper {
     LoROM,
     HiROM,
@@ -23,6 +23,7 @@ pub struct Chipset {
     pub has_battery: bool,
 }
 
+#[derive(Debug)]
 pub enum Region {
     Japan,
     NorthAmerica,

@@ -19,6 +19,8 @@ impl Header {
         let title = from_utf8(&bytes[0x10..0x25]).ok()?.trim_end().to_string();
 
         let raw_mapper = bytes[0x25];
+        let fast_rom = raw_mapper & 0x10 != 0;
+
         let mapper = match raw_mapper & 0xF {
             0 => Mapper::LoROM,
             1 => Mapper::HiROM,
@@ -30,9 +32,8 @@ impl Header {
         if mapper.get_base_mapper() != expected_mapper {
             return None;
         }
-        let fast_rom = raw_mapper & 0x10 != 0;
 
-        let raw_chipset = bytes[0x26];
+        let _raw_chipset = bytes[0x26];
         // todo chipset recognition
         let chipset = Chipset {
             has_coprocessor: false,
@@ -67,6 +68,17 @@ impl Header {
 
         let dev_id = bytes[0x2A];
         let version = bytes[0x2B];
+        let checksum = (bytes[0x2D] as u16) << 8 | bytes[0x2C] as u16;
+        let complement = (bytes[0x2F] as u16) << 8 | bytes[0x2E] as u16;
+
+        println!("Title: {title}");
+        println!("Mapper: {:?}", mapper);
+        println!("Is fast rom: {fast_rom}");
+        println!("Rom size: {rom_size}");
+        println!("Ram size: {ram_size}");
+        println!("Country: {:?}", country);
+        println!("checksum: {checksum}");
+        println!("complement: {complement}");
 
         Some(Header {
             title,
@@ -81,16 +93,16 @@ impl Header {
         })
     }
 
-    pub fn guess_from_rom(rom: &Vec<u8>) -> Option<Self> {
+    pub fn guess_from_rom(rom: &[u8]) -> Option<Self> {
         let header = rom[..]
-            .get(0x40_FFB0..0x41_0000)
-            .and_then(|header_bytes| Header::new(header_bytes, Mapper::ExHiROM))
+            .get(0x7FB0..0x8000)
+            .and_then(|header_bytes| Header::new(header_bytes, Mapper::LoROM))
             .or_else(|| {
                 rom[..]
-                    .get(0xFFB0..0x1_0000)
+                    .get(0xFFB0..0x10000)
                     .and_then(|header_bytes| Header::new(header_bytes, Mapper::HiROM))
             })
-            .or_else(|| Header::new(&rom[0x7FB0..0x8000], Mapper::LoROM))?;
+            .or_else(|| Header::new(&rom[0x40FFB0..0x410000], Mapper::ExHiROM))?;
 
         Some(header)
     }

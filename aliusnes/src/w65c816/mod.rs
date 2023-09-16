@@ -1,4 +1,6 @@
 pub mod cpu;
-mod instruction;
-// mod opcodes;
+mod functions;
+mod instructions;
+mod opcodes;
 mod regsize;
+mod vectors;
