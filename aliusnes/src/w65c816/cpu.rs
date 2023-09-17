@@ -1,5 +1,5 @@
 use super::{functions::do_push, opcodes::OPCODES_MAP, regsize::RegSize, vectors::Vectors};
-use crate::bus::bus::Bus;
+use crate::bus::Bus;
 
 bitflags! {
     pub struct CpuFlags: u8 {

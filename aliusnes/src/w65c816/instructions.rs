@@ -1,11 +1,10 @@
-use crate::bus::bus::Bus;
-
 use super::{
     cpu::{AddressingMode, Cpu, CpuFlags},
     functions::*,
     regsize::RegSize,
     vectors::Vectors,
 };
+use crate::bus::Bus;
 
 pub fn adc(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {

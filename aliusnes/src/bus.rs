@@ -1,3 +1,5 @@
+mod mmio;
+
 use crate::{cart::Cart, wram::Wram};
 
 pub struct Bus {
