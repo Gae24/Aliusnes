@@ -1,4 +1,4 @@
-use crate::{cart::cart::Cart, wram::Wram};
+use crate::{cart::Cart, wram::Wram};
 
 pub struct Bus {
     wram: Wram,

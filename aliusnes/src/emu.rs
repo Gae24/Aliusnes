@@ -1,5 +1,5 @@
 use crate::bus::bus::Bus;
-use crate::cart::cart::Cart;
+use crate::cart::Cart;
 use crate::w65c816::cpu::Cpu;
 
 pub struct Emu {
@@ -27,13 +27,5 @@ impl Emu {
             ref mut cpu,
         } = self;
         let _ticks = cpu.step(bus);
-    }
-
-    pub fn step(&mut self) {
-        let Emu {
-            ref mut bus,
-            ref mut cpu,
-        } = self;
-        let ticks = cpu.step(bus);
     }
 }

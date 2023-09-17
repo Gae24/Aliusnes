@@ -1,4 +1,8 @@
-use super::header::Header;
+pub mod header;
+mod info;
+
+use header::Header;
+use info::Mapper;
 
 pub struct Cart {
     header: Header,
@@ -17,21 +21,21 @@ impl Cart {
 
     pub fn read(&self, bank: u8, addr: u16) -> u8 {
         match self.header.mapper {
-            super::info::Mapper::LoROM => self.read_lo_rom(bank, addr),
-            super::info::Mapper::HiROM => todo!(),
-            super::info::Mapper::SA1ROM => todo!(),
-            super::info::Mapper::SDD1ROM => todo!(),
-            super::info::Mapper::ExHiROM => todo!(),
+            Mapper::LoROM => self.read_lo_rom(bank, addr),
+            Mapper::HiROM => todo!(),
+            Mapper::SA1ROM => todo!(),
+            Mapper::SDD1ROM => todo!(),
+            Mapper::ExHiROM => todo!(),
         }
     }
 
     pub fn write(&mut self, bank: u8, addr: u16, val: u8) {
         match self.header.mapper {
-            super::info::Mapper::LoROM => self.write_lo_rom(bank, addr, val),
-            super::info::Mapper::HiROM => todo!(),
-            super::info::Mapper::SA1ROM => todo!(),
-            super::info::Mapper::SDD1ROM => todo!(),
-            super::info::Mapper::ExHiROM => todo!(),
+            Mapper::LoROM => self.write_lo_rom(bank, addr, val),
+            Mapper::HiROM => todo!(),
+            Mapper::SA1ROM => todo!(),
+            Mapper::SDD1ROM => todo!(),
+            Mapper::ExHiROM => todo!(),
         }
     }
 

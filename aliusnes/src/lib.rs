@@ -1,4 +1,4 @@
-use cart::{cart::Cart, header::Header};
+use cart::{header::Header, Cart};
 use emu::Emu;
 
 mod bus;
