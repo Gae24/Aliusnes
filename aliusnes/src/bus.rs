@@ -1,3 +1,4 @@
+mod dma;
 mod mmio;
 
 use crate::{cart::Cart, wram::Wram};
