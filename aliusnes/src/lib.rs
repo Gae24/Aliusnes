@@ -11,7 +11,7 @@ mod wram;
 extern crate lazy_static;
 
 #[macro_use]
-extern crate bitflags;
+extern crate proc_bitfield;
 
 pub fn run_emu(rom: &[u8], ram: Vec<u8>) {
     let header = Header::guess_from_rom(rom).expect("Cartridge not recognised");

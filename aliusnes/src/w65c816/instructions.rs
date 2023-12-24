@@ -1,5 +1,5 @@
 use super::{
-    cpu::{AddressingMode, Cpu, CpuFlags},
+    cpu::{AddressingMode, Cpu, Status},
     functions::*,
     regsize::RegSize,
     vectors::Vectors,
@@ -7,16 +7,16 @@ use super::{
 use crate::bus::Bus;
 
 pub fn adc(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         let operand = cpu.get_operand::<u8>(bus, mode);
-        if cpu.status_register.contains(CpuFlags::DECIMAL) {
+        if cpu.status.decimal() {
             do_dec_adc::<u8>(cpu, operand);
         } else {
             do_bin_adc::<u8>(cpu, operand);
         }
     } else {
         let operand = cpu.get_operand::<u16>(bus, mode);
-        if cpu.status_register.contains(CpuFlags::DECIMAL) {
+        if cpu.status.decimal() {
             do_dec_adc::<u16>(cpu, operand);
         } else {
             do_bin_adc::<u16>(cpu, operand);
@@ -25,7 +25,7 @@ pub fn adc(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn and(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         let operand = cpu.get_operand::<u8>(bus, mode);
         let result = cpu.accumulator as u8 & operand;
         cpu.set_nz(result);
@@ -39,7 +39,7 @@ pub fn and(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn asl(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         cpu.do_rmw(bus, mode, do_asl::<u8>);
     } else {
         cpu.do_rmw(bus, mode, do_asl::<u16>);
@@ -47,7 +47,7 @@ pub fn asl(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn asl_a(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         let result = do_asl(cpu, cpu.accumulator as u8);
         cpu.set_accumulator(result);
     } else {
@@ -57,41 +57,29 @@ pub fn asl_a(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
 }
 
 pub fn bcc(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    do_branch(
-        cpu,
-        bus,
-        mode,
-        !cpu.status_register.contains(CpuFlags::CARRY),
-    );
+    do_branch(cpu, bus, mode, !cpu.status.carry());
 }
 
 pub fn bcs(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    do_branch(
-        cpu,
-        bus,
-        mode,
-        cpu.status_register.contains(CpuFlags::CARRY),
-    );
+    do_branch(cpu, bus, mode, cpu.status.carry());
 }
 
 pub fn beq(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    do_branch(cpu, bus, mode, cpu.status_register.contains(CpuFlags::ZERO));
+    do_branch(cpu, bus, mode, cpu.status.zero());
 }
 
 pub fn bit(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         let operand = cpu.get_operand::<u8>(bus, mode);
         let result = cpu.accumulator as u8 & operand;
         match mode {
             AddressingMode::Immediate => {
-                cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
+                cpu.status.set_zero(result.is_zero());
             }
             _ => {
-                cpu.status_register
-                    .set(CpuFlags::NEGATIVE, operand.is_negative());
-                cpu.status_register
-                    .set(CpuFlags::OVERFLOW, operand.is_overflow());
-                cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
+                cpu.status.set_negative(operand.is_negative());
+                cpu.status.set_overflow(operand.is_overflow());
+                cpu.status.set_zero(result.is_zero());
             }
         }
     } else {
@@ -99,44 +87,27 @@ pub fn bit(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
         let result = cpu.accumulator & operand;
         match mode {
             AddressingMode::Immediate => {
-                cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
+                cpu.status.set_zero(result.is_zero());
             }
             _ => {
-                cpu.status_register
-                    .set(CpuFlags::NEGATIVE, operand.is_negative());
-                cpu.status_register
-                    .set(CpuFlags::OVERFLOW, operand.is_overflow());
-                cpu.status_register.set(CpuFlags::ZERO, result.is_zero());
+                cpu.status.set_negative(operand.is_negative());
+                cpu.status.set_overflow(operand.is_overflow());
+                cpu.status.set_zero(result.is_zero());
             }
         }
     }
 }
 
 pub fn bmi(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    do_branch(
-        cpu,
-        bus,
-        mode,
-        cpu.status_register.contains(CpuFlags::NEGATIVE),
-    );
+    do_branch(cpu, bus, mode, cpu.status.negative());
 }
 
 pub fn bne(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    do_branch(
-        cpu,
-        bus,
-        mode,
-        !cpu.status_register.contains(CpuFlags::ZERO),
-    );
+    do_branch(cpu, bus, mode, !cpu.status.zero());
 }
 
 pub fn bpl(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    do_branch(
-        cpu,
-        bus,
-        mode,
-        !cpu.status_register.contains(CpuFlags::NEGATIVE),
-    );
+    do_branch(cpu, bus, mode, !cpu.status.negative());
 }
 
 pub fn bra(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
@@ -149,21 +120,11 @@ pub fn brl(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn bvc(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    do_branch(
-        cpu,
-        bus,
-        mode,
-        !cpu.status_register.contains(CpuFlags::OVERFLOW),
-    );
+    do_branch(cpu, bus, mode, !cpu.status.overflow());
 }
 
 pub fn bvs(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    do_branch(
-        cpu,
-        bus,
-        mode,
-        cpu.status_register.contains(CpuFlags::OVERFLOW),
-    );
+    do_branch(cpu, bus, mode, cpu.status.overflow());
 }
 
 pub fn brk(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
@@ -185,23 +146,23 @@ pub fn cop(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn clc(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    cpu.status_register.remove(CpuFlags::CARRY);
+    cpu.status.carry();
 }
 
 pub fn cld(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    cpu.status_register.remove(CpuFlags::DECIMAL);
+    cpu.status.decimal();
 }
 
 pub fn cli(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    cpu.status_register.remove(CpuFlags::IRQ_DISABLE);
+    cpu.status.irq_disable();
 }
 
 pub fn clv(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    cpu.status_register.remove(CpuFlags::OVERFLOW);
+    cpu.status.overflow();
 }
 
 pub fn cmp(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         let operand = cpu.get_operand::<u8>(bus, mode);
         do_cmp(cpu, cpu.accumulator as u8, operand);
     } else {
@@ -211,7 +172,7 @@ pub fn cmp(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn cpx(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+    if cpu.status.index_regs_size() {
         let operand = cpu.get_operand::<u8>(bus, mode);
         do_cmp(cpu, cpu.index_x as u8, operand);
     } else {
@@ -221,7 +182,7 @@ pub fn cpx(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn cpy(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+    if cpu.status.index_regs_size() {
         let operand = cpu.get_operand::<u8>(bus, mode);
         do_cmp(cpu, cpu.index_y as u8, operand);
     } else {
@@ -231,7 +192,7 @@ pub fn cpy(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn dec(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         cpu.do_rmw::<u8>(bus, mode, do_dec);
     } else {
         cpu.do_rmw::<u16>(bus, mode, do_dec);
@@ -239,7 +200,7 @@ pub fn dec(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn dec_a(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         let result = do_dec::<u8>(cpu, cpu.accumulator as u8);
         cpu.set_accumulator(result);
     } else {
@@ -249,7 +210,7 @@ pub fn dec_a(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
 }
 
 pub fn dex(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+    if cpu.status.index_regs_size() {
         let result = do_dec::<u8>(cpu, cpu.index_x as u8);
         cpu.set_index_x(result);
     } else {
@@ -259,7 +220,7 @@ pub fn dex(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
 }
 
 pub fn dey(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+    if cpu.status.index_regs_size() {
         let result = do_dec::<u8>(cpu, cpu.index_y as u8);
         cpu.set_index_y(result);
     } else {
@@ -269,7 +230,7 @@ pub fn dey(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
 }
 
 pub fn eor(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         let operand = cpu.get_operand::<u8>(bus, mode);
         let result = cpu.accumulator as u8 ^ operand;
         cpu.set_nz(result);
@@ -283,7 +244,7 @@ pub fn eor(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn inc(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         cpu.do_rmw::<u8>(bus, mode, do_inc);
     } else {
         cpu.do_rmw::<u16>(bus, mode, do_inc);
@@ -291,7 +252,7 @@ pub fn inc(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn inc_a(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         let result = do_inc::<u8>(cpu, cpu.accumulator as u8);
         cpu.set_accumulator(result);
     } else {
@@ -301,7 +262,7 @@ pub fn inc_a(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
 }
 
 pub fn inx(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+    if cpu.status.index_regs_size() {
         let result = do_inc::<u8>(cpu, cpu.index_x as u8);
         cpu.set_index_x(result);
     } else {
@@ -311,7 +272,7 @@ pub fn inx(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
 }
 
 pub fn iny(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+    if cpu.status.index_regs_size() {
         let result = do_inc::<u8>(cpu, cpu.index_y as u8);
         cpu.set_index_y(result);
     } else {
@@ -367,7 +328,7 @@ pub fn jsr(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn lda(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         let operand = cpu.get_operand::<u8>(bus, mode);
         cpu.set_accumulator(operand);
         cpu.set_nz(operand);
@@ -379,7 +340,7 @@ pub fn lda(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn ldx(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+    if cpu.status.index_regs_size() {
         let operand = cpu.get_operand::<u8>(bus, mode);
         cpu.set_index_x(operand);
         cpu.set_nz(operand);
@@ -391,7 +352,7 @@ pub fn ldx(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn ldy(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+    if cpu.status.index_regs_size() {
         let operand = cpu.get_operand::<u8>(bus, mode);
         cpu.set_index_y(operand);
         cpu.set_nz(operand);
@@ -403,7 +364,7 @@ pub fn ldy(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn lsr(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         cpu.do_rmw::<u8>(bus, mode, do_lsr);
     } else {
         cpu.do_rmw::<u16>(bus, mode, do_lsr);
@@ -411,7 +372,7 @@ pub fn lsr(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn lsr_a(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         let result = do_lsr::<u8>(cpu, cpu.accumulator as u8);
         cpu.set_accumulator(result);
     } else {
@@ -457,7 +418,7 @@ pub fn mvp(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 pub fn nop(_cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {}
 
 pub fn ora(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         let operand = cpu.get_operand::<u8>(bus, mode);
         let result = cpu.accumulator as u8 | operand;
         cpu.set_nz(result);
@@ -486,7 +447,7 @@ pub fn per(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn pha(cpu: &mut Cpu, bus: &mut Bus, _mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         do_push::<u8>(cpu, bus, cpu.accumulator as u8);
     } else {
         do_push::<u16>(cpu, bus, cpu.accumulator);
@@ -506,11 +467,11 @@ pub fn phk(cpu: &mut Cpu, bus: &mut Bus, _mode: &AddressingMode) {
 }
 
 pub fn php(cpu: &mut Cpu, bus: &mut Bus, _mode: &AddressingMode) {
-    do_push::<u8>(cpu, bus, cpu.status_register.bits());
+    do_push::<u8>(cpu, bus, cpu.status.0);
 }
 
 pub fn phx(cpu: &mut Cpu, bus: &mut Bus, _mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+    if cpu.status.index_regs_size() {
         do_push::<u8>(cpu, bus, cpu.index_x as u8);
     } else {
         do_push::<u16>(cpu, bus, cpu.index_x);
@@ -518,7 +479,7 @@ pub fn phx(cpu: &mut Cpu, bus: &mut Bus, _mode: &AddressingMode) {
 }
 
 pub fn phy(cpu: &mut Cpu, bus: &mut Bus, _mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+    if cpu.status.index_regs_size() {
         do_push::<u8>(cpu, bus, cpu.index_y as u8);
     } else {
         do_push::<u16>(cpu, bus, cpu.index_y);
@@ -526,7 +487,7 @@ pub fn phy(cpu: &mut Cpu, bus: &mut Bus, _mode: &AddressingMode) {
 }
 
 pub fn pla(cpu: &mut Cpu, bus: &mut Bus, _mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         let result = do_pull::<u8>(cpu, bus);
         cpu.set_nz(result);
         cpu.set_accumulator(result);
@@ -555,7 +516,7 @@ pub fn plp(cpu: &mut Cpu, bus: &mut Bus, _mode: &AddressingMode) {
 }
 
 pub fn plx(cpu: &mut Cpu, bus: &mut Bus, _mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+    if cpu.status.index_regs_size() {
         let result = do_pull::<u8>(cpu, bus);
         cpu.set_index_x(result);
         cpu.set_nz(result);
@@ -567,7 +528,7 @@ pub fn plx(cpu: &mut Cpu, bus: &mut Bus, _mode: &AddressingMode) {
 }
 
 pub fn ply(cpu: &mut Cpu, bus: &mut Bus, _mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+    if cpu.status.index_regs_size() {
         let result = do_pull::<u8>(cpu, bus);
         cpu.set_index_y(result);
         cpu.set_nz(result);
@@ -580,12 +541,12 @@ pub fn ply(cpu: &mut Cpu, bus: &mut Bus, _mode: &AddressingMode) {
 
 pub fn rep(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let mask = cpu.get_operand::<u8>(bus, mode);
-    let src = cpu.status_register.bits();
-    cpu.status_register = CpuFlags::from_bits_truncate(src & !mask);
+    let src = cpu.status.0;
+    cpu.status = Status(src & !mask);
 }
 
 pub fn rol(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         cpu.do_rmw::<u8>(bus, mode, do_rol);
     } else {
         cpu.do_rmw::<u16>(bus, mode, do_rol);
@@ -593,7 +554,7 @@ pub fn rol(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn rol_a(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         let result = do_rol::<u8>(cpu, cpu.accumulator as u8);
         cpu.set_accumulator(result);
     } else {
@@ -603,7 +564,7 @@ pub fn rol_a(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
 }
 
 pub fn ror(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         cpu.do_rmw::<u8>(bus, mode, do_ror);
     } else {
         cpu.do_rmw::<u16>(bus, mode, do_ror);
@@ -611,7 +572,7 @@ pub fn ror(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn ror_a(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         let result = do_ror::<u8>(cpu, cpu.accumulator as u8);
         cpu.set_accumulator(result);
     } else {
@@ -639,16 +600,16 @@ pub fn rts(cpu: &mut Cpu, bus: &mut Bus, _mode: &AddressingMode) {
 }
 
 pub fn sbc(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         let operand = cpu.get_operand::<u8>(bus, mode);
-        if cpu.status_register.contains(CpuFlags::DECIMAL) {
+        if cpu.status.decimal() {
             do_dec_sbc::<u8>(cpu, !operand);
         } else {
             do_bin_adc::<u8>(cpu, !operand);
         }
     } else {
         let operand = cpu.get_operand::<u16>(bus, mode);
-        if cpu.status_register.contains(CpuFlags::DECIMAL) {
+        if cpu.status.decimal() {
             do_dec_sbc::<u16>(cpu, !operand);
         } else {
             do_bin_adc::<u16>(cpu, !operand);
@@ -657,25 +618,25 @@ pub fn sbc(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn sec(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    cpu.status_register.insert(CpuFlags::CARRY);
+    cpu.status.set_carry(true);
 }
 
 pub fn sed(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    cpu.status_register.insert(CpuFlags::DECIMAL);
+    cpu.status.set_decimal(true);
 }
 
 pub fn sei(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    cpu.status_register.insert(CpuFlags::IRQ_DISABLE);
+    cpu.status.set_irq_disable(true);
 }
 
 pub fn sep(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let mask = cpu.get_operand::<u8>(bus, mode);
-    let src = cpu.status_register.bits();
+    let src = cpu.status.0;
     cpu.set_status_register(src | mask);
 }
 
 pub fn sta(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         cpu.do_write(bus, mode, cpu.accumulator as u8);
     } else {
         cpu.do_write(bus, mode, cpu.accumulator);
@@ -687,7 +648,7 @@ pub fn stp(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
 }
 
 pub fn stx(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+    if cpu.status.index_regs_size() {
         cpu.do_write(bus, mode, cpu.index_x as u8);
     } else {
         cpu.do_write(bus, mode, cpu.index_x);
@@ -695,7 +656,7 @@ pub fn stx(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn sty(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+    if cpu.status.index_regs_size() {
         cpu.do_write(bus, mode, cpu.index_y as u8);
     } else {
         cpu.do_write(bus, mode, cpu.index_y);
@@ -703,7 +664,7 @@ pub fn sty(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn stz(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         cpu.do_write::<u8>(bus, mode, 0);
     } else {
         cpu.do_write::<u16>(bus, mode, 0);
@@ -711,7 +672,7 @@ pub fn stz(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn tax(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+    if cpu.status.index_regs_size() {
         let value = cpu.accumulator as u8;
         cpu.set_nz(value);
         cpu.set_index_x(value);
@@ -722,7 +683,7 @@ pub fn tax(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
 }
 
 pub fn tay(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+    if cpu.status.index_regs_size() {
         let value = cpu.accumulator as u8;
         cpu.set_nz(value);
         cpu.set_index_y(value);
@@ -748,7 +709,7 @@ pub fn tdc(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
 }
 
 pub fn trb(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         cpu.do_rmw::<u8>(bus, mode, do_trb);
     } else {
         cpu.do_rmw::<u16>(bus, mode, do_trb);
@@ -756,7 +717,7 @@ pub fn trb(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn tsb(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         cpu.do_rmw::<u8>(bus, mode, do_tsb);
     } else {
         cpu.do_rmw::<u16>(bus, mode, do_tsb);
@@ -769,7 +730,7 @@ pub fn tsc(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
 }
 
 pub fn tsx(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+    if cpu.status.index_regs_size() {
         let value = cpu.stack_pointer as u8;
         cpu.set_nz(value);
         cpu.set_index_x(value as u16);
@@ -780,14 +741,14 @@ pub fn tsx(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
 }
 
 pub fn txa(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         let value = cpu.index_x as u8;
         cpu.set_nz(value);
         cpu.set_accumulator(value);
     } else {
         cpu.set_nz(cpu.index_x);
         cpu.set_accumulator(cpu.index_x);
-        if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+        if cpu.status.index_regs_size() {
             cpu.accumulator &= 0xFF;
         }
     }
@@ -799,7 +760,7 @@ pub fn txs(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
 }
 
 pub fn txy(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+    if cpu.status.index_regs_size() {
         let value = cpu.index_x as u8;
         cpu.set_nz(value);
         cpu.set_index_y(value);
@@ -810,21 +771,21 @@ pub fn txy(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
 }
 
 pub fn tya(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::A_REG_SIZE) {
+    if cpu.status.a_reg_size() {
         let value = cpu.index_y as u8;
         cpu.set_nz(value);
         cpu.set_accumulator(value);
     } else {
         cpu.set_nz(cpu.index_y);
         cpu.set_accumulator(cpu.index_y);
-        if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+        if cpu.status.index_regs_size() {
             cpu.accumulator &= 0xFF;
         }
     }
 }
 
 pub fn tyx(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    if cpu.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+    if cpu.status.index_regs_size() {
         let value = cpu.index_y as u8;
         cpu.set_nz(value);
         cpu.set_index_x(value);
@@ -848,8 +809,7 @@ pub fn xba(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
 }
 
 pub fn xce(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
-    let carry = cpu.status_register.contains(CpuFlags::CARRY);
-    cpu.status_register
-        .set(CpuFlags::CARRY, cpu.emulation_mode());
+    let carry = cpu.status.carry();
+    cpu.status.set_carry(cpu.emulation_mode());
     cpu.set_emulation_mode(carry);
 }

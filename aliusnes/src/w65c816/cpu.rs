@@ -1,18 +1,18 @@
 use super::{functions::do_push, opcodes::OPCODES_MAP, regsize::RegSize, vectors::Vectors};
 use crate::bus::Bus;
 
-bitflags! {
-    pub struct CpuFlags: u8 {
-        const NEGATIVE = 0b10000000;
-        const OVERFLOW = 0b01000000;
-        const A_REG_SIZE = 0b00100000;
-        const INDEX_REGS_SIZE = 0b00010000;
-        const DECIMAL = 0b00001000;
-        const IRQ_DISABLE = 0b00000100;
-        const ZERO = 0b00000010;
-        const CARRY = 0b00000001;
+bitfield!(
+    pub struct Status(pub u8) {
+        pub carry: bool @ 0,
+        pub zero: bool @ 1,
+        pub irq_disable: bool @ 2,
+        pub decimal: bool @ 3,
+        pub index_regs_size: bool @ 4,
+        pub a_reg_size: bool @ 5,
+        pub overflow: bool @ 6,
+        pub negative: bool @ 7,
     }
-}
+);
 
 pub struct Cpu {
     pub accumulator: u16,
@@ -20,7 +20,7 @@ pub struct Cpu {
     pub index_y: u16,
     pub stack_pointer: u16,
     pub program_counter: u16,
-    pub status_register: CpuFlags,
+    pub status: Status,
     pub dpr: u16,
     pub pbr: u8,
     pub dbr: u8,
@@ -67,7 +67,7 @@ impl Cpu {
             index_x: 0x00,
             index_y: 0x00,
             stack_pointer: 0x00,
-            status_register: CpuFlags::from_bits_truncate(0b00000000),
+            status: Status(0),
             dpr: 0x00,
             pbr: 0x00,
             dbr: 0x00,
@@ -80,17 +80,16 @@ impl Cpu {
     }
 
     pub fn set_status_register(&mut self, bits: u8) {
-        self.status_register = CpuFlags::from_bits_truncate(bits);
-        if self.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+        self.status = Status(bits);
+        if self.status.index_regs_size() {
             self.index_x &= 0xFF;
             self.index_y &= 0xFF;
         }
     }
 
     pub fn set_nz<T: RegSize>(&mut self, val: T) {
-        self.status_register
-            .set(CpuFlags::NEGATIVE, val.is_negative());
-        self.status_register.set(CpuFlags::ZERO, val.is_zero());
+        self.status.set_negative(val.is_negative());
+        self.status.set_zero(val.is_zero());
     }
 
     pub fn set_accumulator<T: RegSize>(&mut self, val: T) {
@@ -124,8 +123,8 @@ impl Cpu {
     pub fn set_emulation_mode(&mut self, val: bool) {
         if val {
             // not supported
-            self.status_register.insert(CpuFlags::A_REG_SIZE);
-            self.status_register.insert(CpuFlags::INDEX_REGS_SIZE);
+            self.status.set_a_reg_size(true);
+            self.status.set_index_regs_size(true);
             self.stack_pointer &= 0x01FF;
             self.index_y &= 0xFF;
             self.index_x &= 0xFF;
@@ -140,8 +139,8 @@ impl Cpu {
         self.dpr = 0;
         self.dbr = 0;
         self.stack_pointer = 0x1FF;
-        self.status_register.remove(CpuFlags::DECIMAL);
-        self.status_register.insert(CpuFlags::IRQ_DISABLE);
+        self.status.set_decimal(false);
+        self.status.set_irq_disable(true);
         self.pbr = 0;
         self.program_counter = Self::read_16(bus, 0xFFFC);
     }
@@ -165,9 +164,9 @@ impl Cpu {
             do_push(self, bus, self.pbr);
         }
         do_push(self, bus, self.program_counter);
-        do_push(self, bus, self.status_register.bits());
-        self.status_register.remove(CpuFlags::DECIMAL);
-        self.status_register.insert(CpuFlags::IRQ_DISABLE);
+        do_push(self, bus, self.status.0);
+        self.status.set_decimal(false);
+        self.status.set_irq_disable(true);
         self.pbr = 0;
         self.program_counter = Self::read_16(bus, interrupt.get_interrupt_addr());
     }
