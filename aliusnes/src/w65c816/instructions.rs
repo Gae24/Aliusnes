@@ -71,30 +71,10 @@ pub fn beq(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 pub fn bit(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     if cpu.status.a_reg_size() {
         let operand = cpu.get_operand::<u8>(bus, mode);
-        let result = cpu.accumulator as u8 & operand;
-        match mode {
-            AddressingMode::Immediate => {
-                cpu.status.set_zero(result.is_zero());
-            }
-            _ => {
-                cpu.status.set_negative(operand.is_negative());
-                cpu.status.set_overflow(operand.is_overflow());
-                cpu.status.set_zero(result.is_zero());
-            }
-        }
+        do_bit::<u8>(cpu, operand, mode);
     } else {
         let operand = cpu.get_operand::<u16>(bus, mode);
-        let result = cpu.accumulator & operand;
-        match mode {
-            AddressingMode::Immediate => {
-                cpu.status.set_zero(result.is_zero());
-            }
-            _ => {
-                cpu.status.set_negative(operand.is_negative());
-                cpu.status.set_overflow(operand.is_overflow());
-                cpu.status.set_zero(result.is_zero());
-            }
-        }
+        do_bit::<u16>(cpu, operand, mode);
     }
 }
 

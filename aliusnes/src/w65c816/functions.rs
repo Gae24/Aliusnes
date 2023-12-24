@@ -94,6 +94,20 @@ pub(super) fn do_asl<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
     }
 }
 
+pub(super) fn do_bit<T: RegSize>(cpu: &mut Cpu, operand: T, mode: &AddressingMode) {
+    let result = T::trunc_u16(cpu.accumulator) & operand;
+    match mode {
+        AddressingMode::Immediate => {
+            cpu.status.set_zero(result.is_zero());
+        }
+        _ => {
+            cpu.status.set_negative(operand.is_negative());
+            cpu.status.set_overflow(operand.is_overflow());
+            cpu.status.set_zero(result.is_zero());
+        }
+    }
+}
+
 pub(super) fn do_branch(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode, cond: bool) {
     let offset = cpu.get_operand::<u8>(bus, mode) as i8;
     if cond {
