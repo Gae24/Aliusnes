@@ -1,11 +1,14 @@
 mod dma;
+mod math;
 mod mmio;
 
+use self::math::Math;
 use crate::{cart::Cart, wram::Wram};
 
 pub struct Bus {
     wram: Wram,
     cart: Cart,
+    math: Math,
 }
 
 impl Bus {
@@ -13,6 +16,7 @@ impl Bus {
         Self {
             cart,
             wram: Wram::new(),
+            math: Math::new(),
         }
     }
 
