@@ -1,18 +1,15 @@
-mod access;
-pub mod dma;
+mod dma;
 mod math;
-mod wram;
+mod mmio;
 
-use self::{access::Access, dma::Dma, math::Math, wram::Wram};
-use crate::{cart::Cart, utils::int_traits::ManipulateU16};
+use self::math::Math;
+use crate::{cart::Cart, wram::Wram};
 
 pub struct Bus {
     mdr: u8,
     fast_rom_enabled: bool,
     cart: Cart,
-    pub dma: Dma,
     math: Math,
-    wram: Wram,
 }
 
 impl Bus {
@@ -21,9 +18,7 @@ impl Bus {
             mdr: 0,
             fast_rom_enabled: false,
             cart,
-            dma: Dma::new(),
             math: Math::new(),
-            wram: Wram::new(),
         }
     }
 
