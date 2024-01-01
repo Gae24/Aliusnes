@@ -4,6 +4,7 @@ use emu::Emu;
 mod bus;
 mod cart;
 mod emu;
+mod utils;
 mod w65c816;
 mod wram;
 
