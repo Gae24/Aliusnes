@@ -1,3 +1,4 @@
+mod access;
 mod dma;
 mod math;
 mod mmio;
