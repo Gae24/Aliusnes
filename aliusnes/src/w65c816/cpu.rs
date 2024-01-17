@@ -177,9 +177,8 @@ impl Cpu {
         self.program_counter = self.read_16(bus, interrupt.get_interrupt_addr());
     }
 
-    pub fn read_8(&mut self, bus: &mut Bus, addr: u32) -> u8 {
-        self.extra_cycles += bus.memory_access_cycles(addr);
-        bus.read::<false>(addr)
+    pub fn read_8(bus: &mut Bus, addr: u32) -> u8 {
+        bus.read(addr)
     }
 
     pub fn write_8(&mut self, bus: &mut Bus, addr: u32, data: u8) {
@@ -187,8 +186,8 @@ impl Cpu {
         bus.write::<false>(addr, data);
     }
 
-    pub fn read_16(&mut self, bus: &mut Bus, addr: u32) -> u16 {
-        self.read_8(bus, addr) as u16 | (self.read_8(bus, addr.wrapping_add(1)) as u16) << 8
+    pub fn read_16(bus: &mut Bus, addr: u32) -> u16 {
+        Self::read_8(bus, addr) as u16 | (Self::read_8(bus, addr.wrapping_add(1)) as u16) << 8
     }
 
     pub fn write_16(&mut self, bus: &mut Bus, addr: u32, data: u16) {
@@ -225,12 +224,12 @@ impl Cpu {
         dpr.wrapping_add(self.get_imm::<u8>(bus) as u16)
     }
 
-    fn get_indirect_addr(&mut self, bus: &mut Bus, addr: u16) -> u32 {
-        (self.read_16(bus, addr.into()) | self.dbr as u16).into()
+    fn get_indirect_addr(&self, bus: &mut Bus, addr: u16) -> u32 {
+        (Self::read_16(bus, addr.into()) | self.dbr as u16).into()
     }
 
-    fn get_indirect_long_addr(&mut self, bus: &mut Bus, addr: u32) -> u32 {
-        self.read_16(bus, addr) as u32 | (self.read_8(bus, addr.wrapping_add(2)) as u32) << 16
+    fn get_indirect_long_addr(bus: &mut Bus, addr: u32) -> u32 {
+        Self::read_16(bus, addr) as u32 | (Self::read_8(bus, addr.wrapping_add(2)) as u32) << 16
     }
 
     fn get_absolute_addr(&mut self, bus: &mut Bus) -> u32 {

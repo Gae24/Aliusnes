@@ -23,16 +23,18 @@ impl Bus {
         }
     }
 
-    pub fn read_b(&mut self, addr: u16) -> u8 {
-        if let Some(val) = match addr.low_byte() {
-            0x34..=0x3F => todo!("ppu area"),
-            0x40..=0x43 => todo!("apu area"),
-            0x80 => self.wram.read(addr),
-            _ => None,
-        } {
-            self.mdr = val;
-        } else {
-            self.mdr = 0;
+    pub fn read(&mut self, addr: u32) -> u8 {
+        let bank = (addr >> 16) as u8;
+        match bank {
+            0x00..=0x3F | 0x80..=0xBF => match (addr >> 8) as u8 {
+                0x00..=0x1F => return self.wram.ram[addr as usize & 0x1FFF],
+                0x21 => return self.read_mmio(addr as u16),
+                0x40..=0x43 => return self.read_mmio(addr as u16),
+                _ => {}
+            },
+
+            0x7E..=0x7F => return self.wram.ram[addr as usize & 0x1_FFFF],
+            _ => {}
         }
         self.mdr
     }

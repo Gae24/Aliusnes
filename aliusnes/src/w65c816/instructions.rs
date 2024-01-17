@@ -262,8 +262,8 @@ pub fn iny(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
 
 pub fn jml(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let addr = cpu.get_operand::<u16>(bus, mode);
-    cpu.program_counter = cpu.read_16(bus, addr.into());
-    cpu.pbr = cpu.read_8(bus, addr.wrapping_add(2).into());
+    cpu.program_counter = Cpu::read_16(bus, addr.into());
+    cpu.pbr = bus.read(addr.wrapping_add(2).into());
 }
 
 pub fn jmp(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
@@ -365,7 +365,7 @@ pub fn mvn(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let dst_bank = (banks >> 8) as u8;
     let src_bank = (banks & 0xFF) as u8;
     loop {
-        let src = cpu.read_8(bus, cpu.index_x as u32 | (src_bank as u32) << 16);
+        let src = bus.read(cpu.index_x as u32 | (src_bank as u32) << 16);
         let dst = cpu.index_y as u32 | (dst_bank as u32) << 16;
         cpu.write_8(bus, dst, src);
         cpu.index_x = cpu.index_x.wrapping_add(1);
@@ -382,7 +382,7 @@ pub fn mvp(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let dst_bank = (banks >> 8) as u8;
     let src_bank = (banks & 0xFF) as u8;
     loop {
-        let src = cpu.read_8(bus, cpu.index_x as u32 | (src_bank as u32) << 16);
+        let src = bus.read(cpu.index_x as u32 | (src_bank as u32) << 16);
         let dst = cpu.index_y as u32 | (dst_bank as u32) << 16;
         cpu.write_8(bus, dst, src);
         cpu.index_x = cpu.index_x.wrapping_sub(1);
