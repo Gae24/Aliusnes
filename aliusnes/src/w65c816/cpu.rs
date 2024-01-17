@@ -171,7 +171,7 @@ impl Cpu {
         self.program_counter = Self::read_16(bus, interrupt.get_interrupt_addr());
     }
 
-    pub fn read_8(bus: &Bus, addr: u32) -> u8 {
+    pub fn read_8(bus: &mut Bus, addr: u32) -> u8 {
         bus.read(addr)
     }
 
@@ -179,7 +179,7 @@ impl Cpu {
         bus.write(addr, data);
     }
 
-    pub fn read_16(bus: &Bus, addr: u32) -> u16 {
+    pub fn read_16(bus: &mut Bus, addr: u32) -> u16 {
         Self::read_8(bus, addr) as u16 | (Self::read_8(bus, addr.wrapping_add(1)) as u16) << 8
     }
 
@@ -194,7 +194,7 @@ impl Cpu {
         }
     }
 
-    fn get_imm<T: RegSize>(&mut self, bus: &Bus) -> T {
+    fn get_imm<T: RegSize>(&mut self, bus: &mut Bus) -> T {
         if T::IS_U16 {
             self.extra_cycles += 1;
             let pbr = self.pbr as u16;
@@ -209,7 +209,7 @@ impl Cpu {
         }
     }
 
-    fn get_direct_addr(&mut self, bus: &Bus) -> u16 {
+    fn get_direct_addr(&mut self, bus: &mut Bus) -> u16 {
         let dpr = self.dpr;
         if dpr as u8 != 0 {
             self.extra_cycles += 1;
@@ -217,28 +217,28 @@ impl Cpu {
         dpr.wrapping_add(self.get_imm::<u8>(bus) as u16)
     }
 
-    fn get_indirect_addr(&self, bus: &Bus, addr: u16) -> u32 {
+    fn get_indirect_addr(&self, bus: &mut Bus, addr: u16) -> u32 {
         (Self::read_16(bus, addr.into()) | self.dbr as u16).into()
     }
 
-    fn get_indirect_long_addr(bus: &Bus, addr: u32) -> u32 {
+    fn get_indirect_long_addr(bus: &mut Bus, addr: u32) -> u32 {
         Self::read_16(bus, addr) as u32 | (Self::read_8(bus, addr.wrapping_add(2)) as u32) << 16
     }
 
-    fn get_absolute_addr(&mut self, bus: &Bus) -> u32 {
+    fn get_absolute_addr(&mut self, bus: &mut Bus) -> u32 {
         (self.dbr as u16 | self.get_imm::<u16>(bus)) as u32
     }
 
-    fn get_absolute_long_addr(&mut self, bus: &Bus) -> u32 {
+    fn get_absolute_long_addr(&mut self, bus: &mut Bus) -> u32 {
         self.get_imm::<u16>(bus) as u32 | self.get_imm::<u8>(bus) as u32
     }
 
-    fn get_stack_relative_addr(&mut self, bus: &Bus) -> u16 {
+    fn get_stack_relative_addr(&mut self, bus: &mut Bus) -> u16 {
         self.stack_pointer
             .wrapping_add(self.get_imm::<u8>(bus).into())
     }
 
-    fn get_address<const WRITE: bool>(&mut self, bus: &Bus, mode: &AddressingMode) -> u32 {
+    fn get_address<const WRITE: bool>(&mut self, bus: &mut Bus, mode: &AddressingMode) -> u32 {
         match mode {
             AddressingMode::Direct => self.get_direct_addr(bus) as u32,
             AddressingMode::DirectX => (self.get_direct_addr(bus) + self.index_x) as u32,
@@ -297,7 +297,7 @@ impl Cpu {
         }
     }
 
-    pub fn get_operand<T: RegSize>(&mut self, bus: &Bus, mode: &AddressingMode) -> T {
+    pub fn get_operand<T: RegSize>(&mut self, bus: &mut Bus, mode: &AddressingMode) -> T {
         match mode {
             AddressingMode::Immediate
             | AddressingMode::Implied

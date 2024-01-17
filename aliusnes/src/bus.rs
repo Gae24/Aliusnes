@@ -21,7 +21,7 @@ impl Bus {
         }
     }
 
-    pub fn read(&self, addr: u32) -> u8 {
+    pub fn read(&mut self, addr: u32) -> u8 {
         let bank = (addr >> 16) as u8;
         match bank {
             0x00..=0x3F | 0x80..=0xBF => match (addr >> 8) as u8 {
