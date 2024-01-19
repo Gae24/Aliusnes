@@ -40,7 +40,7 @@ impl Math {
 }
 
 impl Access for Math {
-    fn read(&self, addr: u16) -> u8 {
+    fn read(&mut self, addr: u16) -> u8 {
         match addr {
             0x4214 => self.quotient as u8,
             0x4215 => (self.quotient >> 8) as u8,
