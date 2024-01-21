@@ -1,5 +1,5 @@
 use super::{functions::do_push, opcodes::OPCODES_MAP, regsize::RegSize, vectors::Vectors};
-use crate::{bus::dma::Dma, bus::Bus, utils::int_traits::ManipulateU16};
+use crate::{bus::Bus, utils::int_traits::ManipulateU16};
 
 bitfield!(
     pub struct Status(pub u8) {
@@ -333,9 +333,9 @@ impl Cpu {
             _ => {
                 let addr = self.get_address::<false>(bus, mode);
                 if T::IS_U16 {
-                    T::from_u16(self.read_16(bus, addr))
+                    T::from_u16(Self::read_16(bus, addr))
                 } else {
-                    T::from_u8(self.read_8(bus, addr))
+                    T::from_u8(Self::read_8(bus, addr))
                 }
             }
         }
@@ -358,13 +358,13 @@ impl Cpu {
     ) {
         let addr = self.get_address::<true>(bus, mode);
         if T::IS_U16 {
-            let data = self.read_16(bus, addr);
+            let data = Self::read_16(bus, addr);
             let result = f(self, T::from_u16(data)).as_u16();
-            self.write_16(bus, addr, result);
+            Self::write_16(bus, addr, result);
         } else {
-            let data = self.read_8(bus, addr);
+            let data = Self::read_8(bus, addr);
             let result = f(self, T::from_u8(data)).as_u8();
-            self.write_8(bus, addr, result);
+            Self::write_8(bus, addr, result);
         }
     }
 }
