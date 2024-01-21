@@ -170,7 +170,7 @@ pub(super) fn do_pull<T: RegSize>(cpu: &mut Cpu, bus: &mut Bus) -> T {
         cpu.extra_cycles += 1;
         let value = Cpu::read_16(bus, cpu.stack_pointer.wrapping_add(1).into());
         cpu.stack_pointer = cpu.stack_pointer.wrapping_add(2);
-        T::trunc_u16(value)
+        T::from_u16(value)
     } else {
         let value = cpu.read_8(bus, cpu.stack_pointer.wrapping_add(1).into());
         cpu.stack_pointer = cpu.stack_pointer.wrapping_add(1);
