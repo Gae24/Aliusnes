@@ -2,9 +2,10 @@ mod access;
 mod dma;
 mod math;
 mod mmio;
+mod wram;
 
-use self::math::Math;
-use crate::{cart::Cart, wram::Wram};
+use self::{math::Math, wram::Wram};
+use crate::cart::Cart;
 
 pub struct Bus {
     wram: Wram,

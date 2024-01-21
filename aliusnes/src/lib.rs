@@ -6,7 +6,6 @@ mod cart;
 mod emu;
 mod utils;
 mod w65c816;
-mod wram;
 
 #[macro_use]
 extern crate lazy_static;
