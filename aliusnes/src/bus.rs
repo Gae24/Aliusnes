@@ -5,6 +5,7 @@ pub mod access;
 pub mod dma;
 mod math;
 mod mmio;
+mod wram;
 
 pub struct Bus {
     mdr: u8,
