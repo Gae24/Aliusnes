@@ -2,6 +2,7 @@ pub mod access;
 pub mod dma;
 mod math;
 mod mmio;
+mod wram;
 
 use self::{access::Access, dma::Dma, math::Math, wram::Wram};
 use crate::{cart::Cart, ppu::Ppu, utils::int_traits::ManipulateU16};
