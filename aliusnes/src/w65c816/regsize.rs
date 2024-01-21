@@ -10,8 +10,8 @@ pub trait RegSize:
 {
     const IS_U16: bool;
 
-    fn trunc_u16(value: u16) -> Self;
-    fn ext_u8(value: u8) -> Self;
+    fn from_u16(value: u16) -> Self;
+    fn from_u8(value: u8) -> Self;
     fn as_u16(self) -> u16;
     fn as_u8(self) -> u8;
     fn is_zero(self) -> bool;
@@ -24,11 +24,11 @@ pub trait RegSize:
 impl RegSize for u8 {
     const IS_U16: bool = false;
 
-    fn trunc_u16(value: u16) -> Self {
+    fn from_u16(value: u16) -> Self {
         value as u8
     }
 
-    fn ext_u8(value: u8) -> Self {
+    fn from_u8(value: u8) -> Self {
         value
     }
 
@@ -64,11 +64,11 @@ impl RegSize for u8 {
 impl RegSize for u16 {
     const IS_U16: bool = true;
 
-    fn trunc_u16(value: u16) -> Self {
+    fn from_u16(value: u16) -> Self {
         value
     }
 
-    fn ext_u8(value: u8) -> Self {
+    fn from_u8(value: u8) -> Self {
         value as u16
     }
 

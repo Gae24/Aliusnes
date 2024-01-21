@@ -84,18 +84,18 @@ pub(super) fn do_asl<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
         let result = operand << 1;
         cpu.status.set_carry(operand >> 15 != 0);
         cpu.set_nz(result);
-        T::trunc_u16(result)
+        T::from_u16(result)
     } else {
         let operand = operand.as_u8();
         let result = operand << 1;
         cpu.status.set_carry(operand >> 7 != 0);
         cpu.set_nz(result);
-        T::ext_u8(result)
+        T::from_u8(result)
     }
 }
 
 pub(super) fn do_bit<T: RegSize>(cpu: &mut Cpu, operand: T, mode: &AddressingMode) {
-    let result = T::trunc_u16(cpu.accumulator) & operand;
+    let result = T::from_u16(cpu.accumulator) & operand;
     match mode {
         AddressingMode::Immediate => {
             cpu.status.set_zero(result.is_zero());
@@ -123,13 +123,13 @@ pub(super) fn do_cmp<T: RegSize>(cpu: &mut Cpu, src: T, operand: T) {
 }
 
 pub(super) fn do_dec<T: RegSize>(cpu: &mut Cpu, src: T) -> T {
-    let result = src.wrapping_sub(T::ext_u8(1));
+    let result = src.wrapping_sub(T::from_u8(1));
     cpu.set_nz(result);
     result
 }
 
 pub(super) fn do_inc<T: RegSize>(cpu: &mut Cpu, src: T) -> T {
-    let result = src.wrapping_add(T::ext_u8(1));
+    let result = src.wrapping_add(T::from_u8(1));
     cpu.set_nz(result);
     result
 }
@@ -140,13 +140,13 @@ pub(super) fn do_lsr<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
         let result = operand >> 1;
         cpu.status.set_carry(operand & 1 != 0);
         cpu.set_nz(result);
-        T::trunc_u16(result)
+        T::from_u16(result)
     } else {
         let operand = operand.as_u8();
         let result = operand >> 1;
         cpu.status.set_carry(operand & 1 != 0);
         cpu.set_nz(result);
-        T::ext_u8(result)
+        T::from_u8(result)
     }
 }
 
@@ -170,11 +170,11 @@ pub(super) fn do_pull<T: RegSize>(cpu: &mut Cpu, bus: &mut Bus) -> T {
         cpu.extra_cycles += 1;
         let value = Cpu::read_16(bus, cpu.stack_pointer.wrapping_add(1).into());
         cpu.stack_pointer = cpu.stack_pointer.wrapping_add(2);
-        T::trunc_u16(value)
+        T::from_u16(value)
     } else {
         let value = Cpu::read_8(bus, cpu.stack_pointer.wrapping_add(1).into());
         cpu.stack_pointer = cpu.stack_pointer.wrapping_add(1);
-        T::ext_u8(value)
+        T::from_u8(value)
     }
 }
 
@@ -184,13 +184,13 @@ pub(super) fn do_rol<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
         let result = operand << 1 | cpu.status.carry() as u16;
         cpu.status.set_carry(operand >> 15 != 0);
         cpu.set_nz(result);
-        T::trunc_u16(result)
+        T::from_u16(result)
     } else {
         let operand = operand.as_u8();
         let result = operand << 1 | cpu.status.carry() as u8;
         cpu.status.set_carry(operand >> 7 != 0);
         cpu.set_nz(result);
-        T::ext_u8(result)
+        T::from_u8(result)
     }
 }
 
@@ -200,13 +200,13 @@ pub(super) fn do_ror<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
         let result = operand >> 1 | (cpu.status.carry() as u16) << 15;
         cpu.status.set_carry(operand & 1 != 0);
         cpu.set_nz(result);
-        T::trunc_u16(result)
+        T::from_u16(result)
     } else {
         let operand = operand.as_u8();
         let result = operand >> 1 | (cpu.status.carry() as u8) << 7;
         cpu.status.set_carry(operand & 1 != 0);
         cpu.set_nz(result);
-        T::ext_u8(result)
+        T::from_u8(result)
     }
 }
 
@@ -261,13 +261,13 @@ pub(super) fn do_dec_sbc<T: RegSize>(cpu: &mut Cpu, operand: T) {
 }
 
 pub(super) fn do_trb<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
-    let a = T::trunc_u16(cpu.accumulator);
+    let a = T::from_u16(cpu.accumulator);
     cpu.status.set_zero((operand & a).is_zero());
     operand & !a
 }
 
 pub(super) fn do_tsb<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
-    let a = T::trunc_u16(cpu.accumulator);
+    let a = T::from_u16(cpu.accumulator);
     cpu.status.set_zero((operand & a).is_zero());
     operand | a
 }
