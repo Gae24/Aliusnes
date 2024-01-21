@@ -1,5 +1,5 @@
 use super::{functions::do_push, opcodes::OPCODES_MAP, regsize::RegSize, vectors::Vectors};
-use crate::bus::Bus;
+use crate::{bus::Bus, utils::int_traits::ManipulateU16};
 
 bitfield!(
     pub struct Status(pub u8) {
@@ -96,7 +96,7 @@ impl Cpu {
         if T::IS_U16 {
             self.accumulator = val.as_u16();
         } else {
-            self.accumulator = (self.accumulator & !0xFF) | val.as_u16();
+            self.accumulator.set_low_byte(val.as_u8());
         }
     }
 
@@ -104,7 +104,7 @@ impl Cpu {
         if T::IS_U16 {
             self.index_x = val.as_u16();
         } else {
-            self.index_x = (self.index_x & !0xFF) | val.as_u16();
+            self.index_x.set_low_byte(val.as_u8());
         }
     }
 
@@ -112,7 +112,7 @@ impl Cpu {
         if T::IS_U16 {
             self.index_y = val.as_u16();
         } else {
-            self.index_y = (self.index_y & !0xFF) | val.as_u16();
+            self.index_y.set_low_byte(val.as_u8());
         }
     }
 
@@ -200,12 +200,12 @@ impl Cpu {
             let pbr = self.pbr as u16;
             let res = Self::read_16(bus, (pbr | self.program_counter) as u32);
             self.program_counter = self.program_counter.wrapping_add(2);
-            T::trunc_u16(res)
+            T::from_u16(res)
         } else {
             let pbr = self.pbr as u16;
             let res = Self::read_8(bus, (pbr | self.program_counter) as u32);
             self.program_counter = self.program_counter.wrapping_add(1);
-            T::ext_u8(res)
+            T::from_u8(res)
         }
     }
 
@@ -310,9 +310,9 @@ impl Cpu {
             _ => {
                 let addr = self.get_address::<false>(bus, mode);
                 if T::IS_U16 {
-                    T::trunc_u16(Self::read_16(bus, addr))
+                    T::from_u16(Self::read_16(bus, addr))
                 } else {
-                    T::ext_u8(Self::read_8(bus, addr))
+                    T::from_u8(Self::read_8(bus, addr))
                 }
             }
         }
@@ -336,11 +336,11 @@ impl Cpu {
         let addr = self.get_address::<true>(bus, mode);
         if T::IS_U16 {
             let data = Self::read_16(bus, addr);
-            let result = f(self, T::trunc_u16(data)).as_u16();
+            let result = f(self, T::from_u16(data)).as_u16();
             Self::write_16(bus, addr, result);
         } else {
             let data = Self::read_8(bus, addr);
-            let result = f(self, T::ext_u8(data)).as_u8();
+            let result = f(self, T::from_u8(data)).as_u8();
             Self::write_8(bus, addr, result);
         }
     }
