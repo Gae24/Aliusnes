@@ -4,21 +4,23 @@ mod math;
 mod mmio;
 mod wram;
 
-use self::{math::Math, wram::Wram};
+use self::{dma::Dma, math::Math, wram::Wram};
 use crate::cart::Cart;
 
 pub struct Bus {
-    wram: Wram,
     cart: Cart,
+    dma: Dma,
     math: Math,
+    wram: Wram,
 }
 
 impl Bus {
     pub fn new(cart: Cart) -> Self {
         Self {
             cart,
-            wram: Wram::new(),
+            dma: Dma::new(),
             math: Math::new(),
+            wram: Wram::new(),
         }
     }
 
