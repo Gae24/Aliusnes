@@ -8,9 +8,8 @@ mod mmio;
 mod wram;
 
 pub struct Bus {
-    mdr: u8,
-    fast_rom_enabled: bool,
     cart: Cart,
+    dma: Dma,
     math: Math,
     ppu: Ppu,
     wram: Wram,
@@ -26,7 +25,6 @@ impl Bus {
             dma: Dma::new(),
             math: Math::new(),
             wram: Wram::new(),
-            math: Math::new(),
         }
     }
 
