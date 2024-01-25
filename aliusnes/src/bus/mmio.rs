@@ -9,7 +9,7 @@ impl Bus {
         match addr {
             0x2134..=0x213F => todo!("ppu area"),
             0x2140..=0x2143 => todo!("apu area"),
-            0x2180 => todo!("wram area"),
+            0x2180 => self.wram.read(addr),
             0x4214..=0x4217 => self.math.read(addr),
             0x4300..=0x437f => todo!("dma area"),
             _ => panic!("tried to read at {:#0x}", addr),
@@ -20,8 +20,8 @@ impl Bus {
         match addr {
             0x2100..=0x2133 => todo!("ppu area"),
             0x2140..=0x2143 => todo!("apu area"),
-            0x2180..=0x2183 => todo!("wram area"),
-            0x4204..=0x4206 => self.math.write(addr, val),
+            0x2180..=0x2183 => self.wram.write(addr, val),
+            0x4202..=0x4206 => self.math.write(addr, val),
             0x4300..=0x437f => todo!("dma area"),
             _ => panic!("tried to write {:#0x} at {:#0x}", val, addr),
         }
