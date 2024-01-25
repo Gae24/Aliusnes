@@ -8,9 +8,8 @@ use self::{access::Access, dma::Dma, math::Math, wram::Wram};
 use crate::{cart::Cart, ppu::Ppu, utils::int_traits::ManipulateU16};
 
 pub struct Bus {
-    mdr: u8,
-    fast_rom_enabled: bool,
     cart: Cart,
+    dma: Dma,
     math: Math,
     ppu: Ppu,
     wram: Wram,
@@ -26,7 +25,6 @@ impl Bus {
             dma: Dma::new(),
             math: Math::new(),
             wram: Wram::new(),
-            math: Math::new(),
         }
     }
 
