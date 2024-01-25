@@ -4,14 +4,14 @@ mod math;
 mod mmio;
 mod wram;
 
-use self::{math::Math, wram::Wram};
+use self::{dma::Dma, math::Math, wram::Wram};
 use crate::cart::Cart;
 
 pub struct Bus {
-    mdr: u8,
-    fast_rom_enabled: bool,
     cart: Cart,
+    dma: Dma,
     math: Math,
+    wram: Wram,
 }
 
 impl Bus {
@@ -20,7 +20,9 @@ impl Bus {
             mdr: 0,
             fast_rom_enabled: false,
             cart,
+            dma: Dma::new(),
             math: Math::new(),
+            wram: Wram::new(),
         }
     }
 
