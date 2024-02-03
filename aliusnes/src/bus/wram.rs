@@ -2,7 +2,6 @@ use super::access::Access;
 
 pub struct Wram {
     pub ram: [u8; 0x20000],
-    // todo impl wmaddr
     wm_addr: u32,
 }
 
@@ -37,10 +36,10 @@ impl Wram {
 }
 
 impl Access for Wram {
-    fn read(&mut self, _addr: u16) -> u8 {
+    fn read(&mut self, _addr: u16) -> Option<u8> {
         let data = self.ram[self.wm_addr as usize];
         self.wm_addr = (self.wm_addr + 1) & 0x1_FFFF;
-        data
+        Some(data)
     }
 
     fn write(&mut self, addr: u16, data: u8) {
