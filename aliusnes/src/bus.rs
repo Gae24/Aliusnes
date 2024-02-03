@@ -4,12 +4,12 @@ use crate::{cart::Cart, ppu::Ppu, utils::int_traits::ManipulateU16};
 pub mod access;
 pub mod dma;
 mod math;
-mod mmio;
 mod wram;
 
 pub struct Bus {
+    mdr: u8,
     cart: Cart,
-    dma: Dma,
+    pub dma: Dma,
     math: Math,
     ppu: Ppu,
     wram: Wram,
@@ -109,12 +109,10 @@ impl Bus {
         self.mdr = data;
         let bank = (full_addr >> 16) as u8;
         let addr = full_addr as u16;
-
         match bank {
             0x00..=0x3F | 0x80..=0xBF => match addr.high_byte() {
                 0x00..=0x1F => return self.wram.ram[addr as usize & 0x1FFF] = data,
-                0x21 => return self.write_b(addr, data),
-                0x40..=0x43 if !DMA => {
+                0x21 | 0x40..=0x43 => {
                     return match addr {
                         0x4200 => self.ppu.write_nmitien(data),
                         0x4202..=0x4206 => self.math.write(addr, data),
@@ -129,6 +127,7 @@ impl Bus {
                 }
                 _ => {}
             },
+
             0x7E..=0x7F => return self.wram.ram[full_addr as usize & 0x1_FFFF] = data,
             _ => {}
         }
