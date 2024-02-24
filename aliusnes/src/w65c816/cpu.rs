@@ -1,5 +1,5 @@
 use super::{functions::do_push, opcodes::OPCODES_MAP, regsize::RegSize, vectors::Vectors};
-use crate::{bus::Bus, utils::int_traits::ManipulateU16};
+use crate::{bus::dma::Dma, bus::Bus, utils::int_traits::ManipulateU16};
 
 bitfield!(
     pub struct Status(pub u8) {
@@ -168,7 +168,7 @@ impl Cpu {
         // DMA will take place in the middle of the next instruction, just after its opcode is read from memory.
         // todo a better way that takes account of syncing components
         if bus.dma.enable_channels > 0 {
-            self.extra_cycles += Dma::do_dma(bus);
+            Dma::do_dma(bus);
         }
 
         let opcode = OPCODES_MAP
