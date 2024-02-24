@@ -25,6 +25,18 @@ impl Bus {
         }
     }
 
+    pub fn read_b(&mut self, addr: u16) -> u8 {
+        if let Some(val) = match addr {
+            0x2134..=0x213F => todo!("ppu area"),
+            0x2140..=0x2143 => todo!("apu area"),
+            0x2180 => self.wram.read(addr),
+            _ => None,
+        } {
+            self.mdr = val;
+        }
+        self.mdr
+    }
+
     pub fn read(&mut self, full_addr: u32) -> u8 {
         let bank = (full_addr >> 16) as u8;
         let addr = full_addr as u16;
@@ -32,10 +44,8 @@ impl Bus {
         if let Some(val) = match bank {
             0x00..=0x3F | 0x80..=0xBF => match addr.high_byte() {
                 0x00..=0x1F => Some(self.wram.ram[addr as usize & 0x1FFF]),
-                0x21 | 0x40..=0x43 => match addr {
-                    0x2134..=0x213F => todo!("ppu area"),
-                    0x2140..=0x2143 => todo!("apu area"),
-                    0x2180 => self.wram.read(addr),
+                0x21 => return self.read_b(addr),
+                0x40..=0x43 => match addr {
                     0x4214..=0x4217 => self.math.read(addr),
                     0x4300..=0x437F => self.dma.read(addr),
                     _ => panic!("tried to read at {:#0x}", addr),
@@ -56,17 +66,26 @@ impl Bus {
         self.mdr
     }
 
+    pub fn write_b(&mut self, addr: u16, data: u8) {
+        match addr {
+            0x2100..=0x2133 => todo!("ppu area"),
+            0x2140..=0x2143 => todo!("apu area"),
+            0x2180..=0x2183 => self.wram.write(addr, data),
+            _ => panic!("tried to write {:#0x} at {:#0x}", data, addr),
+        }
+    }
+
     pub fn write(&mut self, full_addr: u32, data: u8) {
+        self.mdr = data;
         let bank = (full_addr >> 16) as u8;
         let addr = full_addr as u16;
+
         match bank {
             0x00..=0x3F | 0x80..=0xBF => match addr.high_byte() {
                 0x00..=0x1F => return self.wram.ram[addr as usize & 0x1FFF] = data,
-                0x21 | 0x40..=0x43 => {
+                0x21 => return self.write_b(addr, data),
+                0x40..=0x43 => {
                     return match addr {
-                        0x2100..=0x2133 => todo!("ppu area"),
-                        0x2140..=0x2143 => todo!("apu area"),
-                        0x2180..=0x2183 => self.wram.write(addr, data),
                         0x4202..=0x4206 => self.math.write(addr, data),
                         0x420B | 0x420C | 0x4300..=0x437f => self.dma.write(addr, data),
                         _ => panic!("tried to write {:#0x} at {:#0x}", data, addr),
@@ -74,7 +93,6 @@ impl Bus {
                 }
                 _ => {}
             },
-
             0x7E..=0x7F => return self.wram.ram[full_addr as usize & 0x1_FFFF] = data,
             _ => {}
         }
