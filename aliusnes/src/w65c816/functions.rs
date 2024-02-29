@@ -154,25 +154,25 @@ pub(super) fn do_push<T: RegSize>(cpu: &mut Cpu, bus: &mut Bus, value: T) {
     if T::IS_U16 {
         cpu.extra_cycles += 1;
         cpu.stack_pointer = cpu.stack_pointer.wrapping_sub(2);
-        Cpu::write_16(
+        cpu.write_16(
             bus,
             cpu.stack_pointer.wrapping_add(1).into(),
             value.as_u16(),
         );
     } else {
         cpu.stack_pointer = cpu.stack_pointer.wrapping_sub(1);
-        Cpu::write_8(bus, cpu.stack_pointer.wrapping_add(1).into(), value.as_u8());
+        cpu.write_8(bus, cpu.stack_pointer.wrapping_add(1).into(), value.as_u8());
     }
 }
 
 pub(super) fn do_pull<T: RegSize>(cpu: &mut Cpu, bus: &mut Bus) -> T {
     if T::IS_U16 {
         cpu.extra_cycles += 1;
-        let value = Cpu::read_16(bus, cpu.stack_pointer.wrapping_add(1).into());
+        let value = cpu.read_16(bus, cpu.stack_pointer.wrapping_add(1).into());
         cpu.stack_pointer = cpu.stack_pointer.wrapping_add(2);
         T::from_u16(value)
     } else {
-        let value = Cpu::read_8(bus, cpu.stack_pointer.wrapping_add(1).into());
+        let value = cpu.read_8(bus, cpu.stack_pointer.wrapping_add(1).into());
         cpu.stack_pointer = cpu.stack_pointer.wrapping_add(1);
         T::from_u8(value)
     }

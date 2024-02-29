@@ -262,7 +262,7 @@ pub fn iny(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
 
 pub fn jml(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let addr = cpu.get_operand::<u16>(bus, mode);
-    cpu.program_counter = Cpu::read_16(bus, addr.into());
+    cpu.program_counter = cpu.read_16(bus, addr.into());
     cpu.pbr = bus.read(addr.wrapping_add(2).into());
 }
 
@@ -296,7 +296,7 @@ pub fn jsr(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
             do_push(cpu, bus, cpu.program_counter);
             let high = cpu.get_operand::<u8>(bus, &AddressingMode::AbsoluteJMP);
             let addr = (low as u16 | (high as u16) << 8).wrapping_add(cpu.index_x);
-            cpu.program_counter = Cpu::read_16(bus, cpu.pbr as u32 | addr as u32);
+            cpu.program_counter = cpu.read_16(bus, cpu.pbr as u32 | addr as u32);
         }
         _ => {
             let val = cpu.get_operand::<u16>(bus, mode);
@@ -367,7 +367,7 @@ pub fn mvn(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     loop {
         let src = bus.read(cpu.index_x as u32 | (src_bank as u32) << 16);
         let dst = cpu.index_y as u32 | (dst_bank as u32) << 16;
-        Cpu::write_8(bus, dst, src);
+        cpu.write_8(bus, dst, src);
         cpu.index_x = cpu.index_x.wrapping_add(1);
         cpu.index_y = cpu.index_y.wrapping_add(1);
         cpu.accumulator = cpu.accumulator.wrapping_sub(1);
@@ -384,7 +384,7 @@ pub fn mvp(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     loop {
         let src = bus.read(cpu.index_x as u32 | (src_bank as u32) << 16);
         let dst = cpu.index_y as u32 | (dst_bank as u32) << 16;
-        Cpu::write_8(bus, dst, src);
+        cpu.write_8(bus, dst, src);
         cpu.index_x = cpu.index_x.wrapping_sub(1);
         cpu.index_y = cpu.index_y.wrapping_sub(1);
         cpu.accumulator = cpu.accumulator.wrapping_sub(1);
