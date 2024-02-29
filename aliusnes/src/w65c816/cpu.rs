@@ -27,7 +27,7 @@ pub struct Cpu {
     emulation_mode: bool,
     pub stopped: bool,
     pub waiting_interrupt: bool,
-    pub extra_cycles: u8,
+    pub extra_cycles: u32,
 }
 
 #[derive(Debug)]
@@ -142,17 +142,17 @@ impl Cpu {
         self.status.set_decimal(false);
         self.status.set_irq_disable(true);
         self.pbr = 0;
-        self.program_counter = Self::read_16(bus, 0xFFFC);
+        self.program_counter = self.read_16(bus, 0xFFFC);
     }
 
-    pub fn step(&mut self, bus: &mut Bus) -> u8 {
+    pub fn step(&mut self, bus: &mut Bus) -> u32 {
         self.extra_cycles = 0;
         let op = self.get_imm::<u8>(bus);
 
         // DMA will take place in the middle of the next instruction, just after its opcode is read from memory.
         // todo a better way that takes account of syncing components
         if bus.dma.enable_channels > 0 {
-            Dma::do_dma(bus);
+            self.extra_cycles += Dma::do_dma(bus);
         }
 
         let opcode = OPCODES_MAP
@@ -162,7 +162,7 @@ impl Cpu {
         let instr = opcode.function;
         instr(self, bus, &opcode.mode);
 
-        opcode.cycles + self.extra_cycles
+        self.extra_cycles + (opcode.cycles as u32)
     }
 
     pub fn handle_interrupt(&mut self, bus: &mut Bus, interrupt: &Vectors) {
@@ -174,24 +174,26 @@ impl Cpu {
         self.status.set_decimal(false);
         self.status.set_irq_disable(true);
         self.pbr = 0;
-        self.program_counter = Self::read_16(bus, interrupt.get_interrupt_addr());
+        self.program_counter = self.read_16(bus, interrupt.get_interrupt_addr());
     }
 
-    pub fn read_8(bus: &mut Bus, addr: u32) -> u8 {
+    pub fn read_8(&mut self, bus: &mut Bus, addr: u32) -> u8 {
+        self.extra_cycles += bus.memory_access_cycles(addr);
         bus.read(addr)
     }
 
-    pub fn write_8(bus: &mut Bus, addr: u32, data: u8) {
+    pub fn write_8(&mut self, bus: &mut Bus, addr: u32, data: u8) {
+        self.extra_cycles += bus.memory_access_cycles(addr);
         bus.write(addr, data);
     }
 
-    pub fn read_16(bus: &mut Bus, addr: u32) -> u16 {
-        Self::read_8(bus, addr) as u16 | (Self::read_8(bus, addr.wrapping_add(1)) as u16) << 8
+    pub fn read_16(&mut self, bus: &mut Bus, addr: u32) -> u16 {
+        self.read_8(bus, addr) as u16 | (self.read_8(bus, addr.wrapping_add(1)) as u16) << 8
     }
 
-    pub fn write_16(bus: &mut Bus, addr: u32, data: u16) {
-        Self::write_8(bus, addr, data as u8);
-        Self::write_8(bus, addr.wrapping_add(1), (data >> 8) as u8);
+    pub fn write_16(&mut self, bus: &mut Bus, addr: u32, data: u16) {
+        self.write_8(bus, addr, data as u8);
+        self.write_8(bus, addr.wrapping_add(1), (data >> 8) as u8);
     }
 
     fn add_extra_cycles<const WRITE: bool>(&mut self, unindexed: u32, indexed: u32) {
@@ -204,12 +206,12 @@ impl Cpu {
         if T::IS_U16 {
             self.extra_cycles += 1;
             let pbr = self.pbr as u16;
-            let res = Self::read_16(bus, (pbr | self.program_counter) as u32);
+            let res = self.read_16(bus, (pbr | self.program_counter) as u32);
             self.program_counter = self.program_counter.wrapping_add(2);
             T::from_u16(res)
         } else {
             let pbr = self.pbr as u16;
-            let res = Self::read_8(bus, (pbr | self.program_counter) as u32);
+            let res = self.read_8(bus, (pbr | self.program_counter) as u32);
             self.program_counter = self.program_counter.wrapping_add(1);
             T::from_u8(res)
         }
@@ -223,12 +225,12 @@ impl Cpu {
         dpr.wrapping_add(self.get_imm::<u8>(bus) as u16)
     }
 
-    fn get_indirect_addr(&self, bus: &mut Bus, addr: u16) -> u32 {
-        (Self::read_16(bus, addr.into()) | self.dbr as u16).into()
+    fn get_indirect_addr(&mut self, bus: &mut Bus, addr: u16) -> u32 {
+        (self.read_16(bus, addr.into()) | self.dbr as u16).into()
     }
 
-    fn get_indirect_long_addr(bus: &mut Bus, addr: u32) -> u32 {
-        Self::read_16(bus, addr) as u32 | (Self::read_8(bus, addr.wrapping_add(2)) as u32) << 16
+    fn get_indirect_long_addr(&mut self, bus: &mut Bus, addr: u32) -> u32 {
+        self.read_16(bus, addr) as u32 | (self.read_8(bus, addr.wrapping_add(2)) as u32) << 16
     }
 
     fn get_absolute_addr(&mut self, bus: &mut Bus) -> u32 {
@@ -266,11 +268,11 @@ impl Cpu {
             }
             AddressingMode::IndirectLong => {
                 let indirect = self.get_direct_addr(bus) as u32;
-                Self::get_indirect_long_addr(bus, indirect)
+                self.get_indirect_long_addr(bus, indirect)
             }
             AddressingMode::IndirectLongY => {
                 let indirect = self.get_direct_addr(bus) as u32;
-                (Self::get_indirect_long_addr(bus, indirect) + self.index_y as u32) & 0xFF_FFFF
+                (self.get_indirect_long_addr(bus, indirect) + self.index_y as u32) & 0xFF_FFFF
             }
             AddressingMode::Absolute => self.get_absolute_addr(bus),
             AddressingMode::AbsoluteX => {
@@ -316,9 +318,9 @@ impl Cpu {
             _ => {
                 let addr = self.get_address::<false>(bus, mode);
                 if T::IS_U16 {
-                    T::from_u16(Self::read_16(bus, addr))
+                    T::from_u16(self.read_16(bus, addr))
                 } else {
-                    T::from_u8(Self::read_8(bus, addr))
+                    T::from_u8(self.read_8(bus, addr))
                 }
             }
         }
@@ -327,9 +329,9 @@ impl Cpu {
     pub fn do_write<T: RegSize>(&mut self, bus: &mut Bus, mode: &AddressingMode, val: T) {
         let addr = self.get_address::<true>(bus, mode);
         if T::IS_U16 {
-            Cpu::write_16(bus, addr, val.as_u16());
+            self.write_16(bus, addr, val.as_u16());
         } else {
-            Cpu::write_8(bus, addr, val.as_u8());
+            self.write_8(bus, addr, val.as_u8());
         }
     }
 
@@ -341,13 +343,13 @@ impl Cpu {
     ) {
         let addr = self.get_address::<true>(bus, mode);
         if T::IS_U16 {
-            let data = Self::read_16(bus, addr);
+            let data = self.read_16(bus, addr);
             let result = f(self, T::from_u16(data)).as_u16();
-            Self::write_16(bus, addr, result);
+            self.write_16(bus, addr, result);
         } else {
-            let data = Self::read_8(bus, addr);
+            let data = self.read_8(bus, addr);
             let result = f(self, T::from_u8(data)).as_u8();
-            Self::write_8(bus, addr, result);
+            self.write_8(bus, addr, result);
         }
     }
 }

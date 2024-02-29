@@ -8,6 +8,7 @@ use crate::{cart::Cart, utils::int_traits::ManipulateU16};
 
 pub struct Bus {
     mdr: u8,
+    fast_rom_enabled: bool,
     cart: Cart,
     pub dma: Dma,
     math: Math,
@@ -18,6 +19,7 @@ impl Bus {
     pub fn new(cart: Cart) -> Self {
         Self {
             mdr: 0,
+            fast_rom_enabled: false,
             cart,
             dma: Dma::new(),
             math: Math::new(),
@@ -97,5 +99,39 @@ impl Bus {
             _ => {}
         }
         self.cart.write(bank, addr, data);
+    }
+
+    pub fn memory_access_cycles(&self, addr: u32) -> u32 {
+        static FAST: u32 = 6;
+        static SLOW: u32 = 8;
+        static XSLOW: u32 = 12;
+
+        let bank = (addr >> 16) as u8;
+        let offset = addr as u16;
+
+        match bank {
+            0x40..=0x7F => SLOW,
+            0xC0..=0xFF => {
+                if self.fast_rom_enabled {
+                    FAST
+                } else {
+                    SLOW
+                }
+            }
+            _ => match offset {
+                0x0000..=0x1FFF => SLOW,
+                0x2000..=0x3FFF => FAST,
+                0x4000..=0x41FF => XSLOW,
+                0x4200..=0x5FFF => FAST,
+                0x6000..=0x7FFF => SLOW,
+                0x8000..=0xFFFF => {
+                    if (0x80..0xBF).contains(&bank) && self.fast_rom_enabled {
+                        FAST
+                    } else {
+                        SLOW
+                    }
+                }
+            },
+        }
     }
 }
