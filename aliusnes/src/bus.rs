@@ -35,11 +35,13 @@ impl Bus {
             _ => None,
         } {
             self.mdr = val;
+        } else {
+            self.mdr = 0;
         }
         self.mdr
     }
 
-    pub fn read(&mut self, full_addr: u32) -> u8 {
+    pub fn read<const DMA: bool>(&mut self, full_addr: u32) -> u8 {
         let bank = (full_addr >> 16) as u8;
         let addr = full_addr as u16;
 
@@ -47,11 +49,17 @@ impl Bus {
             0x00..=0x3F | 0x80..=0xBF => match addr.high_byte() {
                 0x00..=0x1F => Some(self.wram.ram[addr as usize & 0x1FFF]),
                 0x21 => return self.read_b(addr),
-                0x40..=0x43 => match addr {
-                    0x4214..=0x4217 => self.math.read(addr),
-                    0x4300..=0x437F => self.dma.read(addr),
-                    _ => panic!("tried to read at {:#0x}", addr),
-                },
+                0x40..=0x43 => {
+                    if DMA {
+                        Some(0)
+                    } else {
+                        match addr {
+                            0x4214..=0x4217 => self.math.read(addr),
+                            0x4300..=0x437F => self.dma.read(addr),
+                            _ => panic!("tried to read at {:#0x}", addr),
+                        }
+                    }
+                }
                 _ => None,
             },
 
@@ -77,7 +85,7 @@ impl Bus {
         }
     }
 
-    pub fn write(&mut self, full_addr: u32, data: u8) {
+    pub fn write<const DMA: bool>(&mut self, full_addr: u32, data: u8) {
         self.mdr = data;
         let bank = (full_addr >> 16) as u8;
         let addr = full_addr as u16;
@@ -86,7 +94,7 @@ impl Bus {
             0x00..=0x3F | 0x80..=0xBF => match addr.high_byte() {
                 0x00..=0x1F => return self.wram.ram[addr as usize & 0x1FFF] = data,
                 0x21 => return self.write_b(addr, data),
-                0x40..=0x43 => {
+                0x40..=0x43 if !DMA => {
                     return match addr {
                         0x4202..=0x4206 => self.math.write(addr, data),
                         0x420B | 0x420C | 0x4300..=0x437f => self.dma.write(addr, data),
