@@ -262,7 +262,7 @@ pub fn iny(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
 
 pub fn jml(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let addr = cpu.get_operand::<u16>(bus, mode);
-    cpu.program_counter = Cpu::read_16(bus, addr.into());
+    cpu.program_counter = cpu.read_16(bus, addr.into());
     cpu.pbr = bus.read(addr.wrapping_add(2).into());
 }
 
