@@ -8,6 +8,7 @@ mod wram;
 
 pub struct Bus {
     mdr: u8,
+    fast_rom_enabled: bool,
     cart: Cart,
     pub dma: Dma,
     math: Math,
