@@ -28,10 +28,10 @@ impl Bus {
     }
 
     pub fn read_b(&mut self, addr: u16) -> u8 {
-        if let Some(val) = match addr {
-            0x2134..=0x213F => todo!("ppu area"),
-            0x2140..=0x2143 => todo!("apu area"),
-            0x2180 => self.wram.read(addr),
+        if let Some(val) = match addr.low_byte() {
+            0x34..=0x3F => todo!("ppu area"),
+            0x40..=0x43 => todo!("apu area"),
+            0x80 => self.wram.read(addr),
             _ => None,
         } {
             self.mdr = val;
@@ -77,10 +77,10 @@ impl Bus {
     }
 
     pub fn write_b(&mut self, addr: u16, data: u8) {
-        match addr {
-            0x2100..=0x2133 => todo!("ppu area"),
-            0x2140..=0x2143 => todo!("apu area"),
-            0x2180..=0x2183 => self.wram.write(addr, data),
+        match addr.low_byte() {
+            0x00..=0x33 => todo!("ppu area"),
+            0x40..=0x43 => todo!("apu area"),
+            0x80..=0x83 => self.wram.write(addr, data),
             _ => panic!("tried to write {:#0x} at {:#0x}", data, addr),
         }
     }
