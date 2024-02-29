@@ -8,6 +8,7 @@ use crate::{cart::Cart, ppu::Ppu, utils::int_traits::ManipulateU16};
 
 pub struct Bus {
     mdr: u8,
+    fast_rom_enabled: bool,
     cart: Cart,
     pub dma: Dma,
     math: Math,
