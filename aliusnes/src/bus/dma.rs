@@ -1,5 +1,3 @@
-use proc_bitfield::bitfield;
-
 use crate::utils::int_traits::ManipulateU16;
 
 use super::{access::Access, Bus};
