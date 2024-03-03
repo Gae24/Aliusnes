@@ -1,1 +1,2 @@
+mod cgram;
 mod vram;
