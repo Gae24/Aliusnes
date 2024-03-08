@@ -2,6 +2,8 @@ use std::usize;
 
 use crate::utils::int_traits::ManipulateU16;
 
+use super::Ppu;
+
 pub(super) struct Cgram {
     ram: [u16; 0x100],
     cg_addr: u8,
@@ -32,18 +34,22 @@ impl Cgram {
             }
         }
     }
+}
 
-    fn cg_addr_read(&mut self) -> u8 {
-        match self.latch {
+impl Ppu {
+    pub fn cg_addr_read(&mut self) -> u8 {
+        match self.cgram.latch {
             Some(high_byte) => {
-                self.cg_addr = self.cg_addr.wrapping_add(1);
-                self.latch = None;
-                high_byte
+                self.cgram.cg_addr = self.cgram.cg_addr.wrapping_add(1);
+                self.cgram.latch = None;    
+                self.ppu2_mdr = (high_byte & 0x7F) | (self.ppu2_mdr & 0x80);
+                self.ppu2_mdr
             }
             None => {
-                let val = self.ram[self.cg_addr as usize];
-                self.latch = Some(val.high_byte());
-                val.low_byte()
+                let val = self.cgram.ram[self.cgram.cg_addr as usize];
+                self.cgram.latch = Some(val.high_byte());
+                self.ppu2_mdr = val.low_byte();
+                self.ppu2_mdr
             }
         }
     }

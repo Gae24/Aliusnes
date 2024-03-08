@@ -4,7 +4,7 @@ mod math;
 mod wram;
 
 use self::{access::Access, dma::Dma, math::Math, wram::Wram};
-use crate::{cart::Cart, utils::int_traits::ManipulateU16};
+use crate::{cart::Cart, ppu::Ppu, utils::int_traits::ManipulateU16};
 
 pub struct Bus {
     mdr: u8,
@@ -12,6 +12,7 @@ pub struct Bus {
     cart: Cart,
     pub dma: Dma,
     math: Math,
+    ppu: Ppu,
     wram: Wram,
 }
 
@@ -23,13 +24,14 @@ impl Bus {
             cart,
             dma: Dma::new(),
             math: Math::new(),
+            ppu: Ppu::new(),
             wram: Wram::new(),
         }
     }
 
     pub fn read_b(&mut self, addr: u16) -> u8 {
         if let Some(val) = match addr.low_byte() {
-            0x34..=0x3F => todo!("ppu area"),
+            0x34..=0x3F => self.ppu.read(addr),
             0x40..=0x43 => todo!("apu area"),
             0x80 => self.wram.read(addr),
             _ => None,
@@ -78,7 +80,7 @@ impl Bus {
 
     pub fn write_b(&mut self, addr: u16, data: u8) {
         match addr.low_byte() {
-            0x00..=0x33 => todo!("ppu area"),
+            0x00..=0x33 => self.ppu.write(addr, data),
             0x40..=0x43 => todo!("apu area"),
             0x80..=0x83 => self.wram.write(addr, data),
             _ => panic!("tried to write {:#0x} at {:#0x}", data, addr),
