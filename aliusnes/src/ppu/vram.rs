@@ -10,7 +10,7 @@ bitfield! {
 }
 
 pub struct Vram {
-    ram: [u8; 0x10000],
+    ram: [u16; 0x8000],
     video_port_control: VideoPortControl,
     vm_addr: u16,
     latch: u16,
@@ -19,7 +19,7 @@ pub struct Vram {
 impl Vram {
     pub fn new() -> Self {
         Self {
-            ram: [0; 0x10000],
+            ram: [0; 0x8000],
             video_port_control: VideoPortControl(0),
             vm_addr: 0x00,
             latch: 0x00,
@@ -59,8 +59,7 @@ impl Vram {
 
     fn update_latch(&mut self) {
         let addr_latch = self.translate_vm_addr();
-        self.latch = self.ram[addr_latch.high_byte() as usize] as u16
-            | self.ram[addr_latch.low_byte() as usize] as u16;
+        self.latch = self.ram[(addr_latch & 0x7FFF) as usize];
     }
 
     pub fn vm_addl(&mut self, data: u8) {
@@ -74,14 +73,14 @@ impl Vram {
     }
 
     pub fn vm_addl_write(&mut self, data: u8) {
-        self.ram[self.vm_addr.low_byte() as usize] = data;
+        self.ram[(self.vm_addr & 0x7FFF) as usize].set_low_byte(data);
         if !self.video_port_control.increment_on_high_byte_access() {
             self.vm_addr += self.get_increment_amount();
         }
     }
 
     pub fn vm_addh_write(&mut self, data: u8) {
-        self.ram[self.vm_addr.high_byte() as usize] = data;
+        self.ram[(self.vm_addr & 0x7FFF) as usize].set_high_byte(data);
         if self.video_port_control.increment_on_high_byte_access() {
             self.vm_addr += self.get_increment_amount();
         }
