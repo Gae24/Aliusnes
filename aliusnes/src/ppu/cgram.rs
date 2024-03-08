@@ -2,14 +2,14 @@ use std::usize;
 
 use crate::utils::int_traits::ManipulateU16;
 
-struct Cgram {
+pub(super) struct Cgram {
     ram: [u16; 0x100],
     cg_addr: u8,
     latch: Option<u8>,
 }
 
 impl Cgram {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             ram: [0; 0x100],
             cg_addr: 0x00,
@@ -17,12 +17,12 @@ impl Cgram {
         }
     }
 
-    fn cg_addr(&mut self, data: u8) {
+    pub fn cg_addr(&mut self, data: u8) {
         self.cg_addr = data;
         self.latch = None;
     }
 
-    fn cg_addr_write(&mut self, data: u8) {
+    pub fn cg_addr_write(&mut self, data: u8) {
         match self.latch {
             None => self.latch = Some(data),
             Some(byte) => {

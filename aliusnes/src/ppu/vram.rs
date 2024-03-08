@@ -2,7 +2,7 @@ use crate::utils::int_traits::ManipulateU16;
 
 bitfield! {
     #[derive(Clone, Copy)]
-    struct VideoPortControl(pub u8) {
+    pub struct VideoPortControl(pub u8) {
         increment_amount: u8 @ 0..=1,
         addr_remapping: u8 @ 2..=3,
         increment_on_high_byte_access: bool @ 7,
@@ -11,7 +11,7 @@ bitfield! {
 
 pub struct Vram {
     ram: [u16; 0x8000],
-    video_port_control: VideoPortControl,
+    pub video_port_control: VideoPortControl,
     vm_addr: u16,
     latch: u16,
 }

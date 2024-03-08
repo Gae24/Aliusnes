@@ -1,4 +1,4 @@
-mod access;
+pub mod access;
 pub mod dma;
 mod math;
 mod wram;

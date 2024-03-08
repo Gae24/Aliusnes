@@ -1,5 +1,5 @@
 bitfield! {
-    struct BgMode(u8) {
+    pub struct BgMode(pub u8) {
         bg_mode: u8 @ 0..=2,
         mode1_bg3_has_priority: bool @ 3,
         bg1_tile_size: bool @ 4,
@@ -10,7 +10,7 @@ bitfield! {
 }
 
 bitfield! {
-    struct Mosaic(u8) {
+    pub struct Mosaic(pub u8) {
         bg1_enabled: bool @ 0,
         bg2_enabled: bool @ 1,
         bg3_enabled: bool @ 2,
@@ -36,10 +36,10 @@ struct Bg {
     bg_vofs: u16,
 }
 
-struct Background {
+pub(super) struct Background {
     backgrounds: [Bg; 4],
-    bg_mode: BgMode,
-    mosaic: Mosaic,
+    pub bg_mode: BgMode,
+    pub mosaic: Mosaic,
     h_offset_latch: u16,
     offset_latch: u16,
 }
@@ -60,12 +60,17 @@ impl Background {
         }
     }
 
-    fn set_bg_tileset_addr(&mut self, idx: usize, data: u8) {
+    pub fn set_bg_sc(&mut self, addr_low_byte: usize, data: u8) {
+        let idx = (addr_low_byte - 0x0D) / 2;
+        self.backgrounds[idx].bg_sc = BgSc(data);
+    }
+
+    pub fn set_bg_tileset_addr(&mut self, idx: usize, data: u8) {
         self.backgrounds[idx].tileset_addr = ((data & 0x0F) as u16) << 12;
         self.backgrounds[idx + 1].tileset_addr = (((data >> 4) & 0x0F) as u16) << 12;
     }
 
-    fn set_bg_h_scroll_offset(&mut self, addr_low_byte: usize, data: u16) {
+    pub fn set_bg_h_scroll_offset(&mut self, addr_low_byte: usize, data: u16) {
         let idx = (addr_low_byte - 0x0D) / 2;
         self.backgrounds[idx].bg_hofs =
             data << 8 | (self.offset_latch & !7) | (self.h_offset_latch & 7);
@@ -73,8 +78,8 @@ impl Background {
         self.offset_latch = data;
     }
 
-    fn set_bg_v_scroll_offset(&mut self, addr_low_byte: usize, data: u16) {
-        let idx = (addr_low_byte - 0x0D) / 2;
+    pub fn set_bg_v_scroll_offset(&mut self, addr_low_byte: usize, data: u16) {
+        let idx = (addr_low_byte - 0x0E) / 2;
         self.backgrounds[idx].bg_vofs = data << 8 | self.offset_latch;
         self.offset_latch = data;
     }
