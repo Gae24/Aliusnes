@@ -1,4 +1,5 @@
 use self::background::{BgMode, Mosaic};
+use self::counters::Counters;
 use self::oam::Objsel;
 use self::vram::VideoPortControl;
 use self::{background::Background, cgram::Cgram, oam::Oam, vram::Vram};
@@ -7,16 +8,21 @@ use crate::utils::int_traits::ManipulateU16;
 
 mod background;
 mod cgram;
+mod counters;
 mod oam;
 mod vram;
+
+const SCANLINE_CYCLES: u16 = 1364;
 
 pub struct Ppu {
     background: Background,
     cgram: Cgram,
+    counters: Counters,
     oam: Oam,
     vram: Vram,
     ppu1_mdr: u8,
     ppu2_mdr: u8,
+    pub nmi_requested: bool,
 }
 
 impl Ppu {
@@ -24,10 +30,20 @@ impl Ppu {
         Self {
             background: Background::new(),
             cgram: Cgram::new(),
+            counters: Counters::new(),
             oam: Oam::new(),
             vram: Vram::new(),
             ppu1_mdr: 0,
             ppu2_mdr: 0,
+            nmi_requested: false,
+        }
+    }
+
+    pub fn tick(&mut self) {
+        self.counters.elapsed_cycles += 1;
+
+        if self.counters.elapsed_cycles >= self.counters.target_cycles {
+            //todo render scanline
         }
     }
 }
@@ -35,6 +51,10 @@ impl Ppu {
 impl Access for Ppu {
     fn read(&mut self, addr: u16) -> Option<u8> {
         match addr.low_byte() {
+            0x37 => {
+                self.counters.software_latch();
+                None
+            }
             0x38 => {
                 self.ppu1_mdr = self.oam.oa_addr_read();
                 Some(self.ppu1_mdr)
@@ -48,6 +68,8 @@ impl Access for Ppu {
                 Some(self.ppu1_mdr)
             }
             0x3B => Some(self.cg_addr_read()),
+            0x3C => Some(self.ophct_read()),
+            0x3D => Some(self.opvct_read()),
             _ => Some(self.ppu1_mdr),
         }
     }
