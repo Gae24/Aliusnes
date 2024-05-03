@@ -147,6 +147,22 @@ impl Cpu {
 
     pub fn step(&mut self, bus: &mut Bus) -> u32 {
         self.extra_cycles = 0;
+
+        if self.stopped {
+            return 0;
+        }
+        if self.waiting_interrupt {
+            if bus.requested_nmi() {
+                self.waiting_interrupt = false;
+                self.handle_interrupt(bus, Vectors::Nmi);
+            } else if !self.status.irq_disable() && bus.requested_irq() {
+                self.waiting_interrupt = false;
+                self.handle_interrupt(bus, Vectors::Irq);
+            } else {
+                return 0;
+            }
+        }
+
         let op = self.get_imm::<u8>(bus);
 
         // DMA will take place in the middle of the next instruction, just after its opcode is read from memory.
@@ -165,7 +181,7 @@ impl Cpu {
         self.extra_cycles + (opcode.cycles as u32)
     }
 
-    pub fn handle_interrupt(&mut self, bus: &mut Bus, interrupt: &Vectors) {
+    pub fn handle_interrupt(&mut self, bus: &mut Bus, interrupt: Vectors) {
         if !self.emulation_mode {
             do_push(self, bus, self.pbr);
         }

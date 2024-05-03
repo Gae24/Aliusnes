@@ -56,6 +56,16 @@ impl Bus {
                         Some(0)
                     } else {
                         match addr {
+                            0x4210 => Some(self.ppu.read_nmi_flag() | (self.mdr & 0x70)),
+                            0x4211 => Some(self.ppu.read_irq_flag() | (self.mdr & 0x7F)),
+                            0x4212 => {
+                                let joypad_autoread_status = false; // todo
+                                Some(
+                                    self.ppu.read_hv_status()
+                                        | joypad_autoread_status as u8
+                                        | (self.mdr & 0x3E),
+                                )
+                            }
                             0x4214..=0x4217 => self.math.read(addr),
                             0x4300..=0x437F => self.dma.read(addr),
                             _ => panic!("tried to read at {:#0x}", addr),
@@ -98,7 +108,12 @@ impl Bus {
                 0x21 => return self.write_b(addr, data),
                 0x40..=0x43 if !DMA => {
                     return match addr {
+                        0x4200 => self.ppu.write_nmitien(data),
                         0x4202..=0x4206 => self.math.write(addr, data),
+                        0x4207 => self.ppu.set_h_timer_low(data),
+                        0x4208 => self.ppu.set_h_timer_high(data),
+                        0x4209 => self.ppu.set_v_timer_low(data),
+                        0x420A => self.ppu.set_v_timer_high(data),
                         0x420B | 0x420C | 0x4300..=0x437f => self.dma.write(addr, data),
                         _ => panic!("tried to write {:#0x} at {:#0x}", data, addr),
                     }
@@ -143,5 +158,13 @@ impl Bus {
                 }
             },
         }
+    }
+
+    pub fn requested_nmi(&self) -> bool {
+        self.ppu.nmi_requested
+    }
+
+    pub fn requested_irq(&self) -> bool {
+        self.ppu.is_in_irq()
     }
 }
