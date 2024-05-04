@@ -1,4 +1,5 @@
 use self::background::{BgMode, Mosaic};
+use self::color_math::{Cgadsub, Cgwsel, ColorData, ColorMath};
 use self::counters::Counters;
 use self::oam::Objsel;
 use self::vram::VideoPortControl;
@@ -8,6 +9,7 @@ use crate::utils::int_traits::ManipulateU16;
 
 mod background;
 mod cgram;
+mod color_math;
 mod counters;
 mod oam;
 mod vram;
@@ -17,6 +19,7 @@ const SCANLINE_CYCLES: u16 = 1364;
 pub struct Ppu {
     background: Background,
     cgram: Cgram,
+    color_math: ColorMath,
     counters: Counters,
     oam: Oam,
     vram: Vram,
@@ -30,6 +33,7 @@ impl Ppu {
         Self {
             background: Background::new(),
             cgram: Cgram::new(),
+            color_math: ColorMath::new(),
             counters: Counters::new(),
             oam: Oam::new(),
             vram: Vram::new(),
@@ -100,6 +104,9 @@ impl Access for Ppu {
             0x19 => self.vram.vm_addh_write(data),
             0x21 => self.cgram.cg_addr(data),
             0x22 => self.cgram.cg_addr_write(data),
+            0x30 => self.color_math.cgwsel = Cgwsel(data),
+            0x31 => self.color_math.cgadsub = Cgadsub(data),
+            0x32 => self.color_math.color_data_write(ColorData(data)),
             _ => unreachable!(),
         }
     }
