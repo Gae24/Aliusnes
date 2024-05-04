@@ -41,7 +41,7 @@ impl Ppu {
         match self.cgram.latch {
             Some(high_byte) => {
                 self.cgram.cg_addr = self.cgram.cg_addr.wrapping_add(1);
-                self.cgram.latch = None;    
+                self.cgram.latch = None;
                 self.ppu2_mdr = (high_byte & 0x7F) | (self.ppu2_mdr & 0x80);
                 self.ppu2_mdr
             }
