@@ -5,6 +5,7 @@ use self::oam::Objsel;
 use self::vram::VideoPortControl;
 use self::{background::Background, cgram::Cgram, oam::Oam, vram::Vram};
 use crate::bus::access::Access;
+use crate::cart::info::Model;
 use crate::utils::int_traits::ManipulateU16;
 
 mod background;
@@ -16,6 +17,17 @@ mod vram;
 
 const SCANLINE_CYCLES: u16 = 1364;
 
+const NTSC_SCANLINES: u16 = 262;
+const PAL_SCANLINES: u16 = 312;
+
+pub const WIDTH: usize = 256;
+
+pub const NTSC_HEIGHT: usize = 224;
+pub const PAL_HEIGHT: usize = 239;
+
+pub const FB_WIDTH: usize = WIDTH << 1;
+pub const FB_HEIGHT: usize = PAL_HEIGHT << 1;
+
 pub struct Ppu {
     background: Background,
     cgram: Cgram,
@@ -25,20 +37,26 @@ pub struct Ppu {
     vram: Vram,
     ppu1_mdr: u8,
     ppu2_mdr: u8,
+    pub frame_buffer: [u32; FB_WIDTH * FB_HEIGHT],
     pub nmi_requested: bool,
 }
 
 impl Ppu {
-    pub fn new() -> Self {
+    pub fn new(model: Model) -> Self {
+        let (view_height, scanlines) = match model {
+            Model::Ntsc => (NTSC_HEIGHT, NTSC_SCANLINES),
+            Model::Pal => (PAL_HEIGHT, PAL_SCANLINES),
+        };
         Self {
             background: Background::new(),
             cgram: Cgram::new(),
             color_math: ColorMath::new(),
-            counters: Counters::new(),
+            counters: Counters::new(view_height + 1, scanlines),
             oam: Oam::new(),
             vram: Vram::new(),
             ppu1_mdr: 0,
             ppu2_mdr: 0,
+            frame_buffer: [0; FB_WIDTH * FB_HEIGHT],
             nmi_requested: false,
         }
     }
@@ -46,7 +64,7 @@ impl Ppu {
     pub fn tick(&mut self) {
         self.counters.elapsed_cycles += 1;
 
-        if self.counters.elapsed_cycles >= self.counters.target_cycles {
+        if self.counters.elapsed_cycles >= self.counters.cycles_per_scanline {
             //todo render scanline
         }
     }
