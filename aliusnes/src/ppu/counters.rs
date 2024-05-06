@@ -26,8 +26,10 @@ bitfield! {
 
 pub struct Counters {
     pub vertical_counter: u16,
+    pub vblank_start: usize,
+    pub vblank_end: u16,
     pub elapsed_cycles: u16,
-    pub target_cycles: u16,
+    pub cycles_per_scanline: u16,
 
     counter_latch: bool,
     ophct_latch: bool,
@@ -44,11 +46,13 @@ pub struct Counters {
 }
 
 impl Counters {
-    pub fn new() -> Self {
+    pub fn new(vblank_start: usize, vblank_end: u16) -> Self {
         Self {
             vertical_counter: 0,
+            vblank_start,
+            vblank_end,
             elapsed_cycles: 0,
-            target_cycles: super::SCANLINE_CYCLES,
+            cycles_per_scanline: super::SCANLINE_CYCLES,
             counter_latch: false,
             ophct_latch: false,
             opvct_latch: false,
@@ -64,7 +68,7 @@ impl Counters {
     }
 
     fn h_dot(&self) -> u16 {
-        self.elapsed_cycles % (self.target_cycles / 4)
+        self.elapsed_cycles % (self.cycles_per_scanline / 4)
     }
 
     pub fn software_latch(&mut self) {

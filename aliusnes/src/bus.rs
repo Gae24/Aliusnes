@@ -21,10 +21,10 @@ impl Bus {
         Self {
             mdr: 0,
             fast_rom_enabled: false,
+            ppu: Ppu::new(cart.model),
             cart,
             dma: Dma::new(),
             math: Math::new(),
-            ppu: Ppu::new(),
             wram: Wram::new(),
         }
     }
