@@ -1,11 +1,12 @@
 pub mod header;
-mod info;
+pub mod info;
 
 use header::Header;
-use info::Mapper;
+use info::{Mapper, Model};
 
 pub struct Cart {
     header: Header,
+    pub model: Model,
     rom: Vec<u8>,
     ram: Vec<u8>,
 }
@@ -13,6 +14,7 @@ pub struct Cart {
 impl Cart {
     pub fn new(header: Header, rom: &[u8], ram: Vec<u8>) -> Self {
         Cart {
+            model: header.country.to_model(),
             header,
             rom: rom.to_vec(),
             ram,
