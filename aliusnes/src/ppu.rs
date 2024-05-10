@@ -1,12 +1,13 @@
-use self::background::{BgMode, Mosaic};
-use self::color_math::{Cgadsub, Cgwsel, ColorData, ColorMath};
-use self::counters::Counters;
-use self::oam::Objsel;
-use self::vram::VideoPortControl;
-use self::{background::Background, cgram::Cgram, oam::Oam, vram::Vram};
-use crate::bus::access::Access;
-use crate::cart::info::Model;
-use crate::utils::int_traits::ManipulateU16;
+use crate::{bus::access::Access, cart::info::Model, utils::int_traits::ManipulateU16};
+
+use self::{
+    background::{Background, BgMode, Mosaic},
+    cgram::Cgram,
+    color_math::{Cgadsub, Cgwsel, ColorData, ColorMath},
+    counters::Counters,
+    oam::{Oam, Objsel},
+    vram::{VideoPortControl, Vram},
+};
 
 mod background;
 mod cgram;
@@ -28,6 +29,24 @@ pub const PAL_HEIGHT: usize = 239;
 pub const FB_WIDTH: usize = WIDTH << 1;
 pub const FB_HEIGHT: usize = PAL_HEIGHT << 1;
 
+bitfield! {
+    struct IniDisplay(pub u8) {
+        screen_brightness: u8 @ 0..=3,
+        force_blanking: bool @ 7,
+    }
+}
+
+bitfield! {
+    struct SetIni(pub u8) {
+        screen_interlacing: bool @ 0,
+        obj_interlacing: bool @ 1,
+        overscan_mode: bool @ 2,
+        high_res_mode: bool @ 3,
+        extbg_mode: bool @ 6,
+        external_sync: bool @ 7,
+    }
+}
+
 pub struct Ppu {
     background: Background,
     cgram: Cgram,
@@ -37,25 +56,29 @@ pub struct Ppu {
     vram: Vram,
     ppu1_mdr: u8,
     ppu2_mdr: u8,
+
+    ini_display: IniDisplay,
+    set_ini: SetIni,
     pub frame_buffer: [u32; FB_WIDTH * FB_HEIGHT],
     pub nmi_requested: bool,
 }
 
 impl Ppu {
     pub fn new(model: Model) -> Self {
-        let (view_height, scanlines) = match model {
-            Model::Ntsc => (NTSC_HEIGHT, NTSC_SCANLINES),
-            Model::Pal => (PAL_HEIGHT, PAL_SCANLINES),
-        };
+        let stat78 = counters::Stat78(0)
+            .with_ppu2_version(2)
+            .with_is_pal(model == Model::Pal);
         Self {
             background: Background::new(),
             cgram: Cgram::new(),
             color_math: ColorMath::new(),
-            counters: Counters::new(view_height + 1, scanlines),
+            counters: Counters::new(stat78),
             oam: Oam::new(),
             vram: Vram::new(),
             ppu1_mdr: 0,
             ppu2_mdr: 0,
+            ini_display: IniDisplay(0),
+            set_ini: SetIni(0),
             frame_buffer: [0; FB_WIDTH * FB_HEIGHT],
             nmi_requested: false,
         }
@@ -92,6 +115,7 @@ impl Access for Ppu {
             0x3B => Some(self.cg_addr_read()),
             0x3C => Some(self.ophct_read()),
             0x3D => Some(self.opvct_read()),
+            0x3F => Some(self.status78_read()),
             _ => Some(self.ppu1_mdr),
         }
     }
@@ -99,6 +123,7 @@ impl Access for Ppu {
     fn write(&mut self, addr: u16, data: u8) {
         let nibble = addr.low_byte() as usize;
         match nibble {
+            0x00 => self.ini_display = IniDisplay(data),
             0x01 => self.oam.objsel = Objsel(data),
             0x02 => self.oam.oa_addl(data),
             0x03 => self.oam.oa_addh(data),
@@ -125,6 +150,7 @@ impl Access for Ppu {
             0x30 => self.color_math.cgwsel = Cgwsel(data),
             0x31 => self.color_math.cgadsub = Cgadsub(data),
             0x32 => self.color_math.color_data_write(ColorData(data)),
+            0x33 => self.set_ini = SetIni(data),
             _ => unreachable!(),
         }
     }

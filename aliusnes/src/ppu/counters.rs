@@ -1,6 +1,7 @@
-use crate::utils::int_traits::ManipulateU16;
-
-use super::Ppu;
+use crate::{
+    ppu::{Ppu, NTSC_HEIGHT, NTSC_SCANLINES, PAL_HEIGHT, PAL_SCANLINES, SCANLINE_CYCLES},
+    utils::int_traits::ManipulateU16,
+};
 
 bitfield! {
     pub struct Nmitimen(pub u8) {
@@ -24,6 +25,15 @@ bitfield! {
     }
 }
 
+bitfield! {
+    pub struct Stat78(pub u8) {
+        pub ppu2_version: u8 @ 0..=3,
+        pub is_pal: bool @ 4,
+        counter_latch: bool @ 6,
+        frame_is_even: bool @ 7,
+    }
+}
+
 pub struct Counters {
     pub vertical_counter: u16,
     pub vblank_start: usize,
@@ -31,7 +41,6 @@ pub struct Counters {
     pub elapsed_cycles: u16,
     pub cycles_per_scanline: u16,
 
-    counter_latch: bool,
     ophct_latch: bool,
     opvct_latch: bool,
     output_horizontal_counter: u16,
@@ -41,19 +50,23 @@ pub struct Counters {
 
     nmitimen: Nmitimen,
     rdnmi: Rdnmi,
+    stat78: Stat78,
     hv_status: HvStatus,
     in_irq: bool,
 }
 
 impl Counters {
-    pub fn new(vblank_start: usize, vblank_end: u16) -> Self {
+    pub fn new(stat78: Stat78) -> Self {
+        let (vblank_start, vblank_end) = match stat78.is_pal() {
+            false => (NTSC_HEIGHT + 1, NTSC_SCANLINES),
+            true => (PAL_HEIGHT + 1, PAL_SCANLINES),
+        };
         Self {
             vertical_counter: 0,
             vblank_start,
             vblank_end,
             elapsed_cycles: 0,
             cycles_per_scanline: super::SCANLINE_CYCLES,
-            counter_latch: false,
             ophct_latch: false,
             opvct_latch: false,
             output_horizontal_counter: 0,
@@ -62,6 +75,7 @@ impl Counters {
             v_timer_target: 0x1FF,
             nmitimen: Nmitimen(0),
             rdnmi: Rdnmi(0x2),
+            stat78,
             hv_status: HvStatus(0),
             in_irq: false,
         }
@@ -72,17 +86,17 @@ impl Counters {
     }
 
     pub fn software_latch(&mut self) {
-        if !self.counter_latch {
+        if !self.stat78.counter_latch() {
             self.output_vertical_counter = self.vertical_counter;
             self.output_horizontal_counter = self.h_dot();
         }
-        self.counter_latch = true;
+        self.stat78.set_counter_latch(true);
     }
 
     pub fn reset_latches(&mut self) {
         self.ophct_latch = false;
         self.opvct_latch = false;
-        self.counter_latch = false;
+        self.stat78.set_counter_latch(false);
     }
 }
 
@@ -148,6 +162,12 @@ impl Ppu {
         let result = (self.counters.in_irq as u8) << 7;
         self.counters.in_irq = false;
         result
+    }
+
+    pub fn status78_read(&mut self) -> u8 {
+        self.ppu2_mdr = (self.ppu2_mdr & 0x20) | self.counters.stat78.0;
+        self.counters.reset_latches();
+        self.ppu2_mdr
     }
 
     pub fn is_in_irq(&self) -> bool {
