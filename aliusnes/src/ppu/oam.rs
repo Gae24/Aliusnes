@@ -42,7 +42,7 @@ impl Oam {
         if (self.internal_addr & 1) == 0 {
             self.latch = data;
         }
-        if self.internal_addr < 0x200 && (self.internal_addr & 1) == 0 {
+        if self.internal_addr < 0x200 && (self.internal_addr & 1) == 1 {
             self.ram[(self.internal_addr - 1) as usize] = self.latch;
             self.ram[self.internal_addr as usize] = data;
         }
