@@ -59,7 +59,7 @@ impl Vram {
 
     fn update_latch(&mut self) {
         let addr_latch = self.translate_vm_addr();
-        self.latch = self.ram[(addr_latch & 0x7FFF) as usize];
+        self.latch = self[addr_latch as usize];
     }
 
     pub fn vm_addl(&mut self, data: u8) {
@@ -73,14 +73,16 @@ impl Vram {
     }
 
     pub fn vm_addl_write(&mut self, data: u8) {
-        self.ram[(self.vm_addr & 0x7FFF) as usize].set_low_byte(data);
+        let addr = self.vm_addr as usize;
+        self[addr].set_low_byte(data);
         if !self.video_port_control.increment_on_high_byte_access() {
             self.vm_addr += self.get_increment_amount();
         }
     }
 
     pub fn vm_addh_write(&mut self, data: u8) {
-        self.ram[(self.vm_addr & 0x7FFF) as usize].set_high_byte(data);
+        let addr = self.vm_addr as usize;
+        self[addr].set_high_byte(data);
         if self.video_port_control.increment_on_high_byte_access() {
             self.vm_addr += self.get_increment_amount();
         }
@@ -102,5 +104,19 @@ impl Vram {
             self.vm_addr += self.get_increment_amount();
         }
         result
+    }
+}
+
+impl std::ops::Index<usize> for Vram {
+    type Output = u16;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.ram[index & 0x7FFF]
+    }
+}
+
+impl std::ops::IndexMut<usize> for Vram {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.ram[index & 0x7FFF]
     }
 }
