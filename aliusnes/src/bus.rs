@@ -68,7 +68,10 @@ impl Bus {
                             }
                             0x4214..=0x4217 => self.math.read(addr),
                             0x4300..=0x437F => self.dma.read(addr),
-                            _ => panic!("tried to read at {:#0x}", addr),
+                            _ => {
+                                println!("Tried to read at {:#0x}", addr);
+                                None
+                            }
                         }
                     }
                 }
@@ -93,7 +96,7 @@ impl Bus {
             0x00..=0x33 => self.ppu.write(addr, data),
             0x40..=0x43 => todo!("apu area"),
             0x80..=0x83 => self.wram.write(addr, data),
-            _ => panic!("tried to write {:#0x} at {:#0x}", data, addr),
+            _ => println!("Tried to write at {:#0x} val: {:#04x}", addr, data),
         }
     }
 
@@ -116,7 +119,7 @@ impl Bus {
                         0x420A => self.ppu.set_v_timer_high(data),
                         0x420B | 0x420C | 0x4300..=0x437f => self.dma.write(addr, data),
                         0x420D => self.fast_rom_enabled = data & 1 != 0,
-                        _ => panic!("tried to write {:#0x} at {:#0x}", data, addr),
+                        _ => println!("Tried to write at {:#0x} val: {:#04x}", addr, data),
                     }
                 }
                 _ => {}

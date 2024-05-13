@@ -1,5 +1,3 @@
-use crate::{bus::access::Access, cart::info::Model, utils::int_traits::ManipulateU16};
-
 use self::{
     background::{Background, BgMode, Mosaic},
     cgram::Cgram,
@@ -8,6 +6,7 @@ use self::{
     oam::{Oam, Objsel},
     vram::{VideoPortControl, Vram},
 };
+use crate::{bus::access::Access, cart::info::Model, utils::int_traits::ManipulateU16};
 
 mod background;
 mod cgram;
@@ -116,7 +115,10 @@ impl Access for Ppu {
             0x3C => Some(self.ophct_read()),
             0x3D => Some(self.opvct_read()),
             0x3F => Some(self.status78_read()),
-            _ => Some(self.ppu1_mdr),
+            _ => {
+                println!("Tried to read at {:#0x}", addr);
+                Some(self.ppu1_mdr)
+            }
         }
     }
 
@@ -130,7 +132,7 @@ impl Access for Ppu {
             0x04 => self.oam.oa_addr_write(data),
             0x05 => self.background.bg_mode = BgMode(data),
             0x06 => self.background.mosaic = Mosaic(data),
-            0x07 | 0x08 | 0x09 | 0x0A => self.background.set_bg_sc(nibble, data),
+            0x07..=0x0A => self.background.set_bg_sc(nibble, data),
             0x0B => self.background.set_bg_tileset_addr(0, data),
             0x0C => self.background.set_bg_tileset_addr(2, data),
             // todo 0D and 0E are also mode 7 regs
@@ -151,7 +153,7 @@ impl Access for Ppu {
             0x31 => self.color_math.cgadsub = Cgadsub(data),
             0x32 => self.color_math.color_data_write(ColorData(data)),
             0x33 => self.set_ini = SetIni(data),
-            _ => unreachable!(),
+            _ => println!("Tried to write at {:#0x} val: {:#04x}", addr, data),
         }
     }
 }
