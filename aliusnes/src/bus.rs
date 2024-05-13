@@ -115,6 +115,7 @@ impl Bus {
                         0x4209 => self.ppu.set_v_timer_low(data),
                         0x420A => self.ppu.set_v_timer_high(data),
                         0x420B | 0x420C | 0x4300..=0x437f => self.dma.write(addr, data),
+                        0x420D => self.fast_rom_enabled = data & 1 != 0,
                         _ => panic!("tried to write {:#0x} at {:#0x}", data, addr),
                     }
                 }
