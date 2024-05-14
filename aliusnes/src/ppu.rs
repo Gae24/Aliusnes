@@ -17,8 +17,8 @@ mod vram;
 
 const SCANLINE_CYCLES: u16 = 1364;
 
-const NTSC_SCANLINES: u16 = 262;
-const PAL_SCANLINES: u16 = 312;
+const NTSC_SCANLINES: usize = 262;
+const PAL_SCANLINES: usize = 312;
 
 pub const WIDTH: usize = 256;
 
@@ -84,10 +84,14 @@ impl Ppu {
     }
 
     pub fn tick(&mut self) {
-        self.counters.elapsed_cycles += 1;
+        self.counters.update_status(
+            self.set_ini.overscan_mode(),
+            self.set_ini.screen_interlacing(),
+        );
 
-        if self.counters.elapsed_cycles >= self.counters.cycles_per_scanline {
-            //todo render scanline
+        if self.counters.ready_to_draw {
+            self.render_scanline(self.counters.vertical_counter);
+            self.counters.ready_to_draw = false;
         }
     }
 }
