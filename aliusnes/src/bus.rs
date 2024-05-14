@@ -29,6 +29,12 @@ impl Bus {
         }
     }
 
+    pub fn tick(&mut self) {
+        //todo apu, joypad, hdma
+
+        self.ppu.tick();
+    }
+
     pub fn read_b(&mut self, addr: u16) -> u8 {
         if let Some(val) = match addr.low_byte() {
             0x34..=0x3F => self.ppu.read(addr),
