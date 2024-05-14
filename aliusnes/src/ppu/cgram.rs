@@ -1,8 +1,5 @@
-use std::usize;
-
-use crate::utils::int_traits::ManipulateU16;
-
 use super::Ppu;
+use crate::utils::int_traits::ManipulateU16;
 
 pub(super) struct Cgram {
     ram: [u16; 0x100],
