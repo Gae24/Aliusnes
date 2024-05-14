@@ -195,12 +195,12 @@ impl Cpu {
 
     pub fn read_8(&mut self, bus: &mut Bus, addr: u32) -> u8 {
         self.extra_cycles += bus.memory_access_cycles(addr);
-        bus.read(addr)
+        bus.read::<false>(addr)
     }
 
     pub fn write_8(&mut self, bus: &mut Bus, addr: u32, data: u8) {
         self.extra_cycles += bus.memory_access_cycles(addr);
-        bus.write(addr, data);
+        bus.write::<false>(addr, data);
     }
 
     pub fn read_16(&mut self, bus: &mut Bus, addr: u32) -> u16 {
