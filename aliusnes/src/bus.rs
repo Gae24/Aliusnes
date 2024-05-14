@@ -1,10 +1,10 @@
-mod access;
+use self::{access::Access, dma::Dma, math::Math, wram::Wram};
+use crate::{cart::Cart, ppu::Ppu, utils::int_traits::ManipulateU16};
+
+pub mod access;
 pub mod dma;
 mod math;
 mod wram;
-
-use self::{access::Access, dma::Dma, math::Math, wram::Wram};
-use crate::{cart::Cart, utils::int_traits::ManipulateU16};
 
 pub struct Bus {
     mdr: u8,
@@ -12,6 +12,7 @@ pub struct Bus {
     cart: Cart,
     pub dma: Dma,
     math: Math,
+    ppu: Ppu,
     wram: Wram,
 }
 
@@ -20,6 +21,7 @@ impl Bus {
         Self {
             mdr: 0,
             fast_rom_enabled: false,
+            ppu: Ppu::new(cart.model),
             cart,
             dma: Dma::new(),
             math: Math::new(),
@@ -27,9 +29,15 @@ impl Bus {
         }
     }
 
+    pub fn tick(&mut self) {
+        //todo apu, joypad, hdma
+
+        self.ppu.tick();
+    }
+
     pub fn read_b(&mut self, addr: u16) -> u8 {
         if let Some(val) = match addr.low_byte() {
-            0x34..=0x3F => todo!("ppu area"),
+            0x34..=0x3F => self.ppu.read(addr),
             0x40..=0x43 => todo!("apu area"),
             0x80 => self.wram.read(addr),
             _ => None,
@@ -54,9 +62,22 @@ impl Bus {
                         Some(0)
                     } else {
                         match addr {
+                            0x4210 => Some(self.ppu.read_nmi_flag() | (self.mdr & 0x70)),
+                            0x4211 => Some(self.ppu.read_irq_flag() | (self.mdr & 0x7F)),
+                            0x4212 => {
+                                let joypad_autoread_status = false; // todo
+                                Some(
+                                    self.ppu.read_hv_status()
+                                        | joypad_autoread_status as u8
+                                        | (self.mdr & 0x3E),
+                                )
+                            }
                             0x4214..=0x4217 => self.math.read(addr),
                             0x4300..=0x437F => self.dma.read(addr),
-                            _ => panic!("tried to read at {:#0x}", addr),
+                            _ => {
+                                println!("Tried to read at {:#0x}", addr);
+                                None
+                            }
                         }
                     }
                 }
@@ -78,10 +99,10 @@ impl Bus {
 
     pub fn write_b(&mut self, addr: u16, data: u8) {
         match addr.low_byte() {
-            0x00..=0x33 => todo!("ppu area"),
+            0x00..=0x33 => self.ppu.write(addr, data),
             0x40..=0x43 => todo!("apu area"),
             0x80..=0x83 => self.wram.write(addr, data),
-            _ => panic!("tried to write {:#0x} at {:#0x}", data, addr),
+            _ => println!("Tried to write at {:#0x} val: {:#04x}", addr, data),
         }
     }
 
@@ -89,20 +110,25 @@ impl Bus {
         self.mdr = data;
         let bank = (full_addr >> 16) as u8;
         let addr = full_addr as u16;
-
         match bank {
             0x00..=0x3F | 0x80..=0xBF => match addr.high_byte() {
                 0x00..=0x1F => return self.wram.ram[addr as usize & 0x1FFF] = data,
-                0x21 => return self.write_b(addr, data),
-                0x40..=0x43 if !DMA => {
+                0x21 | 0x40..=0x43 => {
                     return match addr {
+                        0x4200 => self.ppu.write_nmitien(data),
                         0x4202..=0x4206 => self.math.write(addr, data),
+                        0x4207 => self.ppu.set_h_timer_low(data),
+                        0x4208 => self.ppu.set_h_timer_high(data),
+                        0x4209 => self.ppu.set_v_timer_low(data),
+                        0x420A => self.ppu.set_v_timer_high(data),
                         0x420B | 0x420C | 0x4300..=0x437f => self.dma.write(addr, data),
-                        _ => panic!("tried to write {:#0x} at {:#0x}", data, addr),
+                        0x420D => self.fast_rom_enabled = data & 1 != 0,
+                        _ => println!("Tried to write at {:#0x} val: {:#04x}", addr, data),
                     }
                 }
                 _ => {}
             },
+
             0x7E..=0x7F => return self.wram.ram[full_addr as usize & 0x1_FFFF] = data,
             _ => {}
         }
@@ -141,5 +167,13 @@ impl Bus {
                 }
             },
         }
+    }
+
+    pub fn requested_nmi(&self) -> bool {
+        self.ppu.nmi_requested
+    }
+
+    pub fn requested_irq(&self) -> bool {
+        self.ppu.is_in_irq()
     }
 }

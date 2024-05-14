@@ -23,6 +23,12 @@ pub struct Chipset {
     pub has_battery: bool,
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum Model {
+    Ntsc,
+    Pal,
+}
+
 #[derive(Debug)]
 pub enum Region {
     Japan,
@@ -44,4 +50,18 @@ pub enum Region {
     Brazil,
     Australia,
     Unknown(u8),
+}
+
+impl Region {
+    pub(super) fn to_model(&self) -> Model {
+        match self {
+            Region::Japan
+            | Region::SouthKorea
+            | Region::NorthAmerica
+            | Region::Canada
+            | Region::Brazil
+            | Region::Unknown(_) => Model::Ntsc,
+            _ => Model::Pal,
+        }
+    }
 }

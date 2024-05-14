@@ -26,6 +26,10 @@ impl Emu {
             ref mut bus,
             ref mut cpu,
         } = self;
-        let _ticks = cpu.step(bus);
+        let ticks = cpu.step(bus);
+
+        for _ in 0..ticks {
+            bus.tick();
+        }
     }
 }
