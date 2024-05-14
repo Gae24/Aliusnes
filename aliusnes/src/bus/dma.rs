@@ -2,6 +2,10 @@ use crate::utils::int_traits::ManipulateU16;
 
 use super::{access::Access, Bus};
 
+use crate::utils::int_traits::ManipulateU16;
+
+use super::{access::Access, Bus};
+
 bitfield! {
     #[derive(Copy, Clone)]
     pub struct Parameters(u8) {
