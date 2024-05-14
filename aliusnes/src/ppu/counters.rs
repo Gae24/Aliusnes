@@ -30,7 +30,7 @@ bitfield! {
         pub ppu2_version: u8 @ 0..=3,
         pub is_pal: bool @ 4,
         counter_latch: bool @ 6,
-        frame_is_even: bool @ 7,
+        odd_frame: bool @ 7,
     }
 }
 
@@ -98,6 +98,19 @@ impl Counters {
         self.opvct_latch = false;
         self.stat78.set_counter_latch(false);
     }
+
+    fn check_counters_timer_hit(&mut self) {
+        let h_dot = self.h_dot();
+        self.in_irq = match self.nmitimen.hv_timer_mode() {
+            0x00 => false,
+            0x01 => h_dot == self.h_timer_target,
+            0x10 => self.vertical_counter as u16 == self.v_timer_target && h_dot == 0,
+            0x11 => {
+                self.vertical_counter as u16 == self.v_timer_target && h_dot == self.h_timer_target
+            }
+            _ => unreachable!(),
+        }
+    }
 }
 
 impl Ppu {
@@ -146,6 +159,7 @@ impl Ppu {
             && nmitimen.nmi_enabled()
             && self.counters.rdnmi.in_nmi();
         self.counters.nmitimen = nmitimen;
+        self.counters.check_counters_timer_hit();
     }
 
     pub fn read_nmi_flag(&mut self) -> u8 {
