@@ -1,10 +1,10 @@
+use self::{access::Access, dma::Dma, math::Math, wram::Wram};
+use crate::{cart::Cart, ppu::Ppu, utils::int_traits::ManipulateU16};
+
 pub mod access;
 pub mod dma;
 mod math;
 mod wram;
-
-use self::{access::Access, dma::Dma, math::Math, wram::Wram};
-use crate::{cart::Cart, ppu::Ppu, utils::int_traits::ManipulateU16};
 
 pub struct Bus {
     mdr: u8,
