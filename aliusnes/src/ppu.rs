@@ -90,7 +90,6 @@ impl Ppu {
         );
 
         if self.counters.ready_to_draw {
-            self.render_scanline(self.counters.vertical_counter);
             self.counters.ready_to_draw = false;
         }
     }

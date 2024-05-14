@@ -1,6 +1,7 @@
-use crate::utils::int_traits::ManipulateU16;
-
-use super::{access::Access, Bus};
+use crate::{
+    bus::{Access, Bus},
+    utils::int_traits::ManipulateU16,
+};
 
 use crate::utils::int_traits::ManipulateU16;
 
