@@ -3,6 +3,8 @@ use crate::{
     utils::int_traits::ManipulateU16,
 };
 
+const HBLANK_START: u16 = 274;
+
 bitfield! {
     pub struct Nmitimen(pub u8) {
         joypad_enable: bool @ 0,
@@ -35,11 +37,12 @@ bitfield! {
 }
 
 pub struct Counters {
-    pub vertical_counter: u16,
-    pub vblank_start: usize,
-    pub vblank_end: u16,
-    pub elapsed_cycles: u16,
-    pub cycles_per_scanline: u16,
+    pub vertical_counter: usize,
+    vblank_start: usize,
+    vblank_end: usize,
+    elapsed_cycles: u16,
+    cycles_per_scanline: u16,
+    frame_counter: u64,
 
     ophct_latch: bool,
     opvct_latch: bool,
@@ -53,6 +56,8 @@ pub struct Counters {
     stat78: Stat78,
     hv_status: HvStatus,
     in_irq: bool,
+
+    pub ready_to_draw: bool,
 }
 
 impl Counters {
@@ -67,6 +72,7 @@ impl Counters {
             vblank_end,
             elapsed_cycles: 0,
             cycles_per_scanline: super::SCANLINE_CYCLES,
+            frame_counter: 0,
             ophct_latch: false,
             opvct_latch: false,
             output_horizontal_counter: 0,
@@ -78,6 +84,7 @@ impl Counters {
             stat78,
             hv_status: HvStatus(0),
             in_irq: false,
+            ready_to_draw: false,
         }
     }
 
@@ -87,7 +94,7 @@ impl Counters {
 
     pub fn software_latch(&mut self) {
         if !self.stat78.counter_latch() {
-            self.output_vertical_counter = self.vertical_counter;
+            self.output_vertical_counter = self.vertical_counter as u16;
             self.output_horizontal_counter = self.h_dot();
         }
         self.stat78.set_counter_latch(true);
@@ -110,6 +117,68 @@ impl Counters {
             }
             _ => unreachable!(),
         }
+    }
+
+    pub fn entered_hblank(&self) -> bool {
+        self.h_dot() >= HBLANK_START
+    }
+
+    pub fn start_frame(&mut self, overscan: bool, interlacing: bool) {
+        self.frame_counter += 1;
+        self.stat78.set_odd_frame(self.frame_counter & 1 == 1);
+        self.vertical_counter = 0;
+        self.rdnmi.set_in_nmi(false);
+        self.hv_status.set_in_vblank(false);
+        self.vblank_start = if overscan { PAL_HEIGHT } else { NTSC_HEIGHT } + 1;
+        self.vblank_end = if self.stat78.is_pal() {
+            PAL_SCANLINES
+        } else {
+            NTSC_SCANLINES
+        } + (interlacing && !self.stat78.odd_frame()) as usize;
+    }
+
+    pub fn start_scanline(&mut self, interlacing: bool) {
+        if self.vertical_counter == 311
+            && self.stat78.odd_frame()
+            && self.stat78.is_pal()
+            && interlacing
+        {
+            self.cycles_per_scanline = SCANLINE_CYCLES + 4;
+        } else if self.vertical_counter == 240
+            && self.stat78.odd_frame()
+            && !self.stat78.is_pal()
+            && !interlacing
+        {
+            self.cycles_per_scanline = SCANLINE_CYCLES - 4;
+        } else {
+            self.cycles_per_scanline = SCANLINE_CYCLES;
+        }
+    }
+
+    pub fn update_status(&mut self, overscan: bool, interlacing: bool) {
+        self.elapsed_cycles += 1;
+
+        if self.entered_hblank() && !self.hv_status.in_hblank() {
+            self.hv_status.set_in_hblank(true);
+        }
+
+        if self.elapsed_cycles >= self.cycles_per_scanline {
+            self.elapsed_cycles -= self.cycles_per_scanline;
+            self.vertical_counter += 1;
+            if self.vertical_counter == self.vblank_end {
+                self.start_frame(overscan, interlacing);
+            }
+
+            self.start_scanline(interlacing);
+
+            if self.vertical_counter == self.vblank_start {
+                self.hv_status.set_in_vblank(true);
+                self.rdnmi.set_in_nmi(true);
+            } else {
+                self.ready_to_draw = true;
+            }
+        }
+        self.check_counters_timer_hit();
     }
 }
 
