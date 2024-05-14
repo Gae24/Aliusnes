@@ -15,6 +15,7 @@ pub(super) struct Oam {
     oa_addr: u16,
     internal_addr: u16,
     latch: u8,
+    pub enabled_on_main_screen: bool,
 }
 
 impl Oam {
@@ -25,6 +26,7 @@ impl Oam {
             oa_addr: 0x0000,
             internal_addr: 0x0000,
             latch: 0x00,
+            enabled_on_main_screen: false,
         }
     }
 
@@ -49,12 +51,12 @@ impl Oam {
         if self.internal_addr >= 0x200 {
             self.ram[self.internal_addr as usize] = data;
         }
-        self.internal_addr += 1;
+        self.internal_addr = (self.internal_addr + 1) % 0x220;
     }
 
     pub fn oa_addr_read(&mut self) -> u8 {
         let result = self.ram[self.internal_addr as usize];
-        self.internal_addr += 1;
+        self.internal_addr = (self.internal_addr + 1) % 0x220;
         result
     }
 }

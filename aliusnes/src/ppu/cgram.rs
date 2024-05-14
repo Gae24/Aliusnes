@@ -1,8 +1,8 @@
-use super::Ppu;
+use super::{tile::BitPlane, Ppu};
 use crate::utils::int_traits::ManipulateU16;
 
 pub(super) struct Cgram {
-    ram: [u16; 0x100],
+    pub ram: [u16; 0x100],
     cg_addr: u8,
     latch: Option<u8>,
 }
@@ -30,6 +30,20 @@ impl Cgram {
                 self.latch = None;
             }
         }
+    }
+
+    pub fn pixel_color<T: BitPlane, const BG_MODE: u8>(
+        &self,
+        bg_index: u8,
+        palette: u8,
+        index: u8,
+    ) -> u16 {
+        let starting_palette_entry = match T::PLANES {
+            2 if BG_MODE == 0 => bg_index * 32 + (palette * T::NUM_COLORS),
+            8 => 0,
+            _ => palette * T::NUM_COLORS,
+        };
+        self.ram[(starting_palette_entry + index) as usize]
     }
 }
 

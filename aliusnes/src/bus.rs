@@ -12,7 +12,7 @@ pub struct Bus {
     cart: Cart,
     pub dma: Dma,
     math: Math,
-    ppu: Ppu,
+    pub ppu: Ppu,
     wram: Wram,
 }
 
@@ -113,7 +113,8 @@ impl Bus {
         match bank {
             0x00..=0x3F | 0x80..=0xBF => match addr.high_byte() {
                 0x00..=0x1F => return self.wram.ram[addr as usize & 0x1FFF] = data,
-                0x21 | 0x40..=0x43 => {
+                0x21 => return self.write_b(addr, data),
+                0x40..=0x43 if !DMA => {
                     return match addr {
                         0x4200 => self.ppu.write_nmitien(data),
                         0x4202..=0x4206 => self.math.write(addr, data),

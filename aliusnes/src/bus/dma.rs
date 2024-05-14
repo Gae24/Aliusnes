@@ -74,7 +74,7 @@ impl Dma {
                 5 => vec![0, 1, 0, 1],
                 _ => unreachable!(),
             };
-
+            // log::warn!("Channel {index} will transfer {count} Bytes");
             for i in 0..count {
                 let a_addr = channel.a_addr_or_h_table_addr as u32
                     | (channel.a_bank_or_h_table_bank as u32) << 16;
