@@ -27,10 +27,10 @@ pub struct Cpu {
     emulation_mode: bool,
     pub stopped: bool,
     pub waiting_interrupt: bool,
-    pub extra_cycles: u32,
+    pub cycles: u32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum AddressingMode {
     Implied,
     Immediate,
@@ -75,7 +75,7 @@ impl Cpu {
             emulation_mode: true,
             stopped: false,
             waiting_interrupt: false,
-            extra_cycles: 0,
+            cycles: 0,
         }
     }
 
@@ -146,7 +146,7 @@ impl Cpu {
     }
 
     pub fn step(&mut self, bus: &mut Bus) -> u32 {
-        self.extra_cycles = 0;
+        self.cycles = 0;
 
         if self.stopped {
             return 0;
@@ -168,7 +168,7 @@ impl Cpu {
         // DMA will take place in the middle of the next instruction, just after its opcode is read from memory.
         // todo a better way that takes account of syncing components
         if bus.dma.enable_channels > 0 {
-            self.extra_cycles += Dma::do_dma(bus);
+            self.cycles += Dma::do_dma(bus);
         }
 
         let opcode = OPCODES_MAP
@@ -178,7 +178,7 @@ impl Cpu {
         let instr = opcode.function;
         instr(self, bus, &opcode.mode);
 
-        self.extra_cycles + (opcode.cycles as u32)
+        self.cycles
     }
 
     pub fn handle_interrupt(&mut self, bus: &mut Bus, interrupt: Vectors) {
@@ -194,12 +194,12 @@ impl Cpu {
     }
 
     pub fn read_8(&mut self, bus: &mut Bus, addr: u32) -> u8 {
-        self.extra_cycles += bus.memory_access_cycles(addr);
+        self.cycles += bus.memory_access_cycles(addr);
         bus.read::<false>(addr)
     }
 
     pub fn write_8(&mut self, bus: &mut Bus, addr: u32, data: u8) {
-        self.extra_cycles += bus.memory_access_cycles(addr);
+        self.cycles += bus.memory_access_cycles(addr);
         bus.write::<false>(addr, data);
     }
 
@@ -212,15 +212,19 @@ impl Cpu {
         self.write_8(bus, addr.wrapping_add(1), (data >> 8) as u8);
     }
 
-    fn add_extra_cycles<const WRITE: bool>(&mut self, unindexed: u32, indexed: u32) {
-        if WRITE || unindexed >> 8 != indexed >> 8 {
-            self.extra_cycles += 1;
+    pub fn add_additional_cycles(&mut self, cycles: u8) {
+        self.cycles += cycles as u32 * 6;
+    }
+
+    /// Based on <http://www.unusedino.de/ec64/technical/aay/c64/addr12a.htm>
+    fn add_index_page_cross_penalty<const WRITE: bool>(&mut self, unindexed: u32, indexed: u32) {
+        if WRITE || unindexed >> 8 != indexed >> 8 || !self.status.index_regs_size() {
+            self.add_additional_cycles(1);
         }
     }
 
     fn get_imm<T: RegSize>(&mut self, bus: &mut Bus) -> T {
         if T::IS_U16 {
-            self.extra_cycles += 1;
             let pbr = self.pbr as u16;
             let res = self.read_16(bus, (pbr | self.program_counter) as u32);
             self.program_counter = self.program_counter.wrapping_add(2);
@@ -236,7 +240,7 @@ impl Cpu {
     fn get_direct_addr(&mut self, bus: &mut Bus) -> u16 {
         let dpr = self.dpr;
         if dpr as u8 != 0 {
-            self.extra_cycles += 1;
+            self.add_additional_cycles(1);
         }
         dpr.wrapping_add(self.get_imm::<u8>(bus) as u16)
     }
@@ -258,6 +262,7 @@ impl Cpu {
     }
 
     fn get_stack_relative_addr(&mut self, bus: &mut Bus) -> u16 {
+        self.add_additional_cycles(1);
         self.stack_pointer
             .wrapping_add(self.get_imm::<u8>(bus).into())
     }
@@ -265,13 +270,20 @@ impl Cpu {
     fn get_address<const WRITE: bool>(&mut self, bus: &mut Bus, mode: &AddressingMode) -> u32 {
         match mode {
             AddressingMode::Direct => self.get_direct_addr(bus) as u32,
-            AddressingMode::DirectX => (self.get_direct_addr(bus) + self.index_x) as u32,
-            AddressingMode::DirectY => (self.get_direct_addr(bus) + self.index_y) as u32,
+            AddressingMode::DirectX => {
+                self.add_additional_cycles(1);
+                (self.get_direct_addr(bus) + self.index_x) as u32
+            }
+            AddressingMode::DirectY => {
+                self.add_additional_cycles(1);
+                (self.get_direct_addr(bus) + self.index_y) as u32
+            }
             AddressingMode::Indirect => {
                 let indirect = self.get_direct_addr(bus);
                 self.get_indirect_addr(bus, indirect)
             }
             AddressingMode::IndirectX => {
+                self.add_additional_cycles(1);
                 let indirect = self.get_direct_addr(bus).wrapping_add(self.index_x);
                 self.get_indirect_addr(bus, indirect)
             }
@@ -279,7 +291,7 @@ impl Cpu {
                 let indirect = self.get_direct_addr(bus);
                 let unindexed = self.get_indirect_addr(bus, indirect);
                 let indexed = (unindexed + self.index_y as u32) & 0xFF_FFFF;
-                self.add_extra_cycles::<WRITE>(unindexed, indexed);
+                self.add_index_page_cross_penalty::<WRITE>(unindexed, indexed);
                 indexed
             }
             AddressingMode::IndirectLong => {
@@ -294,13 +306,13 @@ impl Cpu {
             AddressingMode::AbsoluteX => {
                 let unindexed = self.get_absolute_addr(bus);
                 let indexed = (unindexed + self.index_x as u32) & 0xFF_FFFF;
-                self.add_extra_cycles::<WRITE>(unindexed, indexed);
+                self.add_index_page_cross_penalty::<WRITE>(unindexed, indexed);
                 indexed
             }
             AddressingMode::AbsoluteY => {
                 let unindexed = self.get_absolute_addr(bus);
                 let indexed = (unindexed + self.index_y as u32) & 0xFF_FFFF;
-                self.add_extra_cycles::<WRITE>(unindexed, indexed);
+                self.add_index_page_cross_penalty::<WRITE>(unindexed, indexed);
                 indexed
             }
             AddressingMode::AbsoluteLong => self.get_absolute_long_addr(bus),
@@ -313,6 +325,7 @@ impl Cpu {
             }
             AddressingMode::StackRelative => self.get_stack_relative_addr(bus).into(),
             AddressingMode::StackRelativeIndirectY => {
+                self.add_additional_cycles(1);
                 let indirect = self.get_stack_relative_addr(bus);
                 (self.get_indirect_addr(bus, indirect) + self.index_y as u32) & 0xFF_FFFF
             }
