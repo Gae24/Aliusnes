@@ -1,36 +1,43 @@
-use super::{functions::do_push, opcodes::OPCODES_MAP, regsize::RegSize, vectors::Vectors};
-use crate::bus::bus::Bus;
+use super::{
+    functions::do_push,
+    opcodes::{OpCode, OPCODES_MAP},
+    regsize::RegSize,
+    vectors::Vectors,
+};
+use crate::{bus::Bus, utils::int_traits::ManipulateU16};
 
-bitflags! {
-    pub struct CpuFlags: u8 {
-        const NEGATIVE = 0b10000000;
-        const OVERFLOW = 0b01000000;
-        const A_REG_SIZE = 0b00100000;
-        const INDEX_REGS_SIZE = 0b00010000;
-        const DECIMAL = 0b00001000;
-        const IRQ_DISABLE = 0b00000100;
-        const ZERO = 0b00000010;
-        const CARRY = 0b00000001;
+bitfield!(
+    #[derive(PartialEq, Eq)]
+    pub struct Status(pub u8) {
+        pub carry: bool @ 0,
+        pub zero: bool @ 1,
+        pub irq_disable: bool @ 2,
+        pub decimal: bool @ 3,
+        pub index_regs_size: bool @ 4,
+        pub a_reg_size: bool @ 5,
+        pub overflow: bool @ 6,
+        pub negative: bool @ 7,
     }
-}
+);
 
+#[derive(PartialEq, Eq)]
 pub struct Cpu {
     pub accumulator: u16,
     pub index_x: u16,
     pub index_y: u16,
     pub stack_pointer: u16,
     pub program_counter: u16,
-    pub status_register: CpuFlags,
+    pub status: Status,
     pub dpr: u16,
     pub pbr: u8,
     pub dbr: u8,
-    emulation_mode: bool,
+    pub emulation_mode: bool,
     pub stopped: bool,
     pub waiting_interrupt: bool,
-    pub extra_cycles: u8,
+    pub cycles: u32,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum AddressingMode {
     Implied,
     Immediate,
@@ -67,7 +74,7 @@ impl Cpu {
             index_x: 0x00,
             index_y: 0x00,
             stack_pointer: 0x00,
-            status_register: CpuFlags::from_bits_truncate(0b00000000),
+            status: Status(0),
             dpr: 0x00,
             pbr: 0x00,
             dbr: 0x00,
@@ -75,29 +82,28 @@ impl Cpu {
             emulation_mode: true,
             stopped: false,
             waiting_interrupt: false,
-            extra_cycles: 0,
+            cycles: 0,
         }
     }
 
     pub fn set_status_register(&mut self, bits: u8) {
-        self.status_register = CpuFlags::from_bits_truncate(bits);
-        if self.status_register.contains(CpuFlags::INDEX_REGS_SIZE) {
+        self.status = Status(bits);
+        if self.status.index_regs_size() {
             self.index_x &= 0xFF;
             self.index_y &= 0xFF;
         }
     }
 
     pub fn set_nz<T: RegSize>(&mut self, val: T) {
-        self.status_register
-            .set(CpuFlags::NEGATIVE, val.is_negative());
-        self.status_register.set(CpuFlags::ZERO, val.is_zero());
+        self.status.set_negative(val.is_negative());
+        self.status.set_zero(val.is_zero());
     }
 
     pub fn set_accumulator<T: RegSize>(&mut self, val: T) {
         if T::IS_U16 {
             self.accumulator = val.as_u16();
         } else {
-            self.accumulator = (self.accumulator & !0xFF) | val.as_u16();
+            self.accumulator.set_low_byte(val.as_u8());
         }
     }
 
@@ -105,7 +111,7 @@ impl Cpu {
         if T::IS_U16 {
             self.index_x = val.as_u16();
         } else {
-            self.index_x = (self.index_x & !0xFF) | val.as_u16();
+            self.index_x.set_low_byte(val.as_u8());
         }
     }
 
@@ -113,7 +119,7 @@ impl Cpu {
         if T::IS_U16 {
             self.index_y = val.as_u16();
         } else {
-            self.index_y = (self.index_y & !0xFF) | val.as_u16();
+            self.index_y.set_low_byte(val.as_u8());
         }
     }
 
@@ -124,8 +130,8 @@ impl Cpu {
     pub fn set_emulation_mode(&mut self, val: bool) {
         if val {
             // not supported
-            self.status_register.insert(CpuFlags::A_REG_SIZE);
-            self.status_register.insert(CpuFlags::INDEX_REGS_SIZE);
+            self.status.set_a_reg_size(true);
+            self.status.set_index_regs_size(true);
             self.stack_pointer &= 0x01FF;
             self.index_y &= 0xFF;
             self.index_x &= 0xFF;
@@ -140,14 +146,19 @@ impl Cpu {
         self.dpr = 0;
         self.dbr = 0;
         self.stack_pointer = 0x1FF;
-        self.status_register.remove(CpuFlags::DECIMAL);
-        self.status_register.insert(CpuFlags::IRQ_DISABLE);
+        self.status.set_decimal(false);
+        self.status.set_irq_disable(true);
         self.pbr = 0;
-        self.program_counter = Self::read_16(bus, 0xFFFC);
+        self.program_counter = self.read_16(bus, 0xFFFC);
     }
 
-    pub fn step(&mut self, bus: &mut Bus) -> u8 {
-        self.extra_cycles = 0;
+    pub fn step(&mut self, bus: &mut Bus) -> u32 {
+        self.cycles = 0;
+
+        if self.stopped {
+            return 0;
+        }
+
         let op = self.get_imm::<u8>(bus);
 
         let opcode = OPCODES_MAP
@@ -157,98 +168,119 @@ impl Cpu {
         let instr = opcode.function;
         instr(self, bus, &opcode.mode);
 
-        opcode.cycles + self.extra_cycles
+        self.cycles
     }
 
-    pub fn handle_interrupt(&mut self, bus: &mut Bus, interrupt: &Vectors) {
+    pub fn peek_opcode(&self, bus: &Bus) -> OpCode {
+        let op = bus.read(u32::from(self.pbr as u16 | self.program_counter));
+        **OPCODES_MAP
+            .get(&op)
+            .unwrap_or_else(|| panic!("OpCode {:x} is not recognized", op))
+    }
+
+    pub fn handle_interrupt(&mut self, bus: &mut Bus, interrupt: Vectors) {
         if !self.emulation_mode {
             do_push(self, bus, self.pbr);
         }
         do_push(self, bus, self.program_counter);
-        do_push(self, bus, self.status_register.bits());
-        self.status_register.remove(CpuFlags::DECIMAL);
-        self.status_register.insert(CpuFlags::IRQ_DISABLE);
+        do_push(self, bus, self.status.0);
+        self.status.set_decimal(false);
+        self.status.set_irq_disable(true);
         self.pbr = 0;
-        self.program_counter = Self::read_16(bus, interrupt.get_interrupt_addr());
+        self.program_counter = self.read_16(bus, interrupt.get_interrupt_addr());
     }
 
-    pub fn read_8(bus: &Bus, addr: u32) -> u8 {
+    pub fn read_8(&mut self, bus: &mut Bus, addr: u32) -> u8 {
+        self.cycles += bus.memory_access_cycles(addr);
         bus.read(addr)
     }
 
-    pub fn write_8(bus: &mut Bus, addr: u32, data: u8) {
+    pub fn write_8(&mut self, bus: &mut Bus, addr: u32, data: u8) {
+        self.cycles += bus.memory_access_cycles(addr);
         bus.write(addr, data);
     }
 
-    pub fn read_16(bus: &Bus, addr: u32) -> u16 {
-        Self::read_8(bus, addr) as u16 | (Self::read_8(bus, addr.wrapping_add(1)) as u16) << 8
+    pub fn read_16(&mut self, bus: &mut Bus, addr: u32) -> u16 {
+        self.read_8(bus, addr) as u16 | (self.read_8(bus, addr.wrapping_add(1)) as u16) << 8
     }
 
-    pub fn write_16(bus: &mut Bus, addr: u32, data: u16) {
-        Self::write_8(bus, addr, data as u8);
-        Self::write_8(bus, addr.wrapping_add(1), (data >> 8) as u8);
+    pub fn write_16(&mut self, bus: &mut Bus, addr: u32, data: u16) {
+        self.write_8(bus, addr, data as u8);
+        self.write_8(bus, addr.wrapping_add(1), (data >> 8) as u8);
     }
 
-    fn add_extra_cycles<const WRITE: bool>(&mut self, unindexed: u32, indexed: u32) {
-        if WRITE || unindexed >> 8 != indexed >> 8 {
-            self.extra_cycles += 1;
+    pub fn add_additional_cycles(&mut self, cycles: u8) {
+        self.cycles += cycles as u32 * 6;
+    }
+
+    /// Based on <http://www.unusedino.de/ec64/technical/aay/c64/addr12a.htm>
+    fn add_index_page_cross_penalty<const WRITE: bool>(&mut self, unindexed: u32, indexed: u32) {
+        if WRITE || unindexed >> 8 != indexed >> 8 || !self.status.index_regs_size() {
+            self.add_additional_cycles(1);
         }
     }
 
-    fn get_imm<T: RegSize>(&mut self, bus: &Bus) -> T {
+    fn get_imm<T: RegSize>(&mut self, bus: &mut Bus) -> T {
         if T::IS_U16 {
-            self.extra_cycles += 1;
             let pbr = self.pbr as u16;
-            let res = Self::read_16(bus, (pbr | self.program_counter) as u32);
+            let res = self.read_16(bus, (pbr | self.program_counter) as u32);
             self.program_counter = self.program_counter.wrapping_add(2);
-            T::trunc_u16(res)
+            T::from_u16(res)
         } else {
             let pbr = self.pbr as u16;
-            let res = Self::read_8(bus, (pbr | self.program_counter) as u32);
+            let res = self.read_8(bus, (pbr | self.program_counter) as u32);
             self.program_counter = self.program_counter.wrapping_add(1);
-            T::ext_u8(res)
+            T::from_u8(res)
         }
     }
 
-    fn get_direct_addr(&mut self, bus: &Bus) -> u16 {
+    fn get_direct_addr(&mut self, bus: &mut Bus) -> u16 {
         let dpr = self.dpr;
         if dpr as u8 != 0 {
-            self.extra_cycles += 1;
+            self.add_additional_cycles(1);
         }
         dpr.wrapping_add(self.get_imm::<u8>(bus) as u16)
     }
 
-    fn get_indirect_addr(&self, bus: &Bus, addr: u16) -> u32 {
-        (Self::read_16(bus, addr.into()) | self.dbr as u16).into()
+    fn get_indirect_addr(&mut self, bus: &mut Bus, addr: u16) -> u32 {
+        (self.read_16(bus, addr.into()) | self.dbr as u16).into()
     }
 
-    fn get_indirect_long_addr(bus: &Bus, addr: u32) -> u32 {
-        Self::read_16(bus, addr) as u32 | (Self::read_8(bus, addr.wrapping_add(2)) as u32) << 16
+    fn get_indirect_long_addr(&mut self, bus: &mut Bus, addr: u32) -> u32 {
+        self.read_16(bus, addr) as u32 | (self.read_8(bus, addr.wrapping_add(2)) as u32) << 16
     }
 
-    fn get_absolute_addr(&mut self, bus: &Bus) -> u32 {
+    fn get_absolute_addr(&mut self, bus: &mut Bus) -> u32 {
         (self.dbr as u16 | self.get_imm::<u16>(bus)) as u32
     }
 
-    fn get_absolute_long_addr(&mut self, bus: &Bus) -> u32 {
+    fn get_absolute_long_addr(&mut self, bus: &mut Bus) -> u32 {
         self.get_imm::<u16>(bus) as u32 | self.get_imm::<u8>(bus) as u32
     }
 
-    fn get_stack_relative_addr(&mut self, bus: &Bus) -> u16 {
+    fn get_stack_relative_addr(&mut self, bus: &mut Bus) -> u16 {
+        self.add_additional_cycles(1);
         self.stack_pointer
             .wrapping_add(self.get_imm::<u8>(bus).into())
     }
 
-    fn get_address<const WRITE: bool>(&mut self, bus: &Bus, mode: &AddressingMode) -> u32 {
+    fn get_address<const WRITE: bool>(&mut self, bus: &mut Bus, mode: &AddressingMode) -> u32 {
         match mode {
             AddressingMode::Direct => self.get_direct_addr(bus) as u32,
-            AddressingMode::DirectX => (self.get_direct_addr(bus) + self.index_x) as u32,
-            AddressingMode::DirectY => (self.get_direct_addr(bus) + self.index_y) as u32,
+            AddressingMode::DirectX => {
+                self.add_additional_cycles(1);
+                (self.get_direct_addr(bus) + self.index_x) as u32
+            }
+            AddressingMode::DirectY => {
+                self.add_additional_cycles(1);
+                (self.get_direct_addr(bus) + self.index_y) as u32
+            }
             AddressingMode::Indirect => {
                 let indirect = self.get_direct_addr(bus);
                 self.get_indirect_addr(bus, indirect)
             }
             AddressingMode::IndirectX => {
+                self.add_additional_cycles(1);
                 let indirect = self.get_direct_addr(bus).wrapping_add(self.index_x);
                 self.get_indirect_addr(bus, indirect)
             }
@@ -256,28 +288,28 @@ impl Cpu {
                 let indirect = self.get_direct_addr(bus);
                 let unindexed = self.get_indirect_addr(bus, indirect);
                 let indexed = (unindexed + self.index_y as u32) & 0xFF_FFFF;
-                self.add_extra_cycles::<WRITE>(unindexed, indexed);
+                self.add_index_page_cross_penalty::<WRITE>(unindexed, indexed);
                 indexed
             }
             AddressingMode::IndirectLong => {
                 let indirect = self.get_direct_addr(bus) as u32;
-                Self::get_indirect_long_addr(bus, indirect)
+                self.get_indirect_long_addr(bus, indirect)
             }
             AddressingMode::IndirectLongY => {
                 let indirect = self.get_direct_addr(bus) as u32;
-                (Self::get_indirect_long_addr(bus, indirect) + self.index_y as u32) & 0xFF_FFFF
+                (self.get_indirect_long_addr(bus, indirect) + self.index_y as u32) & 0xFF_FFFF
             }
             AddressingMode::Absolute => self.get_absolute_addr(bus),
             AddressingMode::AbsoluteX => {
                 let unindexed = self.get_absolute_addr(bus);
                 let indexed = (unindexed + self.index_x as u32) & 0xFF_FFFF;
-                self.add_extra_cycles::<WRITE>(unindexed, indexed);
+                self.add_index_page_cross_penalty::<WRITE>(unindexed, indexed);
                 indexed
             }
             AddressingMode::AbsoluteY => {
                 let unindexed = self.get_absolute_addr(bus);
                 let indexed = (unindexed + self.index_y as u32) & 0xFF_FFFF;
-                self.add_extra_cycles::<WRITE>(unindexed, indexed);
+                self.add_index_page_cross_penalty::<WRITE>(unindexed, indexed);
                 indexed
             }
             AddressingMode::AbsoluteLong => self.get_absolute_long_addr(bus),
@@ -290,6 +322,7 @@ impl Cpu {
             }
             AddressingMode::StackRelative => self.get_stack_relative_addr(bus).into(),
             AddressingMode::StackRelativeIndirectY => {
+                self.add_additional_cycles(1);
                 let indirect = self.get_stack_relative_addr(bus);
                 (self.get_indirect_addr(bus, indirect) + self.index_y as u32) & 0xFF_FFFF
             }
@@ -298,7 +331,7 @@ impl Cpu {
         }
     }
 
-    pub fn get_operand<T: RegSize>(&mut self, bus: &Bus, mode: &AddressingMode) -> T {
+    pub fn get_operand<T: RegSize>(&mut self, bus: &mut Bus, mode: &AddressingMode) -> T {
         match mode {
             AddressingMode::Immediate
             | AddressingMode::Implied
@@ -311,9 +344,9 @@ impl Cpu {
             _ => {
                 let addr = self.get_address::<false>(bus, mode);
                 if T::IS_U16 {
-                    T::trunc_u16(Self::read_16(bus, addr))
+                    T::from_u16(self.read_16(bus, addr))
                 } else {
-                    T::ext_u8(Self::read_8(bus, addr))
+                    T::from_u8(self.read_8(bus, addr))
                 }
             }
         }
@@ -322,9 +355,9 @@ impl Cpu {
     pub fn do_write<T: RegSize>(&mut self, bus: &mut Bus, mode: &AddressingMode, val: T) {
         let addr = self.get_address::<true>(bus, mode);
         if T::IS_U16 {
-            Cpu::write_16(bus, addr, val.as_u16());
+            self.write_16(bus, addr, val.as_u16());
         } else {
-            Cpu::write_8(bus, addr, val.as_u8());
+            self.write_8(bus, addr, val.as_u8());
         }
     }
 
@@ -336,13 +369,13 @@ impl Cpu {
     ) {
         let addr = self.get_address::<true>(bus, mode);
         if T::IS_U16 {
-            let data = Self::read_16(bus, addr);
-            let result = f(self, T::trunc_u16(data)).as_u16();
-            Self::write_16(bus, addr, result);
+            let data = self.read_16(bus, addr);
+            let result = f(self, T::from_u16(data)).as_u16();
+            self.write_16(bus, addr, result);
         } else {
-            let data = Self::read_8(bus, addr);
-            let result = f(self, T::ext_u8(data)).as_u8();
-            Self::write_8(bus, addr, result);
+            let data = self.read_8(bus, addr);
+            let result = f(self, T::from_u8(data)).as_u8();
+            self.write_8(bus, addr, result);
         }
     }
 }

@@ -1,21 +1,10 @@
-use cart::{cart::Cart, header::Header};
-use emu::Emu;
-
-mod bus;
-mod cart;
+pub mod bus;
 mod emu;
-mod w65c816;
-mod wram;
+mod utils;
+pub mod w65c816;
 
 #[macro_use]
 extern crate lazy_static;
 
 #[macro_use]
-extern crate bitflags;
-
-pub fn run_emu(rom: &[u8], ram: Vec<u8>) {
-    let header = Header::guess_from_rom(rom).expect("Cartridge not recognised");
-    let cart = Cart::new(header, rom, ram);
-
-    let mut emu = Emu::new(cart);
-}
+extern crate proc_bitfield;
