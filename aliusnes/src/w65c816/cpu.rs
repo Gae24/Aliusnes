@@ -1,7 +1,7 @@
 use super::{
     addressing::{Address, AddressingMode},
     functions::do_push,
-    opcodes::OPCODES_MAP,
+    opcodes::{OpCode, OPCODES_MAP},
     regsize::RegSize,
 };
 use crate::{
@@ -75,7 +75,7 @@ pub struct Cpu {
     pub dpr: u16,
     pub pbr: u8,
     pub dbr: u8,
-    emulation_mode: bool,
+    pub emulation_mode: bool,
     pub stopped: bool,
     pub waiting_interrupt: bool,
     pub cycles: u32,
@@ -211,6 +211,13 @@ impl Cpu {
         instr(self, bus, &opcode.mode);
 
         self.cycles
+    }
+
+    pub fn peek_opcode(&self, bus: &mut Bus) -> OpCode {
+        let op = bus.read::<false>(Address::new(self.program_counter, self.pbr));
+        **OPCODES_MAP
+            .get(&op)
+            .unwrap_or_else(|| panic!("OpCode {:x} is not recognized", op))
     }
 
     pub fn handle_interrupt(&mut self, bus: &mut Bus, interrupt: Vectors) {
