@@ -4,6 +4,7 @@ use crate::{
 };
 use std::collections::HashMap;
 
+#[derive(Clone, Copy)]
 pub struct OpCode {
     pub code: u8,
     pub mnemonic: &'static str,

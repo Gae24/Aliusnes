@@ -274,6 +274,9 @@ pub fn jml(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn jmp(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
+    if *mode == AddressingMode::AbsoluteIndirectX {
+        cpu.add_additional_cycles(1);
+    }
     match mode {
         AddressingMode::AbsoluteLong => {
             let new_pc = cpu.get_operand::<u16>(bus, &AddressingMode::AbsoluteJMP);
