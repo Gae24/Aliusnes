@@ -4,4 +4,3 @@ mod functions;
 mod instructions;
 pub mod opcodes;
 mod regsize;
-mod vectors;

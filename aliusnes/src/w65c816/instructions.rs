@@ -1,8 +1,7 @@
 use super::{
     addressing::{Address, AddressingMode},
-    cpu::{Cpu, Status},
+    cpu::{Cpu, Status, Vectors},
     functions::*,
-    vectors::Vectors,
 };
 use crate::bus::Bus;
 
