@@ -1,10 +1,6 @@
 use aliusnes::bus::Bus;
-use aliusnes::w65c816::{
-    cpu::{Cpu, Status},
-    opcodes::OpCode,
-};
+use aliusnes::w65c816::cpu::{Cpu, Status};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::{
     fs::File,
     io::{BufRead, BufReader},
@@ -77,7 +73,7 @@ impl std::fmt::Display for CpuState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "pc:{:#06X} s:{:#06X} p:{:#04X} a:{:#06X} x:{:#06X} y:{:#06X} dbr:{:#04X} d:{:#06X} pbr:{:#04X} e:{:#04X} ram:{:?}",
+            "pc:{:04X} s:{:04X} p:{:02X} a:{:04X} x:{:04X} y:{:04X} dbr:{:02X} d:{:04X} pbr:{:02X} e:{:01X} \n\t  ram:{:02X?}",
             self.pc,
             self.s,
             self.p,
@@ -121,8 +117,6 @@ impl TestCase {
 pub fn run_test(name: &str) {
     let mut total = 0;
     let mut success = 0;
-    let mut failures = 0;
-    let mut failed_opcodes: HashMap<u8, OpCode> = HashMap::new();
     let json_path = PathBuf::from(format!("../../65816/v1/{name}.json"));
 
     for mut test_case in TestCase::iter_json(&json_path) {
@@ -140,22 +134,13 @@ pub fn run_test(name: &str) {
             continue;
         }
 
-        failed_opcodes.insert(opcode.code, opcode);
-        failures += 1;
-        // println!(
-        //     "Test {} Failed: {:#04X} {} {:?}",
-        //     test_case.name, opcode.code, opcode.mnemonic, opcode.mode
-        // );
-        // println!("Got: {}", &result_state);
-        // println!("Expected: {}", &test_case.final_state);
-    }
-    if !failed_opcodes.is_empty() {
-        for (_, opcode) in failed_opcodes.iter() {
-            println!(
-                "Failed: {:#04X} {} {:?}",
-                opcode.code, opcode.mnemonic, opcode.mode
-            );
-        }
+        println!(
+            "\nTest {} Failed: {:#04X} {} {:?}",
+            test_case.name, opcode.code, opcode.mnemonic, opcode.mode
+        );
+        println!("Initial:  {}", &test_case.initial);
+        println!("Got:      {}", &result_state);
+        println!("Expected: {}", &test_case.final_state);
     }
     println!("{name} Passed({success}/{total})");
     assert_eq!(success, total);
