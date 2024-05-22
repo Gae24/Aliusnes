@@ -173,7 +173,7 @@ impl Cpu {
     }
 
     pub fn peek_opcode(&self, bus: &Bus) -> OpCode {
-        let op = bus.read(Address::new(self.pbr, self.program_counter));
+        let op = bus.read(Address::new(self.program_counter, self.pbr));
         **OPCODES_MAP
             .get(&op)
             .unwrap_or_else(|| panic!("OpCode {:x} is not recognized", op))

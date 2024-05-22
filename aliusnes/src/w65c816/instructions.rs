@@ -306,7 +306,7 @@ pub fn jsr(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
             do_push(cpu, bus, cpu.program_counter);
             let high = cpu.get_operand::<u8>(bus, &AddressingMode::AbsoluteJMP);
             let addr = (low as u16 | (high as u16) << 8).wrapping_add(cpu.index_x);
-            cpu.program_counter = cpu.read_16(bus, Address::new(cpu.pbr, addr));
+            cpu.program_counter = cpu.read_16(bus, Address::new(addr, cpu.pbr));
         }
         _ => {
             let val = cpu.get_operand::<u16>(bus, mode);
@@ -376,7 +376,7 @@ pub fn mvn(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let src_bank = (banks & 0xFF) as u8;
     cpu.add_additional_cycles(2);
     loop {
-        let src = bus.read(Address::new(src_bank, cpu.index_x));
+        let src = bus.read(Address::new(cpu.index_x, src_bank));
         let dst = cpu.index_y as u32 | (dst_bank as u32) << 16;
         cpu.write_8(bus, dst.into(), src);
         cpu.index_x = cpu.index_x.wrapping_add(1);
@@ -394,7 +394,7 @@ pub fn mvp(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let src_bank = (banks & 0xFF) as u8;
     cpu.add_additional_cycles(2);
     loop {
-        let src = bus.read(Address::new(src_bank, cpu.index_x));
+        let src = bus.read(Address::new(cpu.index_x, src_bank));
         let dst = cpu.index_y as u32 | (dst_bank as u32) << 16;
         cpu.write_8(bus, dst.into(), src);
         cpu.index_x = cpu.index_x.wrapping_sub(1);

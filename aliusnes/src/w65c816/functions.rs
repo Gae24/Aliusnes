@@ -161,11 +161,7 @@ pub(super) fn do_push<T: RegSize>(cpu: &mut Cpu, bus: &mut Bus, value: T) {
         );
     } else {
         cpu.stack_pointer = cpu.stack_pointer.wrapping_sub(1);
-        cpu.write_8(
-            bus,
-            cpu.stack_pointer.wrapping_add(1).into(),
-            value.as_u8(),
-        );
+        cpu.write_8(bus, cpu.stack_pointer.wrapping_add(1).into(), value.as_u8());
     }
 }
 
