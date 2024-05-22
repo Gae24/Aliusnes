@@ -1,6 +1,6 @@
 use crate::{
     bus::Bus,
-    w65c816::{cpu::AddressingMode, cpu::Cpu, instructions::*},
+    w65c816::{addressing::AddressingMode, cpu::Cpu, instructions::*},
 };
 use std::collections::HashMap;
 

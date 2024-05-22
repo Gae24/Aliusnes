@@ -1,7 +1,4 @@
-use super::{
-    cpu::{AddressingMode, Cpu},
-    regsize::RegSize,
-};
+use super::{addressing::AddressingMode, cpu::Cpu, regsize::RegSize};
 use crate::bus::Bus;
 
 pub(super) fn do_bin_adc<T: RegSize>(cpu: &mut Cpu, operand: T) {
@@ -164,7 +161,11 @@ pub(super) fn do_push<T: RegSize>(cpu: &mut Cpu, bus: &mut Bus, value: T) {
         );
     } else {
         cpu.stack_pointer = cpu.stack_pointer.wrapping_sub(1);
-        cpu.write_8(bus, cpu.stack_pointer.wrapping_add(1).into(), value.as_u8());
+        cpu.write_8(
+            bus,
+            cpu.stack_pointer.wrapping_add(1).into(),
+            value.as_u8(),
+        );
     }
 }
 

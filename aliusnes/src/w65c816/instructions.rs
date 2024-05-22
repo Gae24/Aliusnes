@@ -1,5 +1,6 @@
 use super::{
-    cpu::{AddressingMode, Cpu, Status},
+    addressing::{Address, AddressingMode},
+    cpu::{Cpu, Status},
     functions::*,
     vectors::Vectors,
 };
@@ -306,7 +307,7 @@ pub fn jsr(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
             do_push(cpu, bus, cpu.program_counter);
             let high = cpu.get_operand::<u8>(bus, &AddressingMode::AbsoluteJMP);
             let addr = (low as u16 | (high as u16) << 8).wrapping_add(cpu.index_x);
-            cpu.program_counter = cpu.read_16(bus, cpu.pbr as u32 | addr as u32);
+            cpu.program_counter = cpu.read_16(bus, Address::new(cpu.pbr, addr));
         }
         _ => {
             let val = cpu.get_operand::<u16>(bus, mode);
@@ -376,9 +377,9 @@ pub fn mvn(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let src_bank = (banks & 0xFF) as u8;
     cpu.add_additional_cycles(2);
     loop {
-        let src = bus.read(cpu.index_x as u32 | (src_bank as u32) << 16);
+        let src = bus.read(Address::new(src_bank, cpu.index_x));
         let dst = cpu.index_y as u32 | (dst_bank as u32) << 16;
-        cpu.write_8(bus, dst, src);
+        cpu.write_8(bus, dst.into(), src);
         cpu.index_x = cpu.index_x.wrapping_add(1);
         cpu.index_y = cpu.index_y.wrapping_add(1);
         cpu.accumulator = cpu.accumulator.wrapping_sub(1);
@@ -394,9 +395,9 @@ pub fn mvp(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let src_bank = (banks & 0xFF) as u8;
     cpu.add_additional_cycles(2);
     loop {
-        let src = bus.read(cpu.index_x as u32 | (src_bank as u32) << 16);
+        let src = bus.read(Address::new(src_bank, cpu.index_x));
         let dst = cpu.index_y as u32 | (dst_bank as u32) << 16;
-        cpu.write_8(bus, dst, src);
+        cpu.write_8(bus, dst.into(), src);
         cpu.index_x = cpu.index_x.wrapping_sub(1);
         cpu.index_y = cpu.index_y.wrapping_sub(1);
         cpu.accumulator = cpu.accumulator.wrapping_sub(1);
