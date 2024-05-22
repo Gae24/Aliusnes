@@ -8,7 +8,7 @@ fn main() {
     file.write_all("use tomharte::run_test;\n\n".as_bytes())
         .expect("Could not write to file");
     for i in 0..256 {
-        let attribute = format!("#[test]");
+        let attribute = "#[test]".to_string();
         let test_name = format!("test_{:02x}", i);
         let test_body = format!("run_test(\"{:02x}.n\");", i);
         let test_fn = format!(
