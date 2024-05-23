@@ -201,12 +201,12 @@ impl Cpu {
     }
 
     pub fn read_16(&mut self, bus: &mut Bus, addr: Address) -> u16 {
-        self.read_8(bus, addr) as u16 | (self.read_8(bus, addr.wrapping_offset_add(1)) as u16) << 8
+        self.read_8(bus, addr) as u16 | (self.read_8(bus, addr.wrapping_add(1)) as u16) << 8
     }
 
     pub fn write_16(&mut self, bus: &mut Bus, addr: Address, data: u16) {
         self.write_8(bus, addr, data.low_byte());
-        self.write_8(bus, addr.wrapping_offset_add(1), data.high_byte());
+        self.write_8(bus, addr.wrapping_add(1), data.high_byte());
     }
 
     pub fn add_additional_cycles(&mut self, cycles: u8) {
@@ -216,7 +216,13 @@ impl Cpu {
     pub fn do_write<T: RegSize>(&mut self, bus: &mut Bus, mode: &AddressingMode, val: T) {
         let addr = self.decode_addressing_mode::<true>(bus, *mode);
         if T::IS_U16 {
-            self.write_16(bus, addr, val.as_u16());
+            match mode {
+                AddressingMode::Direct
+                | AddressingMode::DirectX
+                | AddressingMode::DirectY
+                | AddressingMode::StackRelative => self.write_bank0(bus, addr.offset, val.as_u16()),
+                _ => self.write_16(bus, addr, val.as_u16()),
+            }
         } else {
             self.write_8(bus, addr, val.as_u8());
         }
@@ -230,9 +236,21 @@ impl Cpu {
     ) {
         let addr = self.decode_addressing_mode::<true>(bus, *mode);
         if T::IS_U16 {
-            let data = self.read_16(bus, addr);
-            let result = f(self, T::from_u16(data)).as_u16();
-            self.write_16(bus, addr, result);
+            match mode {
+                AddressingMode::Direct
+                | AddressingMode::DirectX
+                | AddressingMode::DirectY
+                | AddressingMode::StackRelative => {
+                    let data = self.read_bank0(bus, addr.offset);
+                    let result = f(self, T::from_u16(data)).as_u16();
+                    self.write_bank0(bus, addr.offset, result);
+                }
+                _ => {
+                    let data = self.read_16(bus, addr);
+                    let result = f(self, T::from_u16(data)).as_u16();
+                    self.write_16(bus, addr, result);
+                }
+            }
         } else {
             let data = self.read_8(bus, addr);
             let result = f(self, T::from_u8(data)).as_u8();

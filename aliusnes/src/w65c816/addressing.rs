@@ -93,7 +93,8 @@ impl Cpu {
     pub fn get_imm<T: RegSize>(&mut self, bus: &mut Bus) -> T {
         let addr = Address::new(self.program_counter, self.pbr);
         if T::IS_U16 {
-            let res = self.read_16(bus, addr);
+            let res = self.read_8(bus, addr) as u16
+                | (self.read_8(bus, addr.wrapping_offset_add(1)) as u16) << 8;
             self.program_counter = self.program_counter.wrapping_add(2);
             T::from_u16(res)
         } else {
@@ -237,7 +238,15 @@ impl Cpu {
             _ => {
                 let addr = self.decode_addressing_mode::<false>(bus, *mode);
                 if T::IS_U16 {
-                    T::from_u16(self.read_16(bus, addr))
+                    match mode {
+                        AddressingMode::Direct
+                        | AddressingMode::DirectX
+                        | AddressingMode::DirectY
+                        | AddressingMode::StackRelative => {
+                            T::from_u16(self.read_bank0(bus, addr.offset))
+                        }
+                        _ => T::from_u16(self.read_16(bus, addr)),
+                    }
                 } else {
                     T::from_u8(self.read_8(bus, addr))
                 }
