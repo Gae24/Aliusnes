@@ -300,20 +300,9 @@ pub fn jsl(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 
 pub fn jsr(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     cpu.add_additional_cycles(1);
-    match mode {
-        AddressingMode::AbsoluteIndirectX => {
-            let low = cpu.get_operand::<u8>(bus, &AddressingMode::AbsoluteJMP);
-            do_push(cpu, bus, cpu.program_counter);
-            let high = cpu.get_operand::<u8>(bus, &AddressingMode::AbsoluteJMP);
-            let addr = (low as u16 | (high as u16) << 8).wrapping_add(cpu.index_x);
-            cpu.program_counter = cpu.read_16(bus, Address::new(addr, cpu.pbr));
-        }
-        _ => {
-            let val = cpu.get_operand::<u16>(bus, mode);
-            do_push(cpu, bus, cpu.program_counter.wrapping_sub(1));
-            cpu.program_counter = val;
-        }
-    }
+    let val = cpu.get_operand::<u16>(bus, mode);
+    do_push(cpu, bus, cpu.program_counter.wrapping_sub(1));
+    cpu.program_counter = val;
 }
 
 pub fn lda(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
