@@ -108,10 +108,10 @@ impl Cpu {
     }
 
     fn indirect_long_address(&mut self, bus: &mut Bus, addr: Address) -> Address {
-        Address {
-            bank: self.read_8(bus, addr.wrapping_add(2)),
-            offset: self.read_16(bus, addr),
-        }
+        Address::new(
+            self.read_16(bus, addr),
+            self.read_8(bus, addr.wrapping_offset_add(2)),
+        )
     }
 
     fn absolute_address(&mut self, bus: &mut Bus) -> Address {
