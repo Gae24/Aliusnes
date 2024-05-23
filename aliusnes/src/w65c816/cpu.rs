@@ -132,9 +132,9 @@ impl Cpu {
             // not supported
             self.status.set_a_reg_size(true);
             self.status.set_index_regs_size(true);
-            self.stack_pointer &= 0x01FF;
-            self.index_y &= 0xFF;
-            self.index_x &= 0xFF;
+            self.stack_pointer.set_high_byte(0x01);
+            self.index_y.set_high_byte(0x00);
+            self.index_x.set_high_byte(0x00);
         }
         self.emulation_mode = val;
     }
