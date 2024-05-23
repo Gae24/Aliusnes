@@ -202,12 +202,12 @@ impl Cpu {
     }
 
     pub fn read_16(&mut self, bus: &mut Bus, addr: Address) -> u16 {
-        self.read_8(bus, addr) as u16 | (self.read_8(bus, addr.wrapping_add(1)) as u16) << 8
+        self.read_8(bus, addr) as u16 | (self.read_8(bus, addr.wrapping_offset_add(1)) as u16) << 8
     }
 
     pub fn write_16(&mut self, bus: &mut Bus, addr: Address, data: u16) {
-        self.write_8(bus, addr, data as u8);
-        self.write_8(bus, addr.wrapping_add(1), (data >> 8) as u8);
+        self.write_8(bus, addr, data.low_byte());
+        self.write_8(bus, addr.wrapping_offset_add(1), data.high_byte());
     }
 
     pub fn add_additional_cycles(&mut self, cycles: u8) {
