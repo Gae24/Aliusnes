@@ -95,7 +95,7 @@ struct TestCase {
     initial: CpuState,
     #[serde(rename = "final")]
     final_state: CpuState,
-    cycles: Vec<(u32, Option<u8>, String)>,
+    cycles: Vec<(Option<u32>, Option<u8>, String)>,
 }
 
 impl TestCase {
