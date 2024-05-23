@@ -20,7 +20,7 @@ pub enum Vectors {
 }
 
 impl Vectors {
-    pub fn get_interrupt_addr(&self) -> u32 {
+    pub const fn get_addr(&self) -> u16 {
         match self {
             Vectors::Cop => 0xFFE4,
             Vectors::Brk => 0xFFE6,
@@ -149,8 +149,7 @@ impl Cpu {
         self.status.set_decimal(false);
         self.status.set_irq_disable(true);
         self.pbr = 0;
-        self.program_counter =
-            self.read_16(bus, Address::from(Vectors::EmuReset.get_interrupt_addr()));
+        self.program_counter = self.read_bank0(bus, Vectors::EmuReset.get_addr());
     }
 
     pub fn step(&mut self, bus: &mut Bus) -> u32 {
@@ -188,7 +187,7 @@ impl Cpu {
         self.status.set_decimal(false);
         self.status.set_irq_disable(true);
         self.pbr = 0;
-        self.program_counter = self.read_16(bus, interrupt.get_interrupt_addr().into());
+        self.program_counter = self.read_bank0(bus, interrupt.get_addr());
     }
 
     pub fn read_8(&mut self, bus: &mut Bus, addr: Address) -> u8 {

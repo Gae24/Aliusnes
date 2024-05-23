@@ -267,8 +267,10 @@ pub fn iny(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
 
 pub fn jml(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let addr = cpu.get_operand::<u16>(bus, mode);
-    cpu.program_counter = cpu.read_16(bus, addr.into());
-    cpu.pbr = bus.read(addr.wrapping_add(2).into());
+    let pc = cpu.read_bank0(bus, addr);
+    let pbr = cpu.read_8(bus, addr.wrapping_add(2).into());
+    cpu.program_counter = pc;
+    cpu.pbr = pbr;
 }
 
 pub fn jmp(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
@@ -418,8 +420,9 @@ pub fn pea(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     do_push(cpu, bus, value);
 }
 
-pub fn pei(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    let addr = cpu.get_operand::<u16>(bus, mode);
+pub fn pei(cpu: &mut Cpu, bus: &mut Bus, _mode: &AddressingMode) {
+    let indirect = cpu.direct_offset(bus);
+    let addr = cpu.read_bank0(bus, indirect);
     do_push(cpu, bus, addr);
 }
 

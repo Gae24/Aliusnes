@@ -49,8 +49,8 @@ impl Address {
         }
     }
 
-    pub fn wrapping_add(self, rhs: u32) -> Self {
-        (u32::from(self).wrapping_add(rhs)).into()
+    pub fn wrapping_add(&self, rhs: u32) -> Self {
+        (u32::from(*self).wrapping_add(rhs)).into()
     }
 }
 
@@ -79,6 +79,17 @@ impl From<Address> for u32 {
 }
 
 impl Cpu {
+    pub fn read_bank0(&mut self, bus: &mut Bus, offset: u16) -> u16 {
+        let addr = Address::new(offset, 0);
+        self.read_8(bus, addr) as u16 | (self.read_8(bus, addr.wrapping_offset_add(1)) as u16) << 8
+    }
+
+    pub fn write_bank0(&mut self, bus: &mut Bus, offset: u16, data: u16) {
+        let addr = Address::new(offset, 0);
+        self.write_8(bus, addr, data.low_byte());
+        self.write_8(bus, addr.wrapping_offset_add(1), data.high_byte());
+    }
+
     pub fn get_imm<T: RegSize>(&mut self, bus: &mut Bus) -> T {
         let addr = Address::new(self.program_counter, self.pbr);
         if T::IS_U16 {
@@ -99,7 +110,7 @@ impl Cpu {
         }
     }
 
-    fn direct_offset(&mut self, bus: &mut Bus) -> u16 {
+    pub fn direct_offset(&mut self, bus: &mut Bus) -> u16 {
         let dpr = self.dpr;
         if dpr as u8 != 0 {
             self.add_additional_cycles(1);
@@ -107,11 +118,9 @@ impl Cpu {
         dpr.wrapping_add(self.get_imm::<u8>(bus) as u16)
     }
 
-    fn indirect_long_address(&mut self, bus: &mut Bus, addr: Address) -> Address {
-        Address::new(
-            self.read_16(bus, addr),
-            self.read_8(bus, addr.wrapping_offset_add(2)),
-        )
+    fn indirect_long_address(&mut self, bus: &mut Bus, indirect: u16) -> Address {
+        let addr = Address::new(indirect.wrapping_add(2), 0);
+        Address::new(self.read_bank0(bus, indirect), self.read_8(bus, addr))
     }
 
     fn absolute_address(&mut self, bus: &mut Bus) -> Address {
@@ -145,16 +154,19 @@ impl Cpu {
             }
             AddressingMode::Indirect => {
                 let indirect = self.direct_offset(bus);
-                Address::new(self.read_16(bus, Address::from(indirect)), self.dbr)
+                let offset = self.read_bank0(bus, indirect);
+                Address::new(offset, self.dbr)
             }
             AddressingMode::IndirectX => {
                 self.add_additional_cycles(1);
                 let indirect = self.direct_offset(bus).wrapping_add(self.index_x);
-                Address::new(self.read_16(bus, Address::from(indirect)), self.dbr)
+                let offset = self.read_bank0(bus, indirect);
+                Address::new(offset, self.dbr)
             }
             AddressingMode::IndirectY => {
                 let indirect = self.direct_offset(bus);
-                let unindexed = Address::new(self.read_16(bus, Address::from(indirect)), self.dbr);
+                let offset = self.read_bank0(bus, indirect);
+                let unindexed = Address::new(offset, self.dbr);
                 let indexed = unindexed.wrapping_add(self.index_y as u32);
                 self.add_penalty_cycle::<WRITE>(
                     unindexed.offset.high_byte(),
@@ -164,10 +176,10 @@ impl Cpu {
             }
             AddressingMode::IndirectLong => {
                 let indirect = self.direct_offset(bus);
-                self.indirect_long_address(bus, Address::from(indirect))
+                self.indirect_long_address(bus, indirect)
             }
             AddressingMode::IndirectLongY => {
-                let indirect = Address::new(self.direct_offset(bus), 0);
+                let indirect = self.direct_offset(bus);
                 self.indirect_long_address(bus, indirect)
                     .wrapping_add(self.index_y as u32)
             }
@@ -204,8 +216,8 @@ impl Cpu {
             AddressingMode::StackRelativeIndirectY => {
                 self.add_additional_cycles(1);
                 let indirect = self.stack_relative_address(bus);
-                Address::new(self.read_16(bus, indirect.into()), self.dbr)
-                    .wrapping_add(self.index_y as u32)
+                let offset = self.read_bank0(bus, indirect);
+                Address::new(offset, self.dbr).wrapping_add(self.index_y as u32)
             }
             AddressingMode::StackPEI => Address::new(self.direct_offset(bus), 0),
             _ => unreachable!(),
