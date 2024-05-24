@@ -428,10 +428,9 @@ pub fn pea(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     do_push(cpu, bus, value);
 }
 
-pub fn pei(cpu: &mut Cpu, bus: &mut Bus, _mode: &AddressingMode) {
-    let indirect = cpu.direct_offset(bus);
-    let addr = cpu.read_bank0(bus, indirect);
-    do_push(cpu, bus, addr);
+pub fn pei(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
+    let value = cpu.get_operand::<u16>(bus, mode);
+    do_push(cpu, bus, value);
 }
 
 pub fn per(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {

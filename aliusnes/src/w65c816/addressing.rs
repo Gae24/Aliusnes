@@ -119,6 +119,11 @@ impl Cpu {
         dpr.wrapping_add(self.get_imm::<u8>(bus) as u16)
     }
 
+    pub fn direct_page_indexed(&mut self, bus: &mut Bus, index: u16) -> u16 {
+        self.add_additional_cycles(1);
+        self.direct_offset(bus).wrapping_add(index)
+    }
+
     fn indirect_long_address(&mut self, bus: &mut Bus, indirect: u16) -> Address {
         let addr = Address::new(indirect.wrapping_add(2), 0);
         Address::new(self.read_bank0(bus, indirect), self.read_8(bus, addr))
@@ -235,22 +240,31 @@ impl Cpu {
             | AddressingMode::AbsoluteLongJSL
             | AddressingMode::AbsoluteIndirectLong
             | AddressingMode::BlockMove => self.get_imm(bus),
+            AddressingMode::Direct
+            | AddressingMode::DirectX
+            | AddressingMode::DirectY
+            | AddressingMode::StackRelative
+            | AddressingMode::StackPEI => self.read_from_direct_page(bus, mode),
             _ => {
                 let addr = self.decode_addressing_mode::<false>(bus, *mode);
-                if T::IS_U16 {
-                    match mode {
-                        AddressingMode::Direct
-                        | AddressingMode::DirectX
-                        | AddressingMode::DirectY
-                        | AddressingMode::StackRelative => {
-                            T::from_u16(self.read_bank0(bus, addr.offset))
-                        }
-                        _ => T::from_u16(self.read_16(bus, addr)),
-                    }
-                } else {
-                    T::from_u8(self.read_8(bus, addr))
+                match T::IS_U16 {
+                    true => T::from_u16(self.read_16(bus, addr)),
+                    false => T::from_u8(self.read_8(bus, addr)),
                 }
             }
+        }
+    }
+
+    fn read_from_direct_page<T: RegSize>(&mut self, bus: &mut Bus, mode: &AddressingMode) -> T {
+        let page = match mode {
+            AddressingMode::DirectX => self.direct_page_indexed(bus, self.index_x),
+            AddressingMode::DirectY => self.direct_page_indexed(bus, self.index_y),
+            AddressingMode::StackRelative => self.stack_relative_address(bus),
+            _ => self.direct_offset(bus),
+        };
+        match T::IS_U16 {
+            true => T::from_u16(self.read_bank0(bus, page)),
+            false => T::from_u8(self.read_8(bus, page.into())),
         }
     }
 }
