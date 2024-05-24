@@ -91,9 +91,9 @@ impl Dma {
 
                 if channel.parameters.direction() {
                     let data = bus.read_b(b_addr);
-                    bus.write::<true>(a_addr, data);
+                    bus.write::<true>(a_addr.into(), data);
                 } else {
-                    let data = bus.read::<true>(a_addr);
+                    let data = bus.read::<true>(a_addr.into());
                     bus.write_b(b_addr, data);
                 }
 

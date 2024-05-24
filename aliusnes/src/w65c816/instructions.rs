@@ -1,7 +1,7 @@
 use super::{
-    cpu::{AddressingMode, Cpu, Status},
+    addressing::{Address, AddressingMode},
+    cpu::{Cpu, Status, Vectors},
     functions::*,
-    vectors::Vectors,
 };
 use crate::bus::Bus;
 
@@ -267,14 +267,13 @@ pub fn iny(cpu: &mut Cpu, _bus: &mut Bus, _mode: &AddressingMode) {
 
 pub fn jml(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let addr = cpu.get_operand::<u16>(bus, mode);
-    cpu.program_counter = cpu.read_16(bus, addr.into());
-    cpu.pbr = bus.read::<false>(addr.wrapping_add(2).into());
+    let pc = cpu.read_bank0(bus, addr);
+    let pbr = cpu.read_8(bus, addr.wrapping_add(2).into());
+    cpu.program_counter = pc;
+    cpu.pbr = pbr;
 }
 
 pub fn jmp(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    if *mode == AddressingMode::AbsoluteIndirectX {
-        cpu.add_additional_cycles(1);
-    }
     match mode {
         AddressingMode::AbsoluteLong => {
             let new_pc = cpu.get_operand::<u16>(bus, &AddressingMode::AbsoluteJMP);
@@ -299,21 +298,19 @@ pub fn jsl(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn jsr(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    cpu.add_additional_cycles(1);
-    match mode {
+    let val = match mode {
         AddressingMode::AbsoluteIndirectX => {
-            let low = cpu.get_operand::<u8>(bus, &AddressingMode::AbsoluteJMP);
-            do_push(cpu, bus, cpu.program_counter);
-            let high = cpu.get_operand::<u8>(bus, &AddressingMode::AbsoluteJMP);
-            let addr = (low as u16 | (high as u16) << 8).wrapping_add(cpu.index_x);
-            cpu.program_counter = cpu.read_16(bus, cpu.pbr as u32 | addr as u32);
+            let addr = cpu.decode_addressing_mode::<false>(bus, *mode);
+            cpu.read_8(bus, addr) as u16
+                | (cpu.read_8(bus, addr.wrapping_offset_add(1)) as u16) << 8
         }
         _ => {
-            let val = cpu.get_operand::<u16>(bus, mode);
-            do_push(cpu, bus, cpu.program_counter.wrapping_sub(1));
-            cpu.program_counter = val;
+            cpu.add_additional_cycles(1);
+            cpu.get_operand(bus, mode)
         }
-    }
+    };
+    do_push(cpu, bus, cpu.program_counter.wrapping_sub(1));
+    cpu.program_counter = val;
 }
 
 pub fn lda(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
@@ -376,8 +373,8 @@ pub fn mvn(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let src_bank = (banks & 0xFF) as u8;
     cpu.add_additional_cycles(2);
     loop {
-        let src = bus.read::<false>(cpu.index_x as u32 | (src_bank as u32) << 16);
-        let dst = cpu.index_y as u32 | (dst_bank as u32) << 16;
+        let src = bus.read::<false>(Address::new(cpu.index_x, src_bank));
+        let dst = Address::new(cpu.index_y, dst_bank);
         cpu.write_8(bus, dst, src);
         cpu.index_x = cpu.index_x.wrapping_add(1);
         cpu.index_y = cpu.index_y.wrapping_add(1);
@@ -394,8 +391,8 @@ pub fn mvp(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let src_bank = (banks & 0xFF) as u8;
     cpu.add_additional_cycles(2);
     loop {
-        let src = bus.read::<false>(cpu.index_x as u32 | (src_bank as u32) << 16);
-        let dst = cpu.index_y as u32 | (dst_bank as u32) << 16;
+        let src = bus.read::<false>(Address::new(cpu.index_x, src_bank));
+        let dst = Address::new(cpu.index_y, dst_bank);
         cpu.write_8(bus, dst, src);
         cpu.index_x = cpu.index_x.wrapping_sub(1);
         cpu.index_y = cpu.index_y.wrapping_sub(1);
@@ -430,8 +427,8 @@ pub fn pea(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn pei(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    let addr = cpu.get_operand::<u16>(bus, mode);
-    do_push(cpu, bus, addr);
+    let value = cpu.get_operand::<u16>(bus, mode);
+    do_push(cpu, bus, value);
 }
 
 pub fn per(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {

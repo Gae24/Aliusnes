@@ -1,12 +1,12 @@
 use cart::{header::Header, Cart};
 use emu::Emu;
 
-mod bus;
+pub mod bus;
 mod cart;
 mod emu;
 mod ppu;
 mod utils;
-mod w65c816;
+pub mod w65c816;
 
 #[macro_use]
 extern crate lazy_static;
