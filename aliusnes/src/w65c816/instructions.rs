@@ -1,12 +1,7 @@
-use super::addressing::Address<<<<<< HEAD
+use super::{
     addressing::{Address, AddressingMode},
     cpu::{Cpu, Status, Vectors},
     functions::*,
-=======
-    cpu::{AddressingMode, Cpu, Status},
-    functions::*,
-    vectors::Vectors,
->>>>>>> master
 };
 use crate::bus::Bus;
 

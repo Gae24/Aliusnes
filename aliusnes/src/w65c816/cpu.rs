@@ -4,7 +4,10 @@ use super::{
     opcodes::{OpCode, OPCODES_MAP},
     regsize::RegSize,
 };
-use crate::{bus::Bus, utils::int_traits::ManipulateU16};
+use crate::{
+    bus::{dma::Dma, Bus},
+    utils::int_traits::ManipulateU16,
+};
 
 pub enum Vectors {
     Cop,
@@ -34,7 +37,7 @@ impl Vectors {
             Vectors::EmuBrk => 0xFFFE,
         }
     }
-);
+}
 
 bitfield!(
     #[derive(PartialEq, Eq)]
@@ -188,8 +191,8 @@ impl Cpu {
         self.cycles
     }
 
-    pub fn peek_opcode(&self, bus: &Bus) -> OpCode {
-        let op = bus.read(Address::new(self.program_counter, self.pbr));
+    pub fn peek_opcode(&self, bus: &mut Bus) -> OpCode {
+        let op = bus.read::<false>(Address::new(self.program_counter, self.pbr));
         **OPCODES_MAP
             .get(&op)
             .unwrap_or_else(|| panic!("OpCode {:x} is not recognized", op))
@@ -209,12 +212,12 @@ impl Cpu {
 
     pub fn read_8(&mut self, bus: &mut Bus, addr: Address) -> u8 {
         self.cycles += bus.memory_access_cycles(&addr);
-        bus.read(addr)
+        bus.read::<false>(addr)
     }
 
     pub fn write_8(&mut self, bus: &mut Bus, addr: Address, data: u8) {
         self.cycles += bus.memory_access_cycles(&addr);
-        bus.write(addr, data);
+        bus.write::<false>(addr, data);
     }
 
     pub fn read_16(&mut self, bus: &mut Bus, addr: Address) -> u16 {

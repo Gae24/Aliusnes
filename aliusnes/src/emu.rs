@@ -8,9 +8,9 @@ pub struct Emu {
 }
 
 impl Emu {
-    pub fn new() -> Self {
+    pub fn new(cart: Cart) -> Self {
         let mut emu = Emu {
-            bus: Bus::default(),
+            bus: Bus::new(cart),
             cpu: Cpu::new(),
         };
         emu.reset();
