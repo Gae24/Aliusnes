@@ -274,9 +274,6 @@ pub fn jml(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn jmp(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    if *mode == AddressingMode::AbsoluteIndirectX {
-        cpu.add_additional_cycles(1);
-    }
     match mode {
         AddressingMode::AbsoluteLong => {
             let new_pc = cpu.get_operand::<u16>(bus, &AddressingMode::AbsoluteJMP);
@@ -301,16 +298,17 @@ pub fn jsl(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn jsr(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
-    cpu.add_additional_cycles(1);
-    let val;
-    match mode {
+    let val = match mode {
         AddressingMode::AbsoluteIndirectX => {
             let addr = cpu.decode_addressing_mode::<false>(bus, *mode);
-            val = cpu.read_8(bus, addr) as u16
-                | (cpu.read_8(bus, addr.wrapping_offset_add(1)) as u16) << 8;
+            cpu.read_8(bus, addr) as u16
+                | (cpu.read_8(bus, addr.wrapping_offset_add(1)) as u16) << 8
         }
-        _ => val = cpu.get_operand(bus, mode),
-    }
+        _ => {
+            cpu.add_additional_cycles(1);
+            cpu.get_operand(bus, mode)
+        }
+    };
     do_push(cpu, bus, cpu.program_counter.wrapping_sub(1));
     cpu.program_counter = val;
 }

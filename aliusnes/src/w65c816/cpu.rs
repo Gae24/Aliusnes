@@ -214,17 +214,24 @@ impl Cpu {
     }
 
     pub fn do_write<T: RegSize>(&mut self, bus: &mut Bus, mode: &AddressingMode, val: T) {
-        let addr = self.decode_addressing_mode::<true>(bus, *mode);
-        if T::IS_U16 {
-            match mode {
-                AddressingMode::Direct
-                | AddressingMode::DirectX
-                | AddressingMode::DirectY
-                | AddressingMode::StackRelative => self.write_bank0(bus, addr.offset, val.as_u16()),
-                _ => self.write_16(bus, addr, val.as_u16()),
+        match mode {
+            AddressingMode::Direct
+            | AddressingMode::DirectX
+            | AddressingMode::DirectY
+            | AddressingMode::StackRelative => {
+                let (_, page) = self.read_from_direct_page::<T>(bus, mode);
+                match T::IS_U16 {
+                    true => self.write_bank0(bus, page, val.as_u16()),
+                    false => self.write_8(bus, page.into(), val.as_u8()),
+                }
             }
-        } else {
-            self.write_8(bus, addr, val.as_u8());
+            _ => {
+                let addr = self.decode_addressing_mode::<true>(bus, *mode);
+                match T::IS_U16 {
+                    true => self.write_16(bus, addr, val.as_u16()),
+                    false => self.write_8(bus, addr, val.as_u8()),
+                }
+            }
         }
     }
 
@@ -234,27 +241,30 @@ impl Cpu {
         mode: &AddressingMode,
         f: fn(&mut Cpu, T) -> T,
     ) {
-        let addr = self.decode_addressing_mode::<true>(bus, *mode);
-        if T::IS_U16 {
-            match mode {
-                AddressingMode::Direct
-                | AddressingMode::DirectX
-                | AddressingMode::DirectY
-                | AddressingMode::StackRelative => {
-                    let data = self.read_bank0(bus, addr.offset);
-                    let result = f(self, T::from_u16(data)).as_u16();
-                    self.write_bank0(bus, addr.offset, result);
+        match mode {
+            AddressingMode::Direct
+            | AddressingMode::DirectX
+            | AddressingMode::DirectY
+            | AddressingMode::StackRelative => {
+                let (data, page) = self.read_from_direct_page::<T>(bus, mode);
+                let result = f(self, data);
+                match T::IS_U16 {
+                    true => self.write_bank0(bus, page, result.as_u16()),
+                    false => self.write_8(bus, page.into(), result.as_u8()),
                 }
-                _ => {
+            }
+            _ => {
+                let addr = self.decode_addressing_mode::<true>(bus, *mode);
+                if T::IS_U16 {
                     let data = self.read_16(bus, addr);
                     let result = f(self, T::from_u16(data)).as_u16();
                     self.write_16(bus, addr, result);
+                } else {
+                    let data = self.read_8(bus, addr);
+                    let result = f(self, T::from_u8(data)).as_u8();
+                    self.write_8(bus, addr, result);
                 }
             }
-        } else {
-            let data = self.read_8(bus, addr);
-            let result = f(self, T::from_u8(data)).as_u8();
-            self.write_8(bus, addr, result);
         }
     }
 }

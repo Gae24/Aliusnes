@@ -111,7 +111,7 @@ impl Cpu {
         }
     }
 
-    pub fn direct_offset(&mut self, bus: &mut Bus) -> u16 {
+    fn direct_offset(&mut self, bus: &mut Bus) -> u16 {
         let dpr = self.dpr;
         if dpr as u8 != 0 {
             self.add_additional_cycles(1);
@@ -119,7 +119,7 @@ impl Cpu {
         dpr.wrapping_add(self.get_imm::<u8>(bus) as u16)
     }
 
-    pub fn direct_page_indexed(&mut self, bus: &mut Bus, index: u16) -> u16 {
+    fn direct_page_indexed(&mut self, bus: &mut Bus, index: u16) -> u16 {
         self.add_additional_cycles(1);
         self.direct_offset(bus).wrapping_add(index)
     }
@@ -149,15 +149,6 @@ impl Cpu {
         mode: AddressingMode,
     ) -> Address {
         match mode {
-            AddressingMode::Direct => Address::new(self.direct_offset(bus), 0),
-            AddressingMode::DirectX => {
-                self.add_additional_cycles(1);
-                Address::new(self.direct_offset(bus).wrapping_add(self.index_x), 0)
-            }
-            AddressingMode::DirectY => {
-                self.add_additional_cycles(1);
-                Address::new(self.direct_offset(bus).wrapping_add(self.index_y), 0)
-            }
             AddressingMode::Indirect => {
                 let indirect = self.direct_offset(bus);
                 let offset = self.read_bank0(bus, indirect);
@@ -213,19 +204,19 @@ impl Cpu {
                 .absolute_long_address(bus)
                 .wrapping_add(self.index_x as u32),
             AddressingMode::AbsoluteIndirect => Address::new(self.get_imm(bus), 0),
-            AddressingMode::AbsoluteIndirectLong => todo!(),
-            AddressingMode::AbsoluteIndirectX => Address::new(
-                self.get_imm::<u16>(bus).wrapping_add(self.index_x),
-                self.pbr,
-            ),
-            AddressingMode::StackRelative => Address::new(self.stack_relative_address(bus), 0),
+            AddressingMode::AbsoluteIndirectX => {
+                self.add_additional_cycles(1);
+                Address::new(
+                    self.get_imm::<u16>(bus).wrapping_add(self.index_x),
+                    self.pbr,
+                )
+            }
             AddressingMode::StackRelativeIndirectY => {
                 self.add_additional_cycles(1);
                 let indirect = self.stack_relative_address(bus);
                 let offset = self.read_bank0(bus, indirect);
                 Address::new(offset, self.dbr).wrapping_add(self.index_y as u32)
             }
-            AddressingMode::StackPEI => Address::new(self.direct_offset(bus), 0),
             _ => unreachable!(),
         }
     }
@@ -244,7 +235,7 @@ impl Cpu {
             | AddressingMode::DirectX
             | AddressingMode::DirectY
             | AddressingMode::StackRelative
-            | AddressingMode::StackPEI => self.read_from_direct_page(bus, mode),
+            | AddressingMode::StackPEI => self.read_from_direct_page(bus, mode).0,
             _ => {
                 let addr = self.decode_addressing_mode::<false>(bus, *mode);
                 match T::IS_U16 {
@@ -255,7 +246,11 @@ impl Cpu {
         }
     }
 
-    fn read_from_direct_page<T: RegSize>(&mut self, bus: &mut Bus, mode: &AddressingMode) -> T {
+    pub fn read_from_direct_page<T: RegSize>(
+        &mut self,
+        bus: &mut Bus,
+        mode: &AddressingMode,
+    ) -> (T, u16) {
         let page = match mode {
             AddressingMode::DirectX => self.direct_page_indexed(bus, self.index_x),
             AddressingMode::DirectY => self.direct_page_indexed(bus, self.index_y),
@@ -263,8 +258,8 @@ impl Cpu {
             _ => self.direct_offset(bus),
         };
         match T::IS_U16 {
-            true => T::from_u16(self.read_bank0(bus, page)),
-            false => T::from_u8(self.read_8(bus, page.into())),
+            true => (T::from_u16(self.read_bank0(bus, page)), page),
+            false => (T::from_u8(self.read_8(bus, page.into())), page),
         }
     }
 }
