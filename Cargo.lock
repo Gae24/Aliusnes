@@ -9,8 +9,6 @@ dependencies = [
  "lazy_static",
  "log",
  "proc-bitfield",
- "serde",
- "serde_json",
  "simplelog",
 ]
 
@@ -70,8 +68,28 @@ dependencies = [
 ]
 
 [[package]]
-name = "powerfmt"
-version = "0.2.0"
+name = "proc-bitfield"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2aff80d4076e24a664e294bb4c45e2c00107c2072c7de71ae0e30659cf01bd4"
+dependencies = [
+ "proc-bitfield-macros",
+ "static_assertions",
+]
+
+[[package]]
+name = "proc-bitfield-macros"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "042b2342e993ca4ed4e7bf95d6b5c9e1e96ed8b16b18591232cc5982588046b4"
+dependencies = [
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "proc-macro2"
+version = "1.0.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "439ee305def115ba05938db6eb1644ff94165c5ab5e9420d1c1bcedbba909391"
 
@@ -165,6 +183,12 @@ dependencies = [
 [[package]]
 name = "static_assertions"
 version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
+
+[[package]]
+name = "syn"
+version = "2.0.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 

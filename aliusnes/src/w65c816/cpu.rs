@@ -34,7 +34,7 @@ impl Vectors {
             Vectors::EmuBrk => 0xFFFE,
         }
     }
-}
+);
 
 bitfield!(
     #[derive(PartialEq, Eq)]
@@ -158,8 +158,25 @@ impl Cpu {
         if self.stopped {
             return 0;
         }
+        if self.waiting_interrupt {
+            if bus.requested_nmi() {
+                self.waiting_interrupt = false;
+                self.handle_interrupt(bus, Vectors::Nmi);
+            } else if !self.status.irq_disable() && bus.requested_irq() {
+                self.waiting_interrupt = false;
+                self.handle_interrupt(bus, Vectors::Irq);
+            } else {
+                return 0;
+            }
+        }
 
         let op = self.get_imm::<u8>(bus);
+
+        // DMA will take place in the middle of the next instruction, just after its opcode is read from memory.
+        // todo a better way that takes account of syncing components
+        if bus.dma.enable_channels > 0 {
+            self.cycles += Dma::do_dma(bus);
+        }
 
         let opcode = OPCODES_MAP
             .get(&op)

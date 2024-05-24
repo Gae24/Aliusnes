@@ -1,7 +1,12 @@
-use super::{
+use super::addressing::Address<<<<<< HEAD
     addressing::{Address, AddressingMode},
     cpu::{Cpu, Status, Vectors},
     functions::*,
+=======
+    cpu::{AddressingMode, Cpu, Status},
+    functions::*,
+    vectors::Vectors,
+>>>>>>> master
 };
 use crate::bus::Bus;
 
@@ -274,6 +279,9 @@ pub fn jml(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
 }
 
 pub fn jmp(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
+    if *mode == AddressingMode::AbsoluteIndirectX {
+        cpu.add_additional_cycles(1);
+    }
     match mode {
         AddressingMode::AbsoluteLong => {
             let new_pc = cpu.get_operand::<u16>(bus, &AddressingMode::AbsoluteJMP);
@@ -373,9 +381,9 @@ pub fn mvn(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let src_bank = (banks & 0xFF) as u8;
     cpu.add_additional_cycles(2);
     loop {
-        let src = bus.read(Address::new(cpu.index_x, src_bank));
-        let dst = cpu.index_y as u32 | (dst_bank as u32) << 16;
-        cpu.write_8(bus, dst.into(), src);
+        let src = bus.read::<false>(Address::new(cpu.index_x, src_bank));
+        let dst = Address::new(cpu.index_y, dst_bank);
+        cpu.write_8(bus, dst, src);
         cpu.index_x = cpu.index_x.wrapping_add(1);
         cpu.index_y = cpu.index_y.wrapping_add(1);
         cpu.accumulator = cpu.accumulator.wrapping_sub(1);
@@ -391,9 +399,9 @@ pub fn mvp(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode) {
     let src_bank = (banks & 0xFF) as u8;
     cpu.add_additional_cycles(2);
     loop {
-        let src = bus.read(Address::new(cpu.index_x, src_bank));
-        let dst = cpu.index_y as u32 | (dst_bank as u32) << 16;
-        cpu.write_8(bus, dst.into(), src);
+        let src = bus.read::<false>(Address::new(cpu.index_x, src_bank));
+        let dst = Address::new(cpu.index_y, dst_bank);
+        cpu.write_8(bus, dst, src);
         cpu.index_x = cpu.index_x.wrapping_sub(1);
         cpu.index_y = cpu.index_y.wrapping_sub(1);
         cpu.accumulator = cpu.accumulator.wrapping_sub(1);
