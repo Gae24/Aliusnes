@@ -1,7 +1,7 @@
 use super::{cpu::Cpu, regsize::RegSize};
 use crate::{bus::Bus, utils::int_traits::ManipulateU16};
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug)]
 pub enum AddressingMode {
     Implied,
     Immediate,

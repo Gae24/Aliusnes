@@ -1,5 +1,7 @@
 use std::{env, fs, path::Path};
 
+use aliusnes::run_emu;
+
 fn main() {
     env::set_var("RUST_BACKTRACE", "1");
     let args: Vec<String> = env::args().collect();
@@ -15,4 +17,6 @@ fn main() {
 
     let rom = fs::read(rom_path).expect("Couldn't load ROM");
     let ram: Vec<u8> = Vec::new();
+
+    run_emu(&rom, ram);
 }
