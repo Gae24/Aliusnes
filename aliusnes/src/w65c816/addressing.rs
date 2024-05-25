@@ -78,6 +78,12 @@ impl From<Address> for u32 {
     }
 }
 
+impl From<Address> for usize {
+    fn from(value: Address) -> Self {
+        (value.bank as usize) << 16 | value.offset as usize
+    }
+}
+
 impl Cpu {
     pub fn read_bank0(&mut self, bus: &mut Bus, offset: u16) -> u16 {
         let addr = Address::new(offset, 0);

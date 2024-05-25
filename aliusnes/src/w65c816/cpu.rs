@@ -1,7 +1,7 @@
 use super::{
     addressing::{Address, AddressingMode},
     functions::do_push,
-    opcodes::{OpCode, OPCODES_MAP},
+    opcodes::OPCODES_MAP,
     regsize::RegSize,
 };
 use crate::{
