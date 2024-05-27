@@ -3,7 +3,7 @@ use crate::w65c816::addressing::Address;
 use crate::{cart::Cart, ppu::Ppu, utils::int_traits::ManipulateU16};
 
 pub mod access;
-pub mod dma;
+pub(super) mod dma;
 mod math;
 mod wram;
 
