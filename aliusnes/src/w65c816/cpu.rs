@@ -1,5 +1,43 @@
-use super::{functions::do_push, opcodes::OPCODES_MAP, regsize::RegSize, vectors::Vectors};
-use crate::{bus::dma::Dma, bus::Bus, utils::int_traits::ManipulateU16};
+use super::{
+    addressing::{Address, AddressingMode},
+    functions::do_push,
+    opcodes::OPCODES_MAP,
+    regsize::RegSize,
+};
+use crate::{
+    bus::{dma::Dma, Bus},
+    utils::int_traits::ManipulateU16,
+};
+
+pub enum Vectors {
+    Cop,
+    Brk,
+    Abort,
+    Nmi,
+    Irq,
+    EmuCop,
+    EmuAbort,
+    EmuNmi,
+    EmuReset,
+    EmuBrk,
+}
+
+impl Vectors {
+    pub const fn get_addr(&self) -> u16 {
+        match self {
+            Vectors::Cop => 0xFFE4,
+            Vectors::Brk => 0xFFE6,
+            Vectors::Abort => 0xFFE8,
+            Vectors::Nmi => 0xFFEA,
+            Vectors::Irq => 0xFFEE,
+            Vectors::EmuCop => 0xFFF4,
+            Vectors::EmuAbort => 0xFFF8,
+            Vectors::EmuNmi => 0xFFFA,
+            Vectors::EmuReset => 0xFFFC,
+            Vectors::EmuBrk => 0xFFFE,
+        }
+    }
+}
 
 bitfield!(
     pub struct Status(pub u8) {
@@ -40,37 +78,7 @@ pub struct Cpu {
     emulation_mode: bool,
     pub stopped: bool,
     pub waiting_interrupt: bool,
-    pub extra_cycles: u32,
-}
-
-#[derive(Debug)]
-pub enum AddressingMode {
-    Implied,
-    Immediate,
-    Relative,
-    RelativeLong,
-    Direct,
-    DirectX,
-    DirectY,
-    Indirect,
-    IndirectX,
-    IndirectY,
-    IndirectLong,
-    IndirectLongY,
-    Absolute,
-    AbsoluteX,
-    AbsoluteY,
-    AbsoluteLong,
-    AbsoluteLongX,
-    AbsoluteIndirect,
-    AbsoluteIndirectLong,
-    AbsoluteIndirectX,
-    AbsoluteJMP,
-    AbsoluteLongJSL,
-    StackRelative,
-    StackRelativeIndirectY,
-    StackPEI,
-    BlockMove,
+    pub cycles: u32,
 }
 
 impl Cpu {
@@ -88,7 +96,7 @@ impl Cpu {
             emulation_mode: true,
             stopped: false,
             waiting_interrupt: false,
-            extra_cycles: 0,
+            cycles: 0,
         }
     }
 
@@ -138,9 +146,9 @@ impl Cpu {
             // not supported
             self.status.set_a_reg_size(true);
             self.status.set_index_regs_size(true);
-            self.stack_pointer &= 0x01FF;
-            self.index_y &= 0xFF;
-            self.index_x &= 0xFF;
+            self.stack_pointer.set_high_byte(0x01);
+            self.index_y.set_high_byte(0x00);
+            self.index_x.set_high_byte(0x00);
         }
         self.emulation_mode = val;
     }
@@ -155,11 +163,11 @@ impl Cpu {
         self.status.set_decimal(false);
         self.status.set_irq_disable(true);
         self.pbr = 0;
-        self.program_counter = self.read_16(bus, 0xFFFC);
+        self.program_counter = self.read_bank0(bus, Vectors::EmuReset.get_addr());
     }
 
     pub fn step(&mut self, bus: &mut Bus) -> u32 {
-        self.extra_cycles = 0;
+        self.cycles = 0;
 
         if self.stopped {
             return 0;
@@ -181,9 +189,7 @@ impl Cpu {
         // DMA will take place in the middle of the next instruction, just after its opcode is read from memory.
         // todo a better way that takes account of syncing components
         if bus.dma.enable_channels > 0 {
-            log::warn!("Started DMA");
-            self.extra_cycles += Dma::do_dma(bus);
-            log::warn!("Terminated DMA");
+            self.cycles += Dma::do_dma(bus);
         }
 
         let opcode = OPCODES_MAP
@@ -204,7 +210,7 @@ impl Cpu {
         let instr = opcode.function;
         instr(self, bus, &opcode.mode);
 
-        self.extra_cycles + (opcode.cycles as u32)
+        self.cycles
     }
 
     pub fn handle_interrupt(&mut self, bus: &mut Bus, interrupt: Vectors) {
@@ -216,164 +222,51 @@ impl Cpu {
         self.status.set_decimal(false);
         self.status.set_irq_disable(true);
         self.pbr = 0;
-        self.program_counter = self.read_16(bus, interrupt.get_interrupt_addr());
+        self.program_counter = self.read_bank0(bus, interrupt.get_addr());
     }
 
-    pub fn read_8(&mut self, bus: &mut Bus, addr: u32) -> u8 {
-        self.extra_cycles += bus.memory_access_cycles(addr);
+    pub fn read_8(&mut self, bus: &mut Bus, addr: Address) -> u8 {
+        self.cycles += bus.memory_access_cycles(&addr);
         bus.read::<false>(addr)
     }
 
-    pub fn write_8(&mut self, bus: &mut Bus, addr: u32, data: u8) {
-        self.extra_cycles += bus.memory_access_cycles(addr);
+    pub fn write_8(&mut self, bus: &mut Bus, addr: Address, data: u8) {
+        self.cycles += bus.memory_access_cycles(&addr);
         bus.write::<false>(addr, data);
     }
 
-    pub fn read_16(&mut self, bus: &mut Bus, addr: u32) -> u16 {
+    pub fn read_16(&mut self, bus: &mut Bus, addr: Address) -> u16 {
         self.read_8(bus, addr) as u16 | (self.read_8(bus, addr.wrapping_add(1)) as u16) << 8
     }
 
-    pub fn write_16(&mut self, bus: &mut Bus, addr: u32, data: u16) {
-        self.write_8(bus, addr, data as u8);
-        self.write_8(bus, addr.wrapping_add(1), (data >> 8) as u8);
+    pub fn write_16(&mut self, bus: &mut Bus, addr: Address, data: u16) {
+        self.write_8(bus, addr, data.low_byte());
+        self.write_8(bus, addr.wrapping_add(1), data.high_byte());
     }
 
-    fn add_extra_cycles<const WRITE: bool>(&mut self, unindexed: u32, indexed: u32) {
-        if WRITE || unindexed >> 8 != indexed >> 8 {
-            self.extra_cycles += 1;
-        }
-    }
-
-    fn get_imm<T: RegSize>(&mut self, bus: &mut Bus) -> T {
-        if T::IS_U16 {
-            self.extra_cycles += 1;
-            let pbr = self.pbr as u16;
-            let res = self.read_16(bus, (pbr | self.program_counter) as u32);
-            self.program_counter = self.program_counter.wrapping_add(2);
-            T::from_u16(res)
-        } else {
-            let pbr = self.pbr as u16;
-            let res = self.read_8(bus, (pbr | self.program_counter) as u32);
-            self.program_counter = self.program_counter.wrapping_add(1);
-            T::from_u8(res)
-        }
-    }
-
-    fn get_direct_addr(&mut self, bus: &mut Bus) -> u16 {
-        let dpr = self.dpr;
-        if dpr as u8 != 0 {
-            self.extra_cycles += 1;
-        }
-        dpr.wrapping_add(self.get_imm::<u8>(bus) as u16)
-    }
-
-    fn get_indirect_addr(&mut self, bus: &mut Bus, addr: u16) -> u32 {
-        (self.read_16(bus, addr.into()) | self.dbr as u16).into()
-    }
-
-    fn get_indirect_long_addr(&mut self, bus: &mut Bus, addr: u32) -> u32 {
-        self.read_16(bus, addr) as u32 | (self.read_8(bus, addr.wrapping_add(2)) as u32) << 16
-    }
-
-    fn get_absolute_addr(&mut self, bus: &mut Bus) -> u32 {
-        (self.dbr as u16 | self.get_imm::<u16>(bus)) as u32
-    }
-
-    fn get_absolute_long_addr(&mut self, bus: &mut Bus) -> u32 {
-        self.get_imm::<u16>(bus) as u32 | self.get_imm::<u8>(bus) as u32
-    }
-
-    fn get_stack_relative_addr(&mut self, bus: &mut Bus) -> u16 {
-        self.stack_pointer
-            .wrapping_add(self.get_imm::<u8>(bus).into())
-    }
-
-    fn get_address<const WRITE: bool>(&mut self, bus: &mut Bus, mode: &AddressingMode) -> u32 {
-        match mode {
-            AddressingMode::Direct => self.get_direct_addr(bus) as u32,
-            AddressingMode::DirectX => (self.get_direct_addr(bus) + self.index_x) as u32,
-            AddressingMode::DirectY => (self.get_direct_addr(bus) + self.index_y) as u32,
-            AddressingMode::Indirect => {
-                let indirect = self.get_direct_addr(bus);
-                self.get_indirect_addr(bus, indirect)
-            }
-            AddressingMode::IndirectX => {
-                let indirect = self.get_direct_addr(bus).wrapping_add(self.index_x);
-                self.get_indirect_addr(bus, indirect)
-            }
-            AddressingMode::IndirectY => {
-                let indirect = self.get_direct_addr(bus);
-                let unindexed = self.get_indirect_addr(bus, indirect);
-                let indexed = (unindexed + self.index_y as u32) & 0xFF_FFFF;
-                self.add_extra_cycles::<WRITE>(unindexed, indexed);
-                indexed
-            }
-            AddressingMode::IndirectLong => {
-                let indirect = self.get_direct_addr(bus) as u32;
-                self.get_indirect_long_addr(bus, indirect)
-            }
-            AddressingMode::IndirectLongY => {
-                let indirect = self.get_direct_addr(bus) as u32;
-                (self.get_indirect_long_addr(bus, indirect) + self.index_y as u32) & 0xFF_FFFF
-            }
-            AddressingMode::Absolute => self.get_absolute_addr(bus),
-            AddressingMode::AbsoluteX => {
-                let unindexed = self.get_absolute_addr(bus);
-                let indexed = (unindexed + self.index_x as u32) & 0xFF_FFFF;
-                self.add_extra_cycles::<WRITE>(unindexed, indexed);
-                indexed
-            }
-            AddressingMode::AbsoluteY => {
-                let unindexed = self.get_absolute_addr(bus);
-                let indexed = (unindexed + self.index_y as u32) & 0xFF_FFFF;
-                self.add_extra_cycles::<WRITE>(unindexed, indexed);
-                indexed
-            }
-            AddressingMode::AbsoluteLong => self.get_absolute_long_addr(bus),
-            AddressingMode::AbsoluteLongX => {
-                (self.get_absolute_long_addr(bus) + self.index_x as u32) & 0xFF_FFFF
-            }
-            AddressingMode::AbsoluteIndirect => self.get_imm::<u16>(bus) as u32,
-            AddressingMode::AbsoluteIndirectX => {
-                self.pbr as u32 | self.get_imm::<u16>(bus).wrapping_add(self.index_x) as u32
-            }
-            AddressingMode::StackRelative => self.get_stack_relative_addr(bus).into(),
-            AddressingMode::StackRelativeIndirectY => {
-                let indirect = self.get_stack_relative_addr(bus);
-                (self.get_indirect_addr(bus, indirect) + self.index_y as u32) & 0xFF_FFFF
-            }
-            AddressingMode::StackPEI => self.get_direct_addr(bus) as u32,
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn get_operand<T: RegSize>(&mut self, bus: &mut Bus, mode: &AddressingMode) -> T {
-        match mode {
-            AddressingMode::Immediate
-            | AddressingMode::Implied
-            | AddressingMode::Relative
-            | AddressingMode::RelativeLong
-            | AddressingMode::AbsoluteJMP
-            | AddressingMode::AbsoluteLongJSL
-            | AddressingMode::AbsoluteIndirectLong
-            | AddressingMode::BlockMove => self.get_imm(bus),
-            _ => {
-                let addr = self.get_address::<false>(bus, mode);
-                if T::IS_U16 {
-                    T::from_u16(self.read_16(bus, addr))
-                } else {
-                    T::from_u8(self.read_8(bus, addr))
-                }
-            }
-        }
+    pub fn add_additional_cycles(&mut self, cycles: u8) {
+        self.cycles += cycles as u32 * 6;
     }
 
     pub fn do_write<T: RegSize>(&mut self, bus: &mut Bus, mode: &AddressingMode, val: T) {
-        let addr = self.get_address::<true>(bus, mode);
-        if T::IS_U16 {
-            self.write_16(bus, addr, val.as_u16());
-        } else {
-            self.write_8(bus, addr, val.as_u8());
+        match mode {
+            AddressingMode::Direct
+            | AddressingMode::DirectX
+            | AddressingMode::DirectY
+            | AddressingMode::StackRelative => {
+                let (_, page) = self.read_from_direct_page::<T>(bus, mode);
+                match T::IS_U16 {
+                    true => self.write_bank0(bus, page, val.as_u16()),
+                    false => self.write_8(bus, page.into(), val.as_u8()),
+                }
+            }
+            _ => {
+                let addr = self.decode_addressing_mode::<true>(bus, *mode);
+                match T::IS_U16 {
+                    true => self.write_16(bus, addr, val.as_u16()),
+                    false => self.write_8(bus, addr, val.as_u8()),
+                }
+            }
         }
     }
 
@@ -383,15 +276,30 @@ impl Cpu {
         mode: &AddressingMode,
         f: fn(&mut Cpu, T) -> T,
     ) {
-        let addr = self.get_address::<true>(bus, mode);
-        if T::IS_U16 {
-            let data = self.read_16(bus, addr);
-            let result = f(self, T::from_u16(data)).as_u16();
-            self.write_16(bus, addr, result);
-        } else {
-            let data = self.read_8(bus, addr);
-            let result = f(self, T::from_u8(data)).as_u8();
-            self.write_8(bus, addr, result);
+        match mode {
+            AddressingMode::Direct
+            | AddressingMode::DirectX
+            | AddressingMode::DirectY
+            | AddressingMode::StackRelative => {
+                let (data, page) = self.read_from_direct_page::<T>(bus, mode);
+                let result = f(self, data);
+                match T::IS_U16 {
+                    true => self.write_bank0(bus, page, result.as_u16()),
+                    false => self.write_8(bus, page.into(), result.as_u8()),
+                }
+            }
+            _ => {
+                let addr = self.decode_addressing_mode::<true>(bus, *mode);
+                if T::IS_U16 {
+                    let data = self.read_16(bus, addr);
+                    let result = f(self, T::from_u16(data)).as_u16();
+                    self.write_16(bus, addr, result);
+                } else {
+                    let data = self.read_8(bus, addr);
+                    let result = f(self, T::from_u8(data)).as_u8();
+                    self.write_8(bus, addr, result);
+                }
+            }
         }
     }
 }

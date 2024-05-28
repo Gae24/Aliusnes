@@ -1,6 +1,7 @@
 use crate::{
     bus::{Access, Bus},
     utils::int_traits::ManipulateU16,
+    w65c816::addressing::Address,
 };
 
 bitfield! {
@@ -52,13 +53,13 @@ impl Dma {
     }
 
     pub fn do_dma(bus: &mut Bus) -> u32 {
-        let mut elapsed_cycles: u32 = 0;
+        let mut cycles: u32 = 0;
 
         for index in 0..8 {
             if bus.dma.enable_channels & (1 << index) == 0 {
                 continue;
             }
-            let mut channel = bus.dma.channels[index];
+            let channel = bus.dma.channels[index];
             let count = if channel.byte_count_or_h_indirect_addr == 0 {
                 0x10000
             } else {
@@ -76,13 +77,15 @@ impl Dma {
             };
             // log::warn!("Channel {index} will transfer {count} Bytes");
             for i in 0..count {
-                let a_addr = channel.a_addr_or_h_table_addr as u32
-                    | (channel.a_bank_or_h_table_bank as u32) << 16;
+                let bank = bus.dma.channels[index].a_bank_or_h_table_bank;
+                let offset = bus.dma.channels[index].a_addr_or_h_table_addr;
+                let a_addr = Address::new(offset, bank);
                 let byte = channel.b_addr.wrapping_add(pattern[i % pattern.len()]);
 
                 //WRAM to WRAM is invalid
                 if byte == 0x80
-                    && ((a_addr & 0xFE0000) == 0x7E0000 || (a_addr & 0x40E000) == 0x0000)
+                    && ((u32::from(a_addr) & 0xFE0000) == 0x7E0000
+                        || (u32::from(a_addr) & 0x40E000) == 0)
                 {
                     continue;
                 }
@@ -98,22 +101,16 @@ impl Dma {
                 }
 
                 match channel.parameters.address_adjust_mode() {
-                    0 => {
-                        channel.a_addr_or_h_table_addr =
-                            channel.a_addr_or_h_table_addr.wrapping_add(1)
-                    }
-                    2 => {
-                        channel.a_addr_or_h_table_addr =
-                            channel.a_addr_or_h_table_addr.wrapping_sub(1)
-                    }
+                    0 => bus.dma.channels[index].a_addr_or_h_table_addr = offset.wrapping_add(1),
+                    2 => bus.dma.channels[index].a_addr_or_h_table_addr = offset.wrapping_sub(1),
                     _ => (),
                 }
             }
-            channel.byte_count_or_h_indirect_addr = 0;
-            elapsed_cycles += 8 + 8 * count as u32;
+            bus.dma.channels[index].byte_count_or_h_indirect_addr = 0;
+            cycles += 8 + 8 * count as u32 + 2;
         }
         bus.dma.enable_channels = 0;
-        elapsed_cycles
+        cycles
     }
 }
 
@@ -142,7 +139,7 @@ impl Access for Dma {
             0x420B => self.enable_channels = data,
             0x420C => self.h_enable_channels = data,
             _ => {
-                let mut channel = self.channels[(addr >> 4 & 7) as usize];
+                let channel = &mut self.channels[(addr >> 4 & 7) as usize];
                 match addr & 0xF {
                     0x0 => channel.parameters = Parameters(data),
                     0x1 => channel.b_addr = data,

@@ -1,44 +1,47 @@
 use super::access::Access;
+use crate::{utils::int_traits::ManipulateU16, w65c816::addressing::Address};
 
 pub struct Wram {
     pub ram: [u8; 0x20000],
-    wm_addr: u32,
+    wm_addr: Address,
 }
 
 impl Wram {
     pub fn new() -> Self {
         Self {
             ram: [0; 0x20000],
-            wm_addr: 0,
+            wm_addr: Address::new(0, 0),
         }
     }
 
     #[inline]
     fn write_to_wm_addr(&mut self, data: u8) {
-        self.ram[self.wm_addr as usize] = data;
-        self.wm_addr = (self.wm_addr + 1) & 0x1_FFFF;
+        self.ram[usize::from(self.wm_addr)] = data;
+        let raw_addr = (u32::from(self.wm_addr) + 1) & 0x1_FFFF;
+        self.wm_addr = Address::from(raw_addr);
     }
 
     #[inline]
     fn wm_addl(&mut self, data: u8) {
-        self.wm_addr = ((self.wm_addr & !0xFF) | data as u32) & 0x1_FFFF;
+        self.wm_addr.offset.set_low_byte(data);
     }
 
     #[inline]
     fn wm_addm(&mut self, data: u8) {
-        self.wm_addr = ((self.wm_addr & !(0xFF << 8)) | data as u32) & 0x1_FFFF;
+        self.wm_addr.offset.set_high_byte(data);
     }
 
     #[inline]
     fn wm_addh(&mut self, data: u8) {
-        self.wm_addr = ((self.wm_addr & !(0xFF << 16)) | data as u32) & 0x1_FFFF;
+        self.wm_addr.bank = data & 1;
     }
 }
 
 impl Access for Wram {
     fn read(&mut self, _addr: u16) -> Option<u8> {
-        let data = self.ram[self.wm_addr as usize];
-        self.wm_addr = (self.wm_addr + 1) & 0x1_FFFF;
+        let data = self.ram[usize::from(self.wm_addr)];
+        let raw_addr = (u32::from(self.wm_addr) + 1) & 0x1_FFFF;
+        self.wm_addr = Address::from(raw_addr);
         Some(data)
     }
 

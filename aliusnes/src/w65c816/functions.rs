@@ -1,7 +1,4 @@
-use super::{
-    cpu::{AddressingMode, Cpu},
-    regsize::RegSize,
-};
+use super::{addressing::AddressingMode, cpu::Cpu, regsize::RegSize};
 use crate::bus::Bus;
 
 pub(super) fn do_bin_adc<T: RegSize>(cpu: &mut Cpu, operand: T) {
@@ -79,6 +76,7 @@ pub(super) fn do_dec_adc<T: RegSize>(cpu: &mut Cpu, operand: T) {
 }
 
 pub(super) fn do_asl<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
+    cpu.add_additional_cycles(1);
     if T::IS_U16 {
         let operand = operand.as_u16();
         let result = operand << 1;
@@ -111,7 +109,7 @@ pub(super) fn do_bit<T: RegSize>(cpu: &mut Cpu, operand: T, mode: &AddressingMod
 pub(super) fn do_branch(cpu: &mut Cpu, bus: &mut Bus, mode: &AddressingMode, cond: bool) {
     let offset = cpu.get_operand::<u8>(bus, mode) as i8;
     if cond {
-        cpu.extra_cycles += 1;
+        cpu.add_additional_cycles(1);
         cpu.program_counter = cpu.program_counter.wrapping_add(offset as u16);
     }
 }
@@ -124,17 +122,20 @@ pub(super) fn do_cmp<T: RegSize>(cpu: &mut Cpu, src: T, operand: T) {
 
 pub(super) fn do_dec<T: RegSize>(cpu: &mut Cpu, src: T) -> T {
     let result = src.wrapping_sub(T::from_u8(1));
+    cpu.add_additional_cycles(1);
     cpu.set_nz(result);
     result
 }
 
 pub(super) fn do_inc<T: RegSize>(cpu: &mut Cpu, src: T) -> T {
     let result = src.wrapping_add(T::from_u8(1));
+    cpu.add_additional_cycles(1);
     cpu.set_nz(result);
     result
 }
 
 pub(super) fn do_lsr<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
+    cpu.add_additional_cycles(1);
     if T::IS_U16 {
         let operand = operand.as_u16();
         let result = operand >> 1;
@@ -152,13 +153,8 @@ pub(super) fn do_lsr<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
 
 pub(super) fn do_push<T: RegSize>(cpu: &mut Cpu, bus: &mut Bus, value: T) {
     if T::IS_U16 {
-        cpu.extra_cycles += 1;
         cpu.stack_pointer = cpu.stack_pointer.wrapping_sub(2);
-        cpu.write_16(
-            bus,
-            cpu.stack_pointer.wrapping_add(1).into(),
-            value.as_u16(),
-        );
+        cpu.write_bank0(bus, cpu.stack_pointer.wrapping_add(1), value.as_u16());
     } else {
         cpu.stack_pointer = cpu.stack_pointer.wrapping_sub(1);
         cpu.write_8(bus, cpu.stack_pointer.wrapping_add(1).into(), value.as_u8());
@@ -167,8 +163,7 @@ pub(super) fn do_push<T: RegSize>(cpu: &mut Cpu, bus: &mut Bus, value: T) {
 
 pub(super) fn do_pull<T: RegSize>(cpu: &mut Cpu, bus: &mut Bus) -> T {
     if T::IS_U16 {
-        cpu.extra_cycles += 1;
-        let value = cpu.read_16(bus, cpu.stack_pointer.wrapping_add(1).into());
+        let value = cpu.read_bank0(bus, cpu.stack_pointer.wrapping_add(1));
         cpu.stack_pointer = cpu.stack_pointer.wrapping_add(2);
         T::from_u16(value)
     } else {
@@ -179,6 +174,7 @@ pub(super) fn do_pull<T: RegSize>(cpu: &mut Cpu, bus: &mut Bus) -> T {
 }
 
 pub(super) fn do_rol<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
+    cpu.add_additional_cycles(1);
     if T::IS_U16 {
         let operand = operand.as_u16();
         let result = operand << 1 | cpu.status.carry() as u16;
@@ -195,6 +191,7 @@ pub(super) fn do_rol<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
 }
 
 pub(super) fn do_ror<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
+    cpu.add_additional_cycles(1);
     if T::IS_U16 {
         let operand = operand.as_u16();
         let result = operand >> 1 | (cpu.status.carry() as u16) << 15;
@@ -261,12 +258,14 @@ pub(super) fn do_dec_sbc<T: RegSize>(cpu: &mut Cpu, operand: T) {
 }
 
 pub(super) fn do_trb<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
+    cpu.add_additional_cycles(1);
     let a = T::from_u16(cpu.accumulator);
     cpu.status.set_zero((operand & a).is_zero());
     operand & !a
 }
 
 pub(super) fn do_tsb<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
+    cpu.add_additional_cycles(1);
     let a = T::from_u16(cpu.accumulator);
     cpu.status.set_zero((operand & a).is_zero());
     operand | a
