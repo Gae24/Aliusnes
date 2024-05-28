@@ -1,3 +1,4 @@
+use super::tile::BitPlane;
 use crate::utils::int_traits::ManipulateU16;
 
 bitfield! {
@@ -13,7 +14,7 @@ pub struct Vram {
     ram: [u16; 0x8000],
     pub video_port_control: VideoPortControl,
     vm_addr: u16,
-    latch: u16,
+    read_latch: u16,
 }
 
 impl Vram {
@@ -22,28 +23,17 @@ impl Vram {
             ram: [0; 0x8000],
             video_port_control: VideoPortControl(0),
             vm_addr: 0x00,
-            latch: 0x00,
+            read_latch: 0x00,
         }
     }
 
-    fn translate_vm_addr(&self) -> u16 {
+    fn remap_vm_addr(&self) -> usize {
+        let addr = self.vm_addr as usize;
         match self.video_port_control.addr_remapping() {
-            0 => self.vm_addr,
-            1 => {
-                (self.vm_addr & 0xFF00)
-                    | ((self.vm_addr << 3) & 0x00F8)
-                    | ((self.vm_addr >> 5) & 0x07)
-            }
-            2 => {
-                (self.vm_addr & 0xFE00)
-                    | ((self.vm_addr << 3) & 0x01F8)
-                    | ((self.vm_addr >> 6) & 0x07)
-            }
-            3 => {
-                (self.vm_addr & 0xFC00)
-                    | ((self.vm_addr << 3) & 0x03F8)
-                    | ((self.vm_addr >> 7) & 0x07)
-            }
+            0 => addr,
+            1 => (addr & 0xFF00) | ((addr & 0xE0) >> 5) | ((addr & 0x1F) << 3),
+            2 => (addr & 0xFE00) | ((addr & 0x1C0) >> 6) | ((addr & 0x3F) << 3),
+            3 => (addr & 0xFC00) | ((addr & 0x380) >> 7) | ((addr & 0x7F) << 3),
             _ => unreachable!(),
         }
     }
@@ -57,23 +47,18 @@ impl Vram {
         }
     }
 
-    fn update_latch(&mut self) {
-        let addr_latch = self.translate_vm_addr();
-        self.latch = self[addr_latch as usize];
-    }
-
     pub fn vm_addl(&mut self, data: u8) {
         self.vm_addr.set_low_byte(data);
-        self.update_latch();
+        self.read_latch = self[self.remap_vm_addr()];
     }
 
     pub fn vm_addh(&mut self, data: u8) {
         self.vm_addr.set_high_byte(data);
-        self.update_latch();
+        self.read_latch = self[self.remap_vm_addr()];
     }
 
     pub fn vm_addl_write(&mut self, data: u8) {
-        let addr = self.vm_addr as usize;
+        let addr = self.remap_vm_addr();
         self[addr].set_low_byte(data);
         if !self.video_port_control.increment_on_high_byte_access() {
             self.vm_addr += self.get_increment_amount();
@@ -81,7 +66,7 @@ impl Vram {
     }
 
     pub fn vm_addh_write(&mut self, data: u8) {
-        let addr = self.vm_addr as usize;
+        let addr = self.remap_vm_addr();
         self[addr].set_high_byte(data);
         if self.video_port_control.increment_on_high_byte_access() {
             self.vm_addr += self.get_increment_amount();
@@ -89,21 +74,31 @@ impl Vram {
     }
 
     pub fn vm_addl_read(&mut self) -> u8 {
-        let result = self.latch.low_byte();
+        let result = self.read_latch.low_byte();
         if !self.video_port_control.increment_on_high_byte_access() {
-            self.update_latch();
+            self.read_latch = self[self.remap_vm_addr()];
             self.vm_addr += self.get_increment_amount();
         }
         result
     }
 
     pub fn vm_addh_read(&mut self) -> u8 {
-        let result = self.latch.high_byte();
+        let result = self.read_latch.high_byte();
         if self.video_port_control.increment_on_high_byte_access() {
-            self.update_latch();
+            self.read_latch = self[self.remap_vm_addr()];
             self.vm_addr += self.get_increment_amount();
         }
         result
+    }
+
+    pub fn planes<T: BitPlane>(&self, addr: usize) -> [u8; T::PLANES] {
+        let mut planes = [0; T::PLANES];
+        for index in 0..T::WORDS_PER_ROW {
+            let bitplane = self[addr + (index << 3)];
+            planes[index] = bitplane.low_byte();
+            planes[index + 1] = bitplane.high_byte();
+        }
+        planes
     }
 }
 

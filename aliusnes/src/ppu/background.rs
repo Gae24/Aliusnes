@@ -1,7 +1,7 @@
 bitfield! {
     pub struct BgMode(pub u8) {
-        bg_mode: u8 @ 0..=2,
-        mode1_bg3_has_priority: bool @ 3,
+        pub bg_mode: u8 @ 0..=2,
+        pub bg3_has_priority: bool @ 3,
         bg1_tile_size: bool @ 4,
         bg2_tile_size: bool @ 5,
         bg3_tile_size: bool @ 6,
@@ -22,22 +22,37 @@ bitfield! {
 bitfield! {
     #[derive(Clone, Copy)]
     struct BgSc(u8) {
-       h_tilemap_count: bool @ 0,
-       v_tilemap_count: bool @ 1,
-       tilemap_addr: u8 @ 2..=7,
+        h_tilemap_count: bool @ 0,
+        v_tilemap_count: bool @ 1,
+        tilemap_addr: u8 @ 2..=7,
     }
 }
 
 #[derive(Clone, Copy)]
-struct Bg {
+pub struct Bg {
     bg_sc: BgSc,
-    tileset_addr: u16,
-    bg_hofs: u16,
-    bg_vofs: u16,
+    pub tileset_addr: u16,
+    pub bg_hofs: u16,
+    pub bg_vofs: u16,
+    pub enabled_on_main_screen: bool,
+}
+
+impl Bg {
+    pub fn tile_map_addr(&self, tile_x: usize, tile_y: usize) -> usize {
+        let tilemap_idx = match (self.bg_sc.h_tilemap_count(), self.bg_sc.v_tilemap_count()) {
+            (true, true) => (tile_x / 32) % 2 + ((tile_y / 32) % 2) * 2,
+            (true, false) => (tile_x / 32) % 2,
+            (false, true) => (tile_y / 32) % 2,
+            (false, false) => 0,
+        };
+        let tile_idx = tilemap_idx * 1024 + (tile_y % 32) * 32 + (tile_x % 32);
+        let tilemap_addr = (self.bg_sc.tilemap_addr() as usize) << 10;
+        tilemap_addr + tile_idx
+    }
 }
 
 pub(super) struct Background {
-    backgrounds: [Bg; 4],
+    pub backgrounds: [Bg; 4],
     pub bg_mode: BgMode,
     pub mosaic: Mosaic,
     h_offset_latch: u16,
@@ -52,6 +67,7 @@ impl Background {
                 tileset_addr: 0,
                 bg_hofs: 0,
                 bg_vofs: 0,
+                enabled_on_main_screen: false,
             }; 4],
             bg_mode: BgMode(0),
             mosaic: Mosaic(0),
@@ -61,7 +77,7 @@ impl Background {
     }
 
     pub fn set_bg_sc(&mut self, addr_low_byte: usize, data: u8) {
-        let idx = (addr_low_byte - 0x07) >> 1;
+        let idx = addr_low_byte - 0x07;
         self.backgrounds[idx].bg_sc = BgSc(data);
     }
 

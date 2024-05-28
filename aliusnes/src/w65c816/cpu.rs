@@ -52,6 +52,19 @@ bitfield!(
     }
 );
 
+fn format_status(status: &Status) -> String {
+    let mut string = String::with_capacity(8);
+    string += if status.negative() { "N" } else { "n" };
+    string += if status.overflow() { "O" } else { "o" };
+    string += if status.a_reg_size() { "A" } else { "a" };
+    string += if status.index_regs_size() { "X" } else { "x" };
+    string += if status.decimal() { "D" } else { "d" };
+    string += if status.irq_disable() { "I" } else { "i" };
+    string += if status.zero() { "Z" } else { "z" };
+    string += if status.carry() { "C" } else { "c" };
+    string
+}
+
 pub struct Cpu {
     pub accumulator: u16,
     pub index_x: u16,
@@ -182,6 +195,17 @@ impl Cpu {
         let opcode = OPCODES_MAP
             .get(&op)
             .unwrap_or_else(|| panic!("OpCode {:x} is not recognized", op));
+        // log::trace!(
+        //     "Instr {} A:{:#06x} X:{:#06x} Y:{:#06x}, PC:{:#06x}, SP:{:#06x}, P:{:#04x} {}",
+        //     opcode.mnemonic,
+        //     self.accumulator,
+        //     self.index_x,
+        //     self.index_y,
+        //     (self.program_counter - 1),
+        //     self.stack_pointer,
+        //     self.status.0,
+        //     format_status(&self.status)
+        // );
 
         let instr = opcode.function;
         instr(self, bus, &opcode.mode);

@@ -57,7 +57,8 @@ pub struct Counters {
     hv_status: HvStatus,
     in_irq: bool,
 
-    pub ready_to_draw: bool,
+    pub frame_ready: bool,
+    pub last_scanline: usize,
 }
 
 impl Counters {
@@ -84,7 +85,8 @@ impl Counters {
             stat78,
             hv_status: HvStatus(0),
             in_irq: false,
-            ready_to_draw: false,
+            frame_ready: false,
+            last_scanline: 0,
         }
     }
 
@@ -109,10 +111,10 @@ impl Counters {
     fn check_counters_timer_hit(&mut self) {
         let h_dot = self.h_dot();
         self.in_irq = match self.nmitimen.hv_timer_mode() {
-            0x00 => false,
-            0x01 => h_dot == self.h_timer_target,
-            0x10 => self.vertical_counter as u16 == self.v_timer_target && h_dot == 0,
-            0x11 => {
+            0b00 => false,
+            0b01 => h_dot == self.h_timer_target,
+            0b10 => self.vertical_counter as u16 == self.v_timer_target && h_dot == 0,
+            0b11 => {
                 self.vertical_counter as u16 == self.v_timer_target && h_dot == self.h_timer_target
             }
             _ => unreachable!(),
@@ -127,6 +129,7 @@ impl Counters {
         self.frame_counter += 1;
         self.stat78.set_odd_frame(self.frame_counter & 1 == 1);
         self.vertical_counter = 0;
+        self.frame_ready = false;
         self.rdnmi.set_in_nmi(false);
         self.hv_status.set_in_vblank(false);
         self.vblank_start = if overscan { PAL_HEIGHT } else { NTSC_HEIGHT } + 1;
@@ -163,6 +166,7 @@ impl Counters {
         }
 
         if self.elapsed_cycles >= self.cycles_per_scanline {
+            self.hv_status.set_in_hblank(false);
             self.elapsed_cycles -= self.cycles_per_scanline;
             self.vertical_counter += 1;
             if self.vertical_counter == self.vblank_end {
@@ -174,11 +178,16 @@ impl Counters {
             if self.vertical_counter == self.vblank_start {
                 self.hv_status.set_in_vblank(true);
                 self.rdnmi.set_in_nmi(true);
-            } else {
-                self.ready_to_draw = true;
+                self.frame_ready = true;
             }
         }
         self.check_counters_timer_hit();
+    }
+
+    pub fn in_hdraw(&self) -> bool {
+        self.last_scanline != self.vertical_counter
+            && !self.hv_status.in_hblank()
+            && !self.hv_status.in_vblank()
     }
 }
 
@@ -223,7 +232,7 @@ impl Ppu {
 
     pub fn write_nmitien(&mut self, val: u8) {
         let nmitimen = Nmitimen(val);
-        let joypad_enable = nmitimen.joypad_enable(); // todo when implementing joypad
+        let _joypad_enable = nmitimen.joypad_enable(); // todo when implementing joypad
         self.nmi_requested = !self.counters.nmitimen.nmi_enabled()
             && nmitimen.nmi_enabled()
             && self.counters.rdnmi.in_nmi();

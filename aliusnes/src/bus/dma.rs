@@ -75,7 +75,7 @@ impl Dma {
                 5 => vec![0, 1, 0, 1],
                 _ => unreachable!(),
             };
-
+            // log::warn!("Channel {index} will transfer {count} Bytes");
             for i in 0..count {
                 let bank = bus.dma.channels[index].a_bank_or_h_table_bank;
                 let offset = bus.dma.channels[index].a_addr_or_h_table_addr;

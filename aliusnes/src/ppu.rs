@@ -3,6 +3,7 @@ use self::{
     cgram::Cgram,
     color_math::{Cgadsub, Cgwsel, ColorData, ColorMath},
     counters::Counters,
+    mode7::Mode7,
     oam::{Oam, Objsel},
     vram::{VideoPortControl, Vram},
 };
@@ -12,7 +13,10 @@ mod background;
 mod cgram;
 mod color_math;
 mod counters;
+mod mode7;
 mod oam;
+mod render;
+mod tile;
 mod vram;
 
 const SCANLINE_CYCLES: u16 = 1364;
@@ -51,6 +55,7 @@ pub struct Ppu {
     cgram: Cgram,
     color_math: ColorMath,
     counters: Counters,
+    mode7: Mode7,
     oam: Oam,
     vram: Vram,
     ppu1_mdr: u8,
@@ -58,7 +63,9 @@ pub struct Ppu {
 
     ini_display: IniDisplay,
     set_ini: SetIni,
-    pub frame_buffer: [u32; FB_WIDTH * FB_HEIGHT],
+    pub screen_width: usize,
+    pub screen_height: usize,
+    pub frame_buffer: Box<[u16; WIDTH * PAL_HEIGHT]>,
     pub nmi_requested: bool,
 }
 
@@ -72,13 +79,20 @@ impl Ppu {
             cgram: Cgram::new(),
             color_math: ColorMath::new(),
             counters: Counters::new(stat78),
+            mode7: Mode7::new(),
             oam: Oam::new(),
             vram: Vram::new(),
             ppu1_mdr: 0,
             ppu2_mdr: 0,
             ini_display: IniDisplay(0),
             set_ini: SetIni(0),
-            frame_buffer: [0; FB_WIDTH * FB_HEIGHT],
+            screen_width: WIDTH,
+            screen_height: if model == Model::Pal {
+                PAL_HEIGHT
+            } else {
+                NTSC_HEIGHT
+            },
+            frame_buffer: Box::new([0; WIDTH * PAL_HEIGHT]),
             nmi_requested: false,
         }
     }
@@ -89,15 +103,41 @@ impl Ppu {
             self.set_ini.screen_interlacing(),
         );
 
-        if self.counters.ready_to_draw {
-            self.counters.ready_to_draw = false;
+        if self.counters.in_hdraw() {
+            self.render_scanline(self.counters.vertical_counter);
+            self.counters.last_scanline = self.counters.vertical_counter;
         }
+    }
+
+    fn set_ini_write(&mut self, set_ini: SetIni) {
+        self.screen_width <<= set_ini.high_res_mode() as usize;
+        self.screen_height = if set_ini.overscan_mode() {
+            PAL_HEIGHT
+        } else {
+            NTSC_HEIGHT
+        };
+        self.screen_height <<= set_ini.screen_interlacing() as usize;
+        self.set_ini = set_ini;
+    }
+
+    pub fn main_screen_layer_enable(&mut self, data: u8) {
+        for idx in 0..4 {
+            self.background.backgrounds[idx].enabled_on_main_screen = data >> idx & 1 != 0;
+        }
+        self.oam.enabled_on_main_screen = data >> 4 & 1 != 0;
+    }
+
+    pub fn frame_ready(&self) -> bool {
+        self.counters.frame_ready
     }
 }
 
 impl Access for Ppu {
     fn read(&mut self, addr: u16) -> Option<u8> {
         match addr.low_byte() {
+            0x34 => Some((self.mode7.do_multiplication()) as u8),
+            0x35 => Some((self.mode7.do_multiplication() >> 8) as u8),
+            0x36 => Some((self.mode7.do_multiplication() >> 16) as u8),
             0x37 => {
                 self.counters.software_latch();
                 None
@@ -150,12 +190,15 @@ impl Access for Ppu {
             0x17 => self.vram.vm_addh(data),
             0x18 => self.vram.vm_addl_write(data),
             0x19 => self.vram.vm_addh_write(data),
+            0x1B => self.mode7.set_mode_7_matrix_a(data),
+            0x1C => self.mode7.set_mode_7_matrix_b(data),
             0x21 => self.cgram.cg_addr(data),
             0x22 => self.cgram.cg_addr_write(data),
+            0x2C => self.main_screen_layer_enable(data),
             0x30 => self.color_math.cgwsel = Cgwsel(data),
             0x31 => self.color_math.cgadsub = Cgadsub(data),
             0x32 => self.color_math.color_data_write(ColorData(data)),
-            0x33 => self.set_ini = SetIni(data),
+            0x33 => self.set_ini_write(SetIni(data)),
             _ => println!("Tried to write at {:#0x} val: {:#04x}", addr, data),
         }
     }
