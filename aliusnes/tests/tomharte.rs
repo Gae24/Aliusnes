@@ -122,7 +122,7 @@ pub fn run_test(name: &str) {
     for mut test_case in TestCase::iter_json(&json_path) {
         total += 1;
         let (mut cpu, mut bus) = test_case.initial.from_state();
-        let opcode = cpu.peek_opcode(&mut &bus);
+        let opcode = cpu.peek_opcode(&mut bus);
 
         cpu.step(&mut bus);
 

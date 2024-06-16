@@ -1,7 +1,7 @@
 use super::{
     addressing::{Address, AddressingMode},
     functions::do_push,
-    opcodes::{OpCode, OPCODES_MAP},
+    opcodes::{OpCode, OPCODES},
     regsize::RegSize,
 };
 use crate::{
@@ -192,9 +192,7 @@ impl Cpu {
             self.cycles += Dma::do_dma(bus);
         }
 
-        let opcode = OPCODES_MAP
-            .get(&op)
-            .unwrap_or_else(|| panic!("OpCode {:x} is not recognized", op));
+        let opcode = OPCODES[op as usize];
         // log::trace!(
         //     "Instr {} A:{:#06x} X:{:#06x} Y:{:#06x}, PC:{:#06x}, SP:{:#06x}, P:{:#04x} {}",
         //     opcode.mnemonic,
@@ -208,16 +206,14 @@ impl Cpu {
         // );
 
         let instr = opcode.function;
-        instr(self, bus, &opcode.mode);
+        instr(self, bus, opcode.mode);
 
         self.cycles
     }
 
     pub fn peek_opcode(&self, bus: &mut Bus) -> OpCode {
-        let op = bus.read::<false>(Address::new(self.program_counter, self.pbr));
-        **OPCODES_MAP
-            .get(&op)
-            .unwrap_or_else(|| panic!("OpCode {:x} is not recognized", op))
+        let op = bus.read::<false>(Address::new(self.program_counter, self.pbr)) as usize;
+        OPCODES[op]
     }
 
     pub fn handle_interrupt(&mut self, bus: &mut Bus, interrupt: Vectors) {
