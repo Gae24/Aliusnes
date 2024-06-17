@@ -278,7 +278,7 @@ pub fn iny(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
 pub fn jml(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
     let addr = cpu.get_operand::<u16>(bus, &mode);
     let pc = cpu.read_bank0(bus, addr);
-    let pbr = cpu.read_8(bus, addr.wrapping_add(2).into());
+    let pbr = bus.read_and_tick(addr.wrapping_add(2).into());
     cpu.program_counter = pc;
     cpu.pbr = pbr;
 }
@@ -311,8 +311,8 @@ pub fn jsr(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
     let val = match mode {
         AddressingMode::AbsoluteIndirectX => {
             let addr = cpu.decode_addressing_mode::<false>(bus, mode);
-            cpu.read_8(bus, addr) as u16
-                | (cpu.read_8(bus, addr.wrapping_offset_add(1)) as u16) << 8
+            bus.read_and_tick(addr) as u16
+                | (bus.read_and_tick(addr.wrapping_offset_add(1)) as u16) << 8
         }
         _ => {
             bus.add_io_cycles(1);

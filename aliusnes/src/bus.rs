@@ -38,6 +38,11 @@ impl Bus {
         self.ppu.tick();
     }
 
+    pub fn read_and_tick(&mut self, addr: Address) -> u8 {
+        self.cycles += self.memory_access_cycles(&addr) as usize;
+        self.read::<false>(addr)
+    }
+
     pub fn read_b(&mut self, addr: u16) -> u8 {
         if let Some(val) = match addr.low_byte() {
             0x34..=0x3F => self.ppu.read(addr),
