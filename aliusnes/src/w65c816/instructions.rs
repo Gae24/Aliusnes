@@ -38,6 +38,7 @@ pub fn and(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
 }
 
 pub fn asl(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
+    bus.add_io_cycles(1);
     if cpu.status.a_reg_size() {
         cpu.do_rmw(bus, &mode, do_asl::<u8>);
     } else {
@@ -45,7 +46,8 @@ pub fn asl(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
     }
 }
 
-pub fn asl_a(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
+pub fn asl_a(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     if cpu.status.a_reg_size() {
         let result = do_asl(cpu, cpu.accumulator as u8);
         cpu.set_accumulator(result);
@@ -94,7 +96,7 @@ pub fn bra(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
 }
 
 pub fn brl(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+    bus.add_io_cycles(1);
     let offset = cpu.get_operand::<u16>(bus, &mode) as i16;
     cpu.program_counter = cpu.program_counter.wrapping_add(offset as u16);
 }
@@ -125,23 +127,23 @@ pub fn cop(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
     }
 }
 
-pub fn clc(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+pub fn clc(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     cpu.status.set_carry(false);
 }
 
-pub fn cld(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+pub fn cld(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     cpu.status.set_decimal(false);
 }
 
-pub fn cli(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+pub fn cli(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     cpu.status.set_irq_disable(false);
 }
 
-pub fn clv(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+pub fn clv(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     cpu.status.set_overflow(false);
 }
 
@@ -176,6 +178,7 @@ pub fn cpy(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
 }
 
 pub fn dec(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
+    bus.add_io_cycles(1);
     if cpu.status.a_reg_size() {
         cpu.do_rmw::<u8>(bus, &mode, do_dec);
     } else {
@@ -183,7 +186,8 @@ pub fn dec(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
     }
 }
 
-pub fn dec_a(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
+pub fn dec_a(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     if cpu.status.a_reg_size() {
         let result = do_dec::<u8>(cpu, cpu.accumulator as u8);
         cpu.set_accumulator(result);
@@ -193,7 +197,8 @@ pub fn dec_a(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
     }
 }
 
-pub fn dex(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
+pub fn dex(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     if cpu.status.index_regs_size() {
         let result = do_dec::<u8>(cpu, cpu.index_x as u8);
         cpu.set_index_x(result);
@@ -203,7 +208,8 @@ pub fn dex(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
     }
 }
 
-pub fn dey(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
+pub fn dey(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     if cpu.status.index_regs_size() {
         let result = do_dec::<u8>(cpu, cpu.index_y as u8);
         cpu.set_index_y(result);
@@ -228,6 +234,7 @@ pub fn eor(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
 }
 
 pub fn inc(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
+    bus.add_io_cycles(1);
     if cpu.status.a_reg_size() {
         cpu.do_rmw::<u8>(bus, &mode, do_inc);
     } else {
@@ -235,7 +242,8 @@ pub fn inc(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
     }
 }
 
-pub fn inc_a(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
+pub fn inc_a(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     if cpu.status.a_reg_size() {
         let result = do_inc::<u8>(cpu, cpu.accumulator as u8);
         cpu.set_accumulator(result);
@@ -245,7 +253,8 @@ pub fn inc_a(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
     }
 }
 
-pub fn inx(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
+pub fn inx(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     if cpu.status.index_regs_size() {
         let result = do_inc::<u8>(cpu, cpu.index_x as u8);
         cpu.set_index_x(result);
@@ -255,7 +264,8 @@ pub fn inx(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
     }
 }
 
-pub fn iny(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
+pub fn iny(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     if cpu.status.index_regs_size() {
         let result = do_inc::<u8>(cpu, cpu.index_y as u8);
         cpu.set_index_y(result);
@@ -288,7 +298,7 @@ pub fn jmp(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
 }
 
 pub fn jsl(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+    bus.add_io_cycles(1);
     let new_pc = cpu.get_operand::<u16>(bus, &mode);
     do_push(cpu, bus, cpu.pbr);
     let new_pbr = cpu.get_operand::<u8>(bus, &mode);
@@ -305,7 +315,7 @@ pub fn jsr(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
                 | (cpu.read_8(bus, addr.wrapping_offset_add(1)) as u16) << 8
         }
         _ => {
-            cpu.add_additional_cycles(1);
+            bus.add_io_cycles(1);
             cpu.get_operand(bus, &mode)
         }
     };
@@ -350,6 +360,7 @@ pub fn ldy(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
 }
 
 pub fn lsr(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
+    bus.add_io_cycles(1);
     if cpu.status.a_reg_size() {
         cpu.do_rmw::<u8>(bus, &mode, do_lsr);
     } else {
@@ -357,7 +368,8 @@ pub fn lsr(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
     }
 }
 
-pub fn lsr_a(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
+pub fn lsr_a(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     if cpu.status.a_reg_size() {
         let result = do_lsr::<u8>(cpu, cpu.accumulator as u8);
         cpu.set_accumulator(result);
@@ -371,7 +383,7 @@ pub fn mvn(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
     let banks = cpu.get_operand::<u16>(bus, &mode);
     let dst_bank = (banks >> 8) as u8;
     let src_bank = (banks & 0xFF) as u8;
-    cpu.add_additional_cycles(2);
+    bus.add_io_cycles(2);
     loop {
         let src = bus.read::<false>(Address::new(cpu.index_x, src_bank));
         let dst = Address::new(cpu.index_y, dst_bank);
@@ -389,7 +401,7 @@ pub fn mvp(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
     let banks = cpu.get_operand::<u16>(bus, &mode);
     let dst_bank = (banks >> 8) as u8;
     let src_bank = (banks & 0xFF) as u8;
-    cpu.add_additional_cycles(2);
+    bus.add_io_cycles(2);
     loop {
         let src = bus.read::<false>(Address::new(cpu.index_x, src_bank));
         let dst = Address::new(cpu.index_y, dst_bank);
@@ -403,8 +415,8 @@ pub fn mvp(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
     }
 }
 
-pub fn nop(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+pub fn nop(_cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
 }
 
 pub fn ora(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
@@ -432,13 +444,13 @@ pub fn pei(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
 }
 
 pub fn per(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+    bus.add_io_cycles(1);
     let value = cpu.get_operand::<u16>(bus, &mode);
     do_push(cpu, bus, cpu.program_counter.wrapping_add(value));
 }
 
 pub fn pha(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+    bus.add_io_cycles(1);
     if cpu.status.a_reg_size() {
         do_push::<u8>(cpu, bus, cpu.accumulator as u8);
     } else {
@@ -447,27 +459,27 @@ pub fn pha(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
 }
 
 pub fn phb(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+    bus.add_io_cycles(1);
     do_push(cpu, bus, cpu.dbr);
 }
 
 pub fn phd(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+    bus.add_io_cycles(1);
     do_push(cpu, bus, cpu.dpr);
 }
 
 pub fn phk(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+    bus.add_io_cycles(1);
     do_push(cpu, bus, cpu.pbr);
 }
 
 pub fn php(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+    bus.add_io_cycles(1);
     do_push::<u8>(cpu, bus, cpu.status.0);
 }
 
 pub fn phx(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+    bus.add_io_cycles(1);
     if cpu.status.index_regs_size() {
         do_push::<u8>(cpu, bus, cpu.index_x as u8);
     } else {
@@ -476,7 +488,7 @@ pub fn phx(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
 }
 
 pub fn phy(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+    bus.add_io_cycles(1);
     if cpu.status.index_regs_size() {
         do_push::<u8>(cpu, bus, cpu.index_y as u8);
     } else {
@@ -485,7 +497,7 @@ pub fn phy(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
 }
 
 pub fn pla(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(2);
+    bus.add_io_cycles(2);
     if cpu.status.a_reg_size() {
         let result = do_pull::<u8>(cpu, bus);
         cpu.set_nz(result);
@@ -498,27 +510,27 @@ pub fn pla(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
 }
 
 pub fn plb(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(2);
+    bus.add_io_cycles(2);
     let result = do_pull::<u8>(cpu, bus);
     cpu.set_nz(result);
     cpu.dbr = result;
 }
 
 pub fn pld(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(2);
+    bus.add_io_cycles(2);
     let result = do_pull::<u16>(cpu, bus);
     cpu.set_nz(result);
     cpu.dpr = result;
 }
 
 pub fn plp(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(2);
+    bus.add_io_cycles(2);
     let result = do_pull::<u8>(cpu, bus);
     cpu.set_status_register(result);
 }
 
 pub fn plx(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(2);
+    bus.add_io_cycles(2);
     if cpu.status.index_regs_size() {
         let result = do_pull::<u8>(cpu, bus);
         cpu.set_index_x(result);
@@ -531,7 +543,7 @@ pub fn plx(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
 }
 
 pub fn ply(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(2);
+    bus.add_io_cycles(2);
     if cpu.status.index_regs_size() {
         let result = do_pull::<u8>(cpu, bus);
         cpu.set_index_y(result);
@@ -544,13 +556,14 @@ pub fn ply(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
 }
 
 pub fn rep(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+    bus.add_io_cycles(1);
     let mask = cpu.get_operand::<u8>(bus, &mode);
     let src = cpu.status.0;
     cpu.status = Status(src & !mask);
 }
 
 pub fn rol(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
+    bus.add_io_cycles(1);
     if cpu.status.a_reg_size() {
         cpu.do_rmw::<u8>(bus, &mode, do_rol);
     } else {
@@ -558,7 +571,8 @@ pub fn rol(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
     }
 }
 
-pub fn rol_a(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
+pub fn rol_a(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     if cpu.status.a_reg_size() {
         let result = do_rol::<u8>(cpu, cpu.accumulator as u8);
         cpu.set_accumulator(result);
@@ -569,6 +583,7 @@ pub fn rol_a(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
 }
 
 pub fn ror(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
+    bus.add_io_cycles(1);
     if cpu.status.a_reg_size() {
         cpu.do_rmw::<u8>(bus, &mode, do_ror);
     } else {
@@ -576,7 +591,8 @@ pub fn ror(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
     }
 }
 
-pub fn ror_a(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
+pub fn ror_a(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     if cpu.status.a_reg_size() {
         let result = do_ror::<u8>(cpu, cpu.accumulator as u8);
         cpu.set_accumulator(result);
@@ -587,7 +603,7 @@ pub fn ror_a(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
 }
 
 pub fn rti(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(2);
+    bus.add_io_cycles(2);
     let new_status = do_pull::<u8>(cpu, bus);
     cpu.program_counter = do_pull::<u16>(cpu, bus);
     if !cpu.emulation_mode() {
@@ -597,13 +613,13 @@ pub fn rti(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
 }
 
 pub fn rtl(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(2);
+    bus.add_io_cycles(2);
     cpu.program_counter = do_pull::<u16>(cpu, bus).wrapping_add(1);
     cpu.pbr = do_pull::<u8>(cpu, bus);
 }
 
 pub fn rts(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(3);
+    bus.add_io_cycles(3);
     cpu.program_counter = do_pull::<u16>(cpu, bus).wrapping_add(1);
 }
 
@@ -625,23 +641,23 @@ pub fn sbc(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
     }
 }
 
-pub fn sec(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+pub fn sec(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     cpu.status.set_carry(true);
 }
 
-pub fn sed(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+pub fn sed(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     cpu.status.set_decimal(true);
 }
 
-pub fn sei(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+pub fn sei(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     cpu.status.set_irq_disable(true);
 }
 
 pub fn sep(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+    bus.add_io_cycles(1);
     let mask = cpu.get_operand::<u8>(bus, &mode);
     let src = cpu.status.0;
     cpu.set_status_register(src | mask);
@@ -655,9 +671,9 @@ pub fn sta(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
     }
 }
 
-pub fn stp(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
+pub fn stp(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
     cpu.stopped = true;
-    cpu.add_additional_cycles(2);
+    bus.add_io_cycles(2);
 }
 
 pub fn stx(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
@@ -684,8 +700,8 @@ pub fn stz(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
     }
 }
 
-pub fn tax(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+pub fn tax(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     if cpu.status.index_regs_size() {
         let value = cpu.accumulator as u8;
         cpu.set_nz(value);
@@ -696,8 +712,8 @@ pub fn tax(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
     }
 }
 
-pub fn tay(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+pub fn tay(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     if cpu.status.index_regs_size() {
         let value = cpu.accumulator as u8;
         cpu.set_nz(value);
@@ -708,25 +724,26 @@ pub fn tay(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
     }
 }
 
-pub fn tcd(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+pub fn tcd(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     cpu.dpr = cpu.accumulator;
     cpu.set_nz(cpu.accumulator);
 }
 
-pub fn tcs(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
+pub fn tcs(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
     //todo in emulation mode only 8bit are transferred
-    cpu.add_additional_cycles(1);
+    bus.add_io_cycles(1);
     cpu.stack_pointer = cpu.accumulator;
 }
 
-pub fn tdc(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+pub fn tdc(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     cpu.accumulator = cpu.dpr;
     cpu.set_nz(cpu.dpr);
 }
 
 pub fn trb(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
+    bus.add_io_cycles(1);
     if cpu.status.a_reg_size() {
         cpu.do_rmw::<u8>(bus, &mode, do_trb);
     } else {
@@ -735,6 +752,7 @@ pub fn trb(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
 }
 
 pub fn tsb(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
+    bus.add_io_cycles(1);
     if cpu.status.a_reg_size() {
         cpu.do_rmw::<u8>(bus, &mode, do_tsb);
     } else {
@@ -742,14 +760,14 @@ pub fn tsb(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
     }
 }
 
-pub fn tsc(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+pub fn tsc(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     cpu.accumulator = cpu.stack_pointer;
     cpu.set_nz(cpu.stack_pointer);
 }
 
-pub fn tsx(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+pub fn tsx(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     if cpu.status.index_regs_size() {
         let value = cpu.stack_pointer as u8;
         cpu.set_nz(value);
@@ -760,8 +778,8 @@ pub fn tsx(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
     }
 }
 
-pub fn txa(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+pub fn txa(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     if cpu.status.a_reg_size() {
         let value = cpu.index_x as u8;
         cpu.set_nz(value);
@@ -775,14 +793,14 @@ pub fn txa(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
     }
 }
 
-pub fn txs(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
+pub fn txs(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
     //todo in emulation mode only 8bit are transferred
-    cpu.add_additional_cycles(1);
+    bus.add_io_cycles(1);
     cpu.stack_pointer = cpu.index_x;
 }
 
-pub fn txy(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+pub fn txy(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     if cpu.status.index_regs_size() {
         let value = cpu.index_x as u8;
         cpu.set_nz(value);
@@ -793,8 +811,8 @@ pub fn txy(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
     }
 }
 
-pub fn tya(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+pub fn tya(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     if cpu.status.a_reg_size() {
         let value = cpu.index_y as u8;
         cpu.set_nz(value);
@@ -808,8 +826,8 @@ pub fn tya(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
     }
 }
 
-pub fn tyx(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+pub fn tyx(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     if cpu.status.index_regs_size() {
         let value = cpu.index_y as u8;
         cpu.set_nz(value);
@@ -820,8 +838,8 @@ pub fn tyx(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
     }
 }
 
-pub fn wai(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(2);
+pub fn wai(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(2);
     cpu.waiting_interrupt = true;
 }
 
@@ -829,14 +847,14 @@ pub fn wdm(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
     let _thrown = cpu.get_operand::<u8>(bus, &mode);
 }
 
-pub fn xba(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(2);
+pub fn xba(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(2);
     cpu.accumulator = cpu.accumulator.swap_bytes();
     cpu.set_nz(cpu.accumulator as u8);
 }
 
-pub fn xce(cpu: &mut Cpu, _bus: &mut Bus, _mode: AddressingMode) {
-    cpu.add_additional_cycles(1);
+pub fn xce(cpu: &mut Cpu, bus: &mut Bus, _mode: AddressingMode) {
+    bus.add_io_cycles(1);
     let carry = cpu.status.carry();
     cpu.status.set_carry(cpu.emulation_mode());
     cpu.set_emulation_mode(carry);
