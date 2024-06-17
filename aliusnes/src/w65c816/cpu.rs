@@ -247,10 +247,6 @@ impl Cpu {
         self.write_8(bus, addr.wrapping_add(1), data.high_byte());
     }
 
-    pub fn add_additional_cycles(&mut self, cycles: u8) {
-        self.cycles += cycles as u32 * 6;
-    }
-
     pub fn do_write<T: RegSize>(&mut self, bus: &mut Bus, mode: &AddressingMode, val: T) {
         match mode {
             AddressingMode::Direct

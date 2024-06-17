@@ -10,6 +10,7 @@ mod wram;
 pub struct Bus {
     mdr: u8,
     fast_rom_enabled: bool,
+    cycles: usize,
     cart: Cart,
     pub dma: Dma,
     math: Math,
@@ -22,6 +23,7 @@ impl Bus {
         Self {
             mdr: 0,
             fast_rom_enabled: false,
+            cycles: 0,
             ppu: Ppu::new(cart.model),
             cart,
             dma: Dma::new(),
@@ -135,6 +137,10 @@ impl Bus {
             _ => {}
         }
         self.cart.write(bank, page, data);
+    }
+
+    pub fn add_io_cycles(&mut self, cycles: usize) {
+        self.cycles += cycles * 6;
     }
 
     pub fn memory_access_cycles(&self, addr: &Address) -> u32 {

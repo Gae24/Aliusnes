@@ -111,22 +111,24 @@ impl Cpu {
     }
 
     /// Based on <http://www.unusedino.de/ec64/technical/aay/c64/addr12a.htm>
-    fn add_penalty_cycle<const WRITE: bool>(&mut self, unindexed_page: u8, indexed_page: u8) {
-        if WRITE || !self.status.index_regs_size() || unindexed_page != indexed_page {
-            self.add_additional_cycles(1);
-        }
+    fn detect_penalty_cycle<const WRITE: bool>(
+        &mut self,
+        unindexed_page: u8,
+        indexed_page: u8,
+    ) -> bool {
+        WRITE || !self.status.index_regs_size() || unindexed_page != indexed_page
     }
 
     fn direct_offset(&mut self, bus: &mut Bus) -> u16 {
         let dpr = self.dpr;
         if dpr as u8 != 0 {
-            self.add_additional_cycles(1);
+            bus.add_io_cycles(1);
         }
         dpr.wrapping_add(self.get_imm::<u8>(bus) as u16)
     }
 
     fn direct_page_indexed(&mut self, bus: &mut Bus, index: u16) -> u16 {
-        self.add_additional_cycles(1);
+        bus.add_io_cycles(1);
         self.direct_offset(bus).wrapping_add(index)
     }
 
@@ -144,7 +146,7 @@ impl Cpu {
     }
 
     fn stack_relative_address(&mut self, bus: &mut Bus) -> u16 {
-        self.add_additional_cycles(1);
+        bus.add_io_cycles(1);
         self.stack_pointer
             .wrapping_add(self.get_imm::<u8>(bus) as u16)
     }
@@ -161,7 +163,7 @@ impl Cpu {
                 Address::new(offset, self.dbr)
             }
             AddressingMode::IndirectX => {
-                self.add_additional_cycles(1);
+                bus.add_io_cycles(1);
                 let indirect = self.direct_offset(bus).wrapping_add(self.index_x);
                 let offset = self.read_bank0(bus, indirect);
                 Address::new(offset, self.dbr)
@@ -171,10 +173,12 @@ impl Cpu {
                 let offset = self.read_bank0(bus, indirect);
                 let unindexed = Address::new(offset, self.dbr);
                 let indexed = unindexed.wrapping_add(self.index_y as u32);
-                self.add_penalty_cycle::<WRITE>(
+                if self.detect_penalty_cycle::<WRITE>(
                     unindexed.offset.high_byte(),
                     indexed.offset.high_byte(),
-                );
+                ) {
+                    bus.add_io_cycles(1);
+                }
                 indexed
             }
             AddressingMode::IndirectLong => {
@@ -190,19 +194,23 @@ impl Cpu {
             AddressingMode::AbsoluteX => {
                 let unindexed = self.absolute_address(bus);
                 let indexed = unindexed.wrapping_add(self.index_x as u32);
-                self.add_penalty_cycle::<WRITE>(
+                if self.detect_penalty_cycle::<WRITE>(
                     unindexed.offset.high_byte(),
                     indexed.offset.high_byte(),
-                );
+                ) {
+                    bus.add_io_cycles(1);
+                }
                 indexed
             }
             AddressingMode::AbsoluteY => {
                 let unindexed = self.absolute_address(bus);
                 let indexed = unindexed.wrapping_add(self.index_y as u32);
-                self.add_penalty_cycle::<WRITE>(
+                if self.detect_penalty_cycle::<WRITE>(
                     unindexed.offset.high_byte(),
                     indexed.offset.high_byte(),
-                );
+                ) {
+                    bus.add_io_cycles(1);
+                }
                 indexed
             }
             AddressingMode::AbsoluteLong => self.absolute_long_address(bus),
@@ -211,14 +219,14 @@ impl Cpu {
                 .wrapping_add(self.index_x as u32),
             AddressingMode::AbsoluteIndirect => Address::new(self.get_imm(bus), 0),
             AddressingMode::AbsoluteIndirectX => {
-                self.add_additional_cycles(1);
+                bus.add_io_cycles(1);
                 Address::new(
                     self.get_imm::<u16>(bus).wrapping_add(self.index_x),
                     self.pbr,
                 )
             }
             AddressingMode::StackRelativeIndirectY => {
-                self.add_additional_cycles(1);
+                bus.add_io_cycles(1);
                 let indirect = self.stack_relative_address(bus);
                 let offset = self.read_bank0(bus, indirect);
                 Address::new(offset, self.dbr).wrapping_add(self.index_y as u32)
