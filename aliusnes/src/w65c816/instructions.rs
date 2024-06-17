@@ -387,7 +387,7 @@ pub fn mvn(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
     loop {
         let src = bus.read::<false>(Address::new(cpu.index_x, src_bank));
         let dst = Address::new(cpu.index_y, dst_bank);
-        cpu.write_8(bus, dst, src);
+        bus.write_and_tick(dst.into(), src);
         cpu.index_x = cpu.index_x.wrapping_add(1);
         cpu.index_y = cpu.index_y.wrapping_add(1);
         cpu.accumulator = cpu.accumulator.wrapping_sub(1);
@@ -405,7 +405,7 @@ pub fn mvp(cpu: &mut Cpu, bus: &mut Bus, mode: AddressingMode) {
     loop {
         let src = bus.read::<false>(Address::new(cpu.index_x, src_bank));
         let dst = Address::new(cpu.index_y, dst_bank);
-        cpu.write_8(bus, dst, src);
+        bus.write_and_tick(dst.into(), src);
         cpu.index_x = cpu.index_x.wrapping_sub(1);
         cpu.index_y = cpu.index_y.wrapping_sub(1);
         cpu.accumulator = cpu.accumulator.wrapping_sub(1);

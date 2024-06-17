@@ -228,18 +228,13 @@ impl Cpu {
         self.program_counter = self.read_bank0(bus, interrupt.get_addr());
     }
 
-    pub fn write_8(&mut self, bus: &mut Bus, addr: Address, data: u8) {
-        self.cycles += bus.memory_access_cycles(&addr);
-        bus.write::<false>(addr, data);
-    }
-
     pub fn read_16(&mut self, bus: &mut Bus, addr: Address) -> u16 {
         bus.read_and_tick(addr) as u16 | (bus.read_and_tick(addr.wrapping_add(1)) as u16) << 8
     }
 
     pub fn write_16(&mut self, bus: &mut Bus, addr: Address, data: u16) {
-        self.write_8(bus, addr, data.low_byte());
-        self.write_8(bus, addr.wrapping_add(1), data.high_byte());
+        bus.write_and_tick(addr, data.low_byte());
+        bus.write_and_tick(addr.wrapping_add(1), data.high_byte());
     }
 
     pub fn do_write<T: RegSize>(&mut self, bus: &mut Bus, mode: &AddressingMode, val: T) {
@@ -251,14 +246,14 @@ impl Cpu {
                 let (_, page) = self.read_from_direct_page::<T>(bus, mode);
                 match T::IS_U16 {
                     true => self.write_bank0(bus, page, val.as_u16()),
-                    false => self.write_8(bus, page.into(), val.as_u8()),
+                    false => bus.write_and_tick(page.into(), val.as_u8()),
                 }
             }
             _ => {
                 let addr = self.decode_addressing_mode::<true>(bus, *mode);
                 match T::IS_U16 {
                     true => self.write_16(bus, addr, val.as_u16()),
-                    false => self.write_8(bus, addr, val.as_u8()),
+                    false => bus.write_and_tick(addr, val.as_u8()),
                 }
             }
         }
@@ -279,7 +274,7 @@ impl Cpu {
                 let result = f(self, data);
                 match T::IS_U16 {
                     true => self.write_bank0(bus, page, result.as_u16()),
-                    false => self.write_8(bus, page.into(), result.as_u8()),
+                    false => bus.write_and_tick(page.into(), result.as_u8()),
                 }
             }
             _ => {
@@ -291,7 +286,7 @@ impl Cpu {
                 } else {
                     let data = bus.read_and_tick(addr);
                     let result = f(self, T::from_u8(data)).as_u8();
-                    self.write_8(bus, addr, result);
+                    bus.write_and_tick(addr, result);
                 }
             }
         }
