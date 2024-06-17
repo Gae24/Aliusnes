@@ -93,8 +93,8 @@ impl Cpu {
 
     pub fn write_bank0(&mut self, bus: &mut Bus, offset: u16, data: u16) {
         let addr = Address::new(offset, 0);
-        self.write_8(bus, addr, data.low_byte());
-        self.write_8(bus, addr.wrapping_offset_add(1), data.high_byte());
+        bus.write_and_tick(addr, data.low_byte());
+        bus.write_and_tick(addr.wrapping_offset_add(1), data.high_byte());
     }
 
     pub fn get_imm<T: RegSize>(&mut self, bus: &mut Bus) -> T {
