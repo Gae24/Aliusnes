@@ -163,7 +163,7 @@ pub(super) fn do_pull<T: RegSize>(cpu: &mut Cpu, bus: &mut Bus) -> T {
         cpu.stack_pointer = cpu.stack_pointer.wrapping_add(2);
         T::from_u16(value)
     } else {
-        let value = cpu.read_8(bus, cpu.stack_pointer.wrapping_add(1).into());
+        let value = bus.read_and_tick(cpu.stack_pointer.wrapping_add(1).into());
         cpu.stack_pointer = cpu.stack_pointer.wrapping_add(1);
         T::from_u8(value)
     }

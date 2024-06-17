@@ -228,18 +228,13 @@ impl Cpu {
         self.program_counter = self.read_bank0(bus, interrupt.get_addr());
     }
 
-    pub fn read_8(&mut self, bus: &mut Bus, addr: Address) -> u8 {
-        self.cycles += bus.memory_access_cycles(&addr);
-        bus.read::<false>(addr)
-    }
-
     pub fn write_8(&mut self, bus: &mut Bus, addr: Address, data: u8) {
         self.cycles += bus.memory_access_cycles(&addr);
         bus.write::<false>(addr, data);
     }
 
     pub fn read_16(&mut self, bus: &mut Bus, addr: Address) -> u16 {
-        self.read_8(bus, addr) as u16 | (self.read_8(bus, addr.wrapping_add(1)) as u16) << 8
+        bus.read_and_tick(addr) as u16 | (bus.read_and_tick(addr.wrapping_add(1)) as u16) << 8
     }
 
     pub fn write_16(&mut self, bus: &mut Bus, addr: Address, data: u16) {
@@ -294,7 +289,7 @@ impl Cpu {
                     let result = f(self, T::from_u16(data)).as_u16();
                     self.write_16(bus, addr, result);
                 } else {
-                    let data = self.read_8(bus, addr);
+                    let data = bus.read_and_tick(addr);
                     let result = f(self, T::from_u8(data)).as_u8();
                     self.write_8(bus, addr, result);
                 }

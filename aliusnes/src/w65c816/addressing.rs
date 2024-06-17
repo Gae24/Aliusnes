@@ -87,7 +87,8 @@ impl From<Address> for usize {
 impl Cpu {
     pub fn read_bank0(&mut self, bus: &mut Bus, offset: u16) -> u16 {
         let addr = Address::new(offset, 0);
-        self.read_8(bus, addr) as u16 | (self.read_8(bus, addr.wrapping_offset_add(1)) as u16) << 8
+        bus.read_and_tick(addr) as u16
+            | (bus.read_and_tick(addr.wrapping_offset_add(1)) as u16) << 8
     }
 
     pub fn write_bank0(&mut self, bus: &mut Bus, offset: u16, data: u16) {
@@ -99,12 +100,12 @@ impl Cpu {
     pub fn get_imm<T: RegSize>(&mut self, bus: &mut Bus) -> T {
         let addr = Address::new(self.program_counter, self.pbr);
         if T::IS_U16 {
-            let res = self.read_8(bus, addr) as u16
-                | (self.read_8(bus, addr.wrapping_offset_add(1)) as u16) << 8;
+            let res = bus.read_and_tick(addr) as u16
+                | (bus.read_and_tick(addr.wrapping_offset_add(1)) as u16) << 8;
             self.program_counter = self.program_counter.wrapping_add(2);
             T::from_u16(res)
         } else {
-            let res = self.read_8(bus, addr);
+            let res = bus.read_and_tick(addr);
             self.program_counter = self.program_counter.wrapping_add(1);
             T::from_u8(res)
         }
@@ -134,7 +135,7 @@ impl Cpu {
 
     fn indirect_long_address(&mut self, bus: &mut Bus, indirect: u16) -> Address {
         let addr = Address::new(indirect.wrapping_add(2), 0);
-        Address::new(self.read_bank0(bus, indirect), self.read_8(bus, addr))
+        Address::new(self.read_bank0(bus, indirect), bus.read_and_tick(addr))
     }
 
     fn absolute_address(&mut self, bus: &mut Bus) -> Address {
@@ -254,7 +255,7 @@ impl Cpu {
                 let addr = self.decode_addressing_mode::<false>(bus, *mode);
                 match T::IS_U16 {
                     true => T::from_u16(self.read_16(bus, addr)),
-                    false => T::from_u8(self.read_8(bus, addr)),
+                    false => T::from_u8(bus.read_and_tick(addr)),
                 }
             }
         }
@@ -273,7 +274,7 @@ impl Cpu {
         };
         match T::IS_U16 {
             true => (T::from_u16(self.read_bank0(bus, page)), page),
-            false => (T::from_u8(self.read_8(bus, page.into())), page),
+            false => (T::from_u8(bus.read_and_tick(page.into())), page),
         }
     }
 }
