@@ -1,48 +1,18 @@
-use aliusnes::{
-    bus::Bus,
-    w65c816::{
-        addressing::Address,
-        cpu::{Cpu, Status},
-        W65C816,
-    },
+mod utils;
+
+use aliusnes::w65c816::{
+    cpu::{Cpu, Status},
+    W65C816,
 };
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashMap,
     fs::File,
     io::{BufRead, BufReader},
     path::PathBuf,
 };
+use utils::test_bus::TomHarteBus;
 
-#[derive(Default)]
-pub struct TomHarteBus {
-    cycles: usize,
-    pub memory: HashMap<u32, u8>,
-}
-
-impl TomHarteBus {
-    pub fn read(&self, addr: Address) -> u8 {
-        self.memory.get(&addr.into()).copied().unwrap_or_default()
-    }
-
-    pub fn write(&mut self, addr: Address, data: u8) {
-        self.memory.insert(addr.into(), data);
-    }
-}
-
-impl Bus for TomHarteBus {
-    fn read_and_tick(&mut self, addr: Address) -> u8 {
-        self.read(addr)
-    }
-
-    fn write_and_tick(&mut self, addr: Address, data: u8) {
-        self.write(addr, data);
-    }
-
-    fn add_io_cycles(&mut self, cycles: usize) {
-        self.cycles += cycles * 6;
-    }
-}
+include!(concat!(env!("OUT_DIR"), "/tomharte_65816.rs"));
 
 #[derive(PartialEq, Eq, Serialize, Deserialize)]
 struct CpuState {

@@ -1,12 +1,11 @@
-use std::{fs::File, io::Write};
+use std::{env, fs::File, io::Write, path::Path};
 
 fn main() {
-    let mut file = File::create("tests/65816.rs").expect("Could not create file");
+    println!("cargo:rerun-if-changed=build.rs");
+    let mut file =
+        File::create(Path::new(&env::var_os("OUT_DIR").unwrap()).join("tomharte_65816.rs"))
+            .expect("Could not create file");
 
-    file.write_all("mod tomharte;\n\n".as_bytes())
-        .expect("Could not write to file");
-    file.write_all("use tomharte::run_test;\n\n".as_bytes())
-        .expect("Could not write to file");
     for i in 0..256 {
         let attribute = "#[test]".to_string();
         let test_name = format!("test_{:02x}", i);
