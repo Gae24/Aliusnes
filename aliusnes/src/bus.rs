@@ -7,7 +7,13 @@ pub(super) mod dma;
 mod math;
 mod wram;
 
-pub struct Bus {
+pub trait Bus {
+    fn read_and_tick(&mut self, addr: Address) -> u8;
+    fn write_and_tick(&mut self, addr: Address, data: u8);
+    fn add_io_cycles(&mut self, cycles: usize);
+}
+
+pub struct SystemBus {
     mdr: u8,
     fast_rom_enabled: bool,
     cycles: usize,
@@ -18,7 +24,7 @@ pub struct Bus {
     wram: Wram,
 }
 
-impl Bus {
+impl SystemBus {
     pub fn new(cart: Cart) -> Self {
         Self {
             mdr: 0,
@@ -149,10 +155,6 @@ impl Bus {
         self.cart.write(bank, page, data);
     }
 
-    pub fn add_io_cycles(&mut self, cycles: usize) {
-        self.cycles += cycles * 6;
-    }
-
     pub fn memory_access_cycles(&self, addr: &Address) -> u32 {
         static FAST: u32 = 6;
         static SLOW: u32 = 8;
@@ -190,5 +192,21 @@ impl Bus {
 
     pub fn requested_irq(&self) -> bool {
         self.ppu.is_in_irq()
+    }
+}
+
+impl Bus for SystemBus {
+    fn read_and_tick(&mut self, addr: Address) -> u8 {
+        self.cycles += self.memory_access_cycles(&addr) as usize;
+        self.read::<false>(addr)
+    }
+
+    fn write_and_tick(&mut self, addr: Address, data: u8) {
+        self.cycles += self.memory_access_cycles(&addr) as usize;
+        self.write::<false>(addr, data);
+    }
+
+    fn add_io_cycles(&mut self, cycles: usize) {
+        self.cycles += cycles * 6;
     }
 }

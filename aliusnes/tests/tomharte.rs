@@ -1,5 +1,10 @@
-use aliusnes::bus::Bus;
-use aliusnes::w65c816::cpu::{Cpu, Status};
+use aliusnes::{
+    bus::SystemBus,
+    w65c816::{
+        cpu::{Cpu, Status},
+        W65C816,
+    },
+};
 use serde::{Deserialize, Serialize};
 use std::{
     fs::File,
@@ -23,7 +28,7 @@ struct CpuState {
 }
 
 impl CpuState {
-    fn from_state(&self) -> (Cpu, Bus) {
+    fn from_state(&self) -> (W65C816<SystemBus>, SystemBus) {
         let cpu = Cpu {
             accumulator: self.a,
             index_x: self.x,
@@ -40,17 +45,21 @@ impl CpuState {
             cycles: 0,
         };
 
-        let mut bus = Bus::default();
+        let w65c816 = W65C816 {
+            cpu,
+            instruction_set: W65C816::opcode_table(),
+        };
+        let mut bus = SystemBus::default();
         for (addr, val) in &self.ram {
             bus.memory.insert(*addr, *val);
         }
 
-        (cpu, bus)
+        (w65c816, bus)
     }
 }
 
-impl From<(Cpu, Bus)> for CpuState {
-    fn from(value: (Cpu, Bus)) -> Self {
+impl From<(Cpu, SystemBus)> for CpuState {
+    fn from(value: (Cpu, SystemBus)) -> Self {
         let mut ram: Vec<(u32, u8)> = value.1.memory.into_iter().collect();
         ram.sort();
         Self {
@@ -121,13 +130,13 @@ pub fn run_test(name: &str) {
 
     for mut test_case in TestCase::iter_json(&json_path) {
         total += 1;
-        let (mut cpu, mut bus) = test_case.initial.from_state();
-        let opcode = cpu.peek_opcode(&mut bus);
+        let (mut w65c816, mut bus) = test_case.initial.from_state();
+        let opcode = w65c816.peek_opcode(&mut bus);
 
-        cpu.step(&mut bus);
+        w65c816.test_step(&mut bus);
 
         test_case.final_state.ram.sort();
-        let result_state = CpuState::from((cpu, bus));
+        let result_state = CpuState::from((w65c816.cpu, bus));
         let states_match = result_state == test_case.final_state;
         if states_match {
             success += 1;

@@ -1,5 +1,5 @@
 use crate::{
-    bus::{Access, Bus},
+    bus::{Access, SystemBus},
     utils::int_traits::ManipulateU16,
     w65c816::addressing::Address,
 };
@@ -52,7 +52,7 @@ impl Dma {
         }
     }
 
-    pub fn do_dma(bus: &mut Bus) -> u32 {
+    pub fn do_dma(bus: &mut SystemBus) -> u32 {
         let mut cycles: u32 = 0;
 
         for index in 0..8 {
