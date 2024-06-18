@@ -26,7 +26,7 @@ pub enum AddressingMode {
     AbsoluteJMP,
     AbsoluteLongJSL,
     StackRelative,
-    StackRelativeIndirectY,
+    StackRelIndirectY,
     StackPEI,
     BlockMove,
 }
@@ -85,19 +85,19 @@ impl From<Address> for usize {
 }
 
 impl Cpu {
-    pub fn read_bank0(&mut self, bus: &mut Bus, offset: u16) -> u16 {
+    pub fn read_bank0<B: Bus>(&mut self, bus: &mut B, offset: u16) -> u16 {
         let addr = Address::new(offset, 0);
         bus.read_and_tick(addr) as u16
             | (bus.read_and_tick(addr.wrapping_offset_add(1)) as u16) << 8
     }
 
-    pub fn write_bank0(&mut self, bus: &mut Bus, offset: u16, data: u16) {
+    pub fn write_bank0<B: Bus>(&mut self, bus: &mut B, offset: u16, data: u16) {
         let addr = Address::new(offset, 0);
         bus.write_and_tick(addr, data.low_byte());
         bus.write_and_tick(addr.wrapping_offset_add(1), data.high_byte());
     }
 
-    pub fn get_imm<T: RegSize>(&mut self, bus: &mut Bus) -> T {
+    pub fn get_imm<T: RegSize, B: Bus>(&mut self, bus: &mut B) -> T {
         let addr = Address::new(self.program_counter, self.pbr);
         if T::IS_U16 {
             let res = bus.read_and_tick(addr) as u16
@@ -120,41 +120,41 @@ impl Cpu {
         WRITE || !self.status.index_regs_size() || unindexed_page != indexed_page
     }
 
-    fn direct_offset(&mut self, bus: &mut Bus) -> u16 {
+    fn direct_offset<B: Bus>(&mut self, bus: &mut B) -> u16 {
         let dpr = self.dpr;
         if dpr as u8 != 0 {
             bus.add_io_cycles(1);
         }
-        dpr.wrapping_add(self.get_imm::<u8>(bus) as u16)
+        dpr.wrapping_add(self.get_imm::<u8, B>(bus) as u16)
     }
 
-    fn direct_page_indexed(&mut self, bus: &mut Bus, index: u16) -> u16 {
+    fn direct_page_indexed<B: Bus>(&mut self, bus: &mut B, index: u16) -> u16 {
         bus.add_io_cycles(1);
         self.direct_offset(bus).wrapping_add(index)
     }
 
-    fn indirect_long_address(&mut self, bus: &mut Bus, indirect: u16) -> Address {
+    fn indirect_long_address<B: Bus>(&mut self, bus: &mut B, indirect: u16) -> Address {
         let addr = Address::new(indirect.wrapping_add(2), 0);
         Address::new(self.read_bank0(bus, indirect), bus.read_and_tick(addr))
     }
 
-    fn absolute_address(&mut self, bus: &mut Bus) -> Address {
+    fn absolute_address<B: Bus>(&mut self, bus: &mut B) -> Address {
         Address::new(self.get_imm(bus), self.dbr)
     }
 
-    fn absolute_long_address(&mut self, bus: &mut Bus) -> Address {
+    fn absolute_long_address<B: Bus>(&mut self, bus: &mut B) -> Address {
         Address::new(self.get_imm(bus), self.get_imm(bus))
     }
 
-    fn stack_relative_address(&mut self, bus: &mut Bus) -> u16 {
+    fn stack_relative_address<B: Bus>(&mut self, bus: &mut B) -> u16 {
         bus.add_io_cycles(1);
         self.stack_pointer
-            .wrapping_add(self.get_imm::<u8>(bus) as u16)
+            .wrapping_add(self.get_imm::<u8, B>(bus) as u16)
     }
 
-    pub fn decode_addressing_mode<const WRITE: bool>(
+    pub fn decode_addressing_mode<const WRITE: bool, B: Bus>(
         &mut self,
-        bus: &mut Bus,
+        bus: &mut B,
         mode: AddressingMode,
     ) -> Address {
         match mode {
@@ -222,11 +222,11 @@ impl Cpu {
             AddressingMode::AbsoluteIndirectX => {
                 bus.add_io_cycles(1);
                 Address::new(
-                    self.get_imm::<u16>(bus).wrapping_add(self.index_x),
+                    self.get_imm::<u16, B>(bus).wrapping_add(self.index_x),
                     self.pbr,
                 )
             }
-            AddressingMode::StackRelativeIndirectY => {
+            AddressingMode::StackRelIndirectY => {
                 bus.add_io_cycles(1);
                 let indirect = self.stack_relative_address(bus);
                 let offset = self.read_bank0(bus, indirect);
@@ -236,7 +236,7 @@ impl Cpu {
         }
     }
 
-    pub fn get_operand<T: RegSize>(&mut self, bus: &mut Bus, mode: &AddressingMode) -> T {
+    pub fn get_operand<T: RegSize, B: Bus>(&mut self, bus: &mut B, mode: &AddressingMode) -> T {
         match mode {
             AddressingMode::Immediate
             | AddressingMode::Implied
@@ -252,7 +252,7 @@ impl Cpu {
             | AddressingMode::StackRelative
             | AddressingMode::StackPEI => self.read_from_direct_page(bus, mode).0,
             _ => {
-                let addr = self.decode_addressing_mode::<false>(bus, *mode);
+                let addr = self.decode_addressing_mode::<false, B>(bus, *mode);
                 match T::IS_U16 {
                     true => T::from_u16(self.read_16(bus, addr)),
                     false => T::from_u8(bus.read_and_tick(addr)),
@@ -261,9 +261,9 @@ impl Cpu {
         }
     }
 
-    pub fn read_from_direct_page<T: RegSize>(
+    pub fn read_from_direct_page<T: RegSize, B: Bus>(
         &mut self,
-        bus: &mut Bus,
+        bus: &mut B,
         mode: &AddressingMode,
     ) -> (T, u16) {
         let page = match mode {

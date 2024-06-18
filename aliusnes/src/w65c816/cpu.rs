@@ -1,8 +1,8 @@
 use super::{
     addressing::{Address, AddressingMode},
     functions::do_push,
-    opcodes::{OpCode, OPCODES},
     regsize::RegSize,
+    Instr, OpCode,
 };
 use crate::{
     bus::{dma::Dma, Bus},
@@ -153,7 +153,7 @@ impl Cpu {
         self.emulation_mode = val;
     }
 
-    pub fn reset(&mut self, bus: &mut Bus) {
+    pub fn reset<B: Bus>(&mut self, bus: &mut B) {
         self.stopped = false;
         self.waiting_interrupt = false;
         self.set_emulation_mode(true);
@@ -166,57 +166,7 @@ impl Cpu {
         self.program_counter = self.read_bank0(bus, Vectors::EmuReset.get_addr());
     }
 
-    pub fn step(&mut self, bus: &mut Bus) -> u32 {
-        self.cycles = 0;
-
-        if self.stopped {
-            return 0;
-        }
-        if self.waiting_interrupt {
-            if bus.requested_nmi() {
-                self.waiting_interrupt = false;
-                self.handle_interrupt(bus, Vectors::Nmi);
-            } else if !self.status.irq_disable() && bus.requested_irq() {
-                self.waiting_interrupt = false;
-                self.handle_interrupt(bus, Vectors::Irq);
-            } else {
-                return 0;
-            }
-        }
-
-        let op = self.get_imm::<u8>(bus);
-
-        // DMA will take place in the middle of the next instruction, just after its opcode is read from memory.
-        // todo a better way that takes account of syncing components
-        if bus.dma.enable_channels > 0 {
-            self.cycles += Dma::do_dma(bus);
-        }
-
-        let opcode = OPCODES[op as usize];
-        // log::trace!(
-        //     "Instr {} A:{:#06x} X:{:#06x} Y:{:#06x}, PC:{:#06x}, SP:{:#06x}, P:{:#04x} {}",
-        //     opcode.mnemonic,
-        //     self.accumulator,
-        //     self.index_x,
-        //     self.index_y,
-        //     (self.program_counter - 1),
-        //     self.stack_pointer,
-        //     self.status.0,
-        //     format_status(&self.status)
-        // );
-
-        let instr = opcode.function;
-        instr(self, bus, opcode.mode);
-
-        self.cycles
-    }
-
-    pub fn peek_opcode(&self, bus: &mut Bus) -> OpCode {
-        let op = bus.read::<false>(Address::new(self.program_counter, self.pbr)) as usize;
-        OPCODES[op]
-    }
-
-    pub fn handle_interrupt(&mut self, bus: &mut Bus, interrupt: Vectors) {
+    pub fn handle_interrupt<B: Bus>(&mut self, bus: &mut B, interrupt: Vectors) {
         if !self.emulation_mode {
             do_push(self, bus, self.pbr);
         }
@@ -228,29 +178,29 @@ impl Cpu {
         self.program_counter = self.read_bank0(bus, interrupt.get_addr());
     }
 
-    pub fn read_16(&mut self, bus: &mut Bus, addr: Address) -> u16 {
+    pub fn read_16<B: Bus>(&mut self, bus: &mut B, addr: Address) -> u16 {
         bus.read_and_tick(addr) as u16 | (bus.read_and_tick(addr.wrapping_add(1)) as u16) << 8
     }
 
-    pub fn write_16(&mut self, bus: &mut Bus, addr: Address, data: u16) {
+    pub fn write_16<B: Bus>(&mut self, bus: &mut B, addr: Address, data: u16) {
         bus.write_and_tick(addr, data.low_byte());
         bus.write_and_tick(addr.wrapping_add(1), data.high_byte());
     }
 
-    pub fn do_write<T: RegSize>(&mut self, bus: &mut Bus, mode: &AddressingMode, val: T) {
+    pub fn do_write<T: RegSize, B: Bus>(&mut self, bus: &mut B, mode: &AddressingMode, val: T) {
         match mode {
             AddressingMode::Direct
             | AddressingMode::DirectX
             | AddressingMode::DirectY
             | AddressingMode::StackRelative => {
-                let (_, page) = self.read_from_direct_page::<T>(bus, mode);
+                let (_, page) = self.read_from_direct_page::<T, B>(bus, mode);
                 match T::IS_U16 {
                     true => self.write_bank0(bus, page, val.as_u16()),
                     false => bus.write_and_tick(page.into(), val.as_u8()),
                 }
             }
             _ => {
-                let addr = self.decode_addressing_mode::<true>(bus, *mode);
+                let addr = self.decode_addressing_mode::<true, B>(bus, *mode);
                 match T::IS_U16 {
                     true => self.write_16(bus, addr, val.as_u16()),
                     false => bus.write_and_tick(addr, val.as_u8()),
@@ -259,9 +209,9 @@ impl Cpu {
         }
     }
 
-    pub fn do_rmw<T: RegSize>(
+    pub fn do_rmw<T: RegSize, B: Bus>(
         &mut self,
-        bus: &mut Bus,
+        bus: &mut B,
         mode: &AddressingMode,
         f: fn(&mut Cpu, T) -> T,
     ) {
@@ -270,7 +220,7 @@ impl Cpu {
             | AddressingMode::DirectX
             | AddressingMode::DirectY
             | AddressingMode::StackRelative => {
-                let (data, page) = self.read_from_direct_page::<T>(bus, mode);
+                let (data, page) = self.read_from_direct_page::<T, B>(bus, mode);
                 let result = f(self, data);
                 match T::IS_U16 {
                     true => self.write_bank0(bus, page, result.as_u16()),
@@ -278,7 +228,7 @@ impl Cpu {
                 }
             }
             _ => {
-                let addr = self.decode_addressing_mode::<true>(bus, *mode);
+                let addr = self.decode_addressing_mode::<true, B>(bus, *mode);
                 if T::IS_U16 {
                     let data = self.read_16(bus, addr);
                     let result = f(self, T::from_u16(data)).as_u16();

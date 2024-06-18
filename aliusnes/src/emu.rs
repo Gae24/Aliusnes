@@ -1,35 +1,34 @@
-use crate::bus::Bus;
-use crate::cart::Cart;
-use crate::w65c816::cpu::Cpu;
 use simplelog::{
     ColorChoice, CombinedLogger, Config, ConfigBuilder, TermLogger, TerminalMode, WriteLogger,
 };
 
+use crate::{bus::SystemBus, cart::Cart, w65c816::W65C816};
+
 pub struct Emu {
-    cpu: Cpu,
-    pub bus: Bus,
+    w65c816: W65C816<SystemBus>,
+    bus: SystemBus,
 }
 
 impl Emu {
     pub fn new(cart: Cart) -> Self {
         let mut emu = Emu {
-            bus: Bus::new(cart),
-            cpu: Cpu::new(),
+            bus: SystemBus::new(cart),
+            w65c816: W65C816::new(),
         };
         emu.reset();
         emu
     }
 
     pub fn reset(&mut self) {
-        self.cpu.reset(&mut self.bus);
+        self.w65c816.cpu.reset(&mut self.bus);
     }
 
     pub fn step(&mut self) {
         let Emu {
             ref mut bus,
-            ref mut cpu,
+            ref mut w65c816,
         } = self;
-        let ticks = cpu.step(bus);
+        let ticks = w65c816.step(bus);
 
         for _ in 0..ticks {
             bus.tick();
