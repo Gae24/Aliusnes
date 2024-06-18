@@ -1,16 +1,48 @@
 use aliusnes::{
-    bus::SystemBus,
+    bus::Bus,
     w65c816::{
+        addressing::Address,
         cpu::{Cpu, Status},
         W65C816,
     },
 };
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::HashMap,
     fs::File,
     io::{BufRead, BufReader},
     path::PathBuf,
 };
+
+#[derive(Default)]
+pub struct TomHarteBus {
+    cycles: usize,
+    pub memory: HashMap<u32, u8>,
+}
+
+impl TomHarteBus {
+    pub fn read(&self, addr: Address) -> u8 {
+        self.memory.get(&addr.into()).copied().unwrap_or_default()
+    }
+
+    pub fn write(&mut self, addr: Address, data: u8) {
+        self.memory.insert(addr.into(), data);
+    }
+}
+
+impl Bus for TomHarteBus {
+    fn read_and_tick(&mut self, addr: Address) -> u8 {
+        self.read(addr)
+    }
+
+    fn write_and_tick(&mut self, addr: Address, data: u8) {
+        self.write(addr, data);
+    }
+
+    fn add_io_cycles(&mut self, cycles: usize) {
+        self.cycles += cycles * 6;
+    }
+}
 
 #[derive(PartialEq, Eq, Serialize, Deserialize)]
 struct CpuState {
@@ -28,7 +60,7 @@ struct CpuState {
 }
 
 impl CpuState {
-    fn from_state(&self) -> (W65C816<SystemBus>, SystemBus) {
+    fn from_state(&self) -> (W65C816<TomHarteBus>, TomHarteBus) {
         let cpu = Cpu {
             accumulator: self.a,
             index_x: self.x,
@@ -49,7 +81,7 @@ impl CpuState {
             cpu,
             instruction_set: W65C816::opcode_table(),
         };
-        let mut bus = SystemBus::default();
+        let mut bus = TomHarteBus::default();
         for (addr, val) in &self.ram {
             bus.memory.insert(*addr, *val);
         }
@@ -58,8 +90,8 @@ impl CpuState {
     }
 }
 
-impl From<(Cpu, SystemBus)> for CpuState {
-    fn from(value: (Cpu, SystemBus)) -> Self {
+impl From<(Cpu, TomHarteBus)> for CpuState {
+    fn from(value: (Cpu, TomHarteBus)) -> Self {
         let mut ram: Vec<(u32, u8)> = value.1.memory.into_iter().collect();
         ram.sort();
         Self {
