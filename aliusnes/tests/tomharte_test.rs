@@ -1,5 +1,6 @@
 mod utils;
 
+use pretty_assertions::Comparison;
 use serde::Deserialize;
 use std::{
     fs::File,
@@ -57,24 +58,26 @@ impl TestCase {
 }
 
 pub fn run_test(name: &str) {
-    let mut total = 0;
     let mut success = 0;
     let json_path = PathBuf::from(format!("../../65816/v1/{name}.json"));
 
-    for mut test_case in TestCase::iter_json(&json_path) {
-        total += 1;
+    for test_case in TestCase::iter_json(&json_path) {
         let (mut w65c816, mut bus) = test_case.initial.from_state();
-        let opcode = w65c816.peek_opcode(&mut bus);
 
+        let (final_cpu, mut final_bus) = test_case.final_state.from_state();
+        final_bus.cycles = test_case.cycles;
+
+        let opcode = w65c816.peek_opcode(&mut bus);
         w65c816.test_step(&mut bus);
 
-        test_case.final_state.ram.sort();
-        let result_cycles = bus.cycles.clone();
-        let result_state = CpuState::from((w65c816.cpu, bus));
-        let states_match = result_state == test_case.final_state;
-        let cycles_match = result_cycles == test_case.cycles;
+        bus.cycles.sort();
+        final_bus.cycles.sort();
 
-        if states_match && cycles_match {
+        let cpu_match = w65c816.cpu == final_cpu.cpu;
+        let memory_match = bus.memory == final_bus.memory;
+        let cycles_match = bus.cycles == final_bus.cycles;
+
+        if cpu_match && memory_match && cycles_match {
             success += 1;
             continue;
         }
@@ -83,18 +86,17 @@ pub fn run_test(name: &str) {
             "\nTest {} Failed: {:#04X} {} {:?}",
             test_case.name, opcode.code, opcode.mnemonic, opcode.mode
         );
-        if !states_match {
+        if !cpu_match {
             println!("Initial:  {}", &test_case.initial);
-            println!("Got:      {}", &result_state);
-            println!("Expected: {}", &test_case.final_state);
+            println!("Result: {}", Comparison::new(&w65c816.cpu, &final_cpu.cpu));
+        }
+        if !memory_match {
+            println!("Memory: {}", Comparison::new(&bus.memory, &final_bus.memory));
         }
         if !cycles_match {
-            println!("Got:");
-            println!("{:?}", &result_cycles);
-            println!("Expected:");
-            println!("{:?}", &test_case.cycles);
+            println!("Cycles: {}", Comparison::new(&bus.cycles, &final_bus.cycles));
         }
     }
-    println!("{name} Passed({success}/{total})");
-    assert_eq!(success, total);
+    println!("{name} Passed({success}/10000)");
+    assert_eq!(success, 10000);
 }
