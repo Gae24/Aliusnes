@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-
 use aliusnes::{bus::Bus, w65c816::addressing::Address};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Cycle {
     Read(u32, Option<u8>),
     Write(u32, u8),
@@ -12,7 +10,7 @@ pub enum Cycle {
 #[derive(Default)]
 pub struct TomHarteBus {
     pub cycles: Vec<Cycle>,
-    pub memory: HashMap<u32, u8>,
+    pub memory: std::collections::HashMap<u32, u8>,
 }
 
 impl TomHarteBus {

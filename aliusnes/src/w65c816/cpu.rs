@@ -40,6 +40,7 @@ impl Vectors {
 }
 
 bitfield!(
+    #[derive(Debug, PartialEq, Eq)]
     pub struct Status(pub u8) {
         pub carry: bool @ 0,
         pub zero: bool @ 1,
@@ -65,6 +66,7 @@ fn format_status(status: &Status) -> String {
     string
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct Cpu {
     pub accumulator: u16,
     pub index_x: u16,

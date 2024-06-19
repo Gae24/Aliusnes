@@ -2,11 +2,10 @@ use aliusnes::w65c816::{
     cpu::{Cpu, Status},
     W65C816,
 };
-use serde::{Deserialize, Serialize};
 
 use super::test_bus::TomHarteBus;
 
-#[derive(PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 pub struct CpuState {
     pc: u16,
     s: u16,
@@ -49,26 +48,6 @@ impl CpuState {
         }
 
         (w65c816, bus)
-    }
-}
-
-impl From<(Cpu, TomHarteBus)> for CpuState {
-    fn from(value: (Cpu, TomHarteBus)) -> Self {
-        let mut ram: Vec<(u32, u8)> = value.1.memory.into_iter().collect();
-        ram.sort();
-        Self {
-            pc: value.0.program_counter,
-            s: value.0.stack_pointer,
-            p: value.0.status.0,
-            a: value.0.accumulator,
-            x: value.0.index_x,
-            y: value.0.index_y,
-            dbr: value.0.dbr,
-            d: value.0.dpr,
-            pbr: value.0.pbr,
-            e: value.0.emulation_mode as u8,
-            ram,
-        }
     }
 }
 
