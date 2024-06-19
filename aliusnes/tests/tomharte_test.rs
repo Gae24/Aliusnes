@@ -1,112 +1,43 @@
 mod utils;
 
-use aliusnes::w65c816::{
-    cpu::{Cpu, Status},
-    W65C816,
-};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::{
     fs::File,
     io::{BufRead, BufReader},
     path::PathBuf,
 };
-use utils::test_bus::TomHarteBus;
+use utils::{cpu_state::CpuState, test_bus::Cycle};
 
 include!(concat!(env!("OUT_DIR"), "/tomharte_65816.rs"));
 
-#[derive(PartialEq, Eq, Serialize, Deserialize)]
-struct CpuState {
-    pc: u16,
-    s: u16,
-    p: u8,
-    a: u16,
-    x: u16,
-    y: u16,
-    dbr: u8,
-    d: u16,
-    pbr: u8,
-    e: u8,
-    ram: Vec<(u32, u8)>,
-}
-
-impl CpuState {
-    fn from_state(&self) -> (W65C816<TomHarteBus>, TomHarteBus) {
-        let cpu = Cpu {
-            accumulator: self.a,
-            index_x: self.x,
-            index_y: self.y,
-            stack_pointer: self.s,
-            program_counter: self.pc,
-            status: Status(self.p),
-            dpr: self.d,
-            pbr: self.pbr,
-            dbr: self.dbr,
-            emulation_mode: self.e == 1,
-            stopped: false,
-            waiting_interrupt: false,
-            cycles: 0,
-        };
-
-        let w65c816 = W65C816 {
-            cpu,
-            instruction_set: W65C816::opcode_table(),
-        };
-        let mut bus = TomHarteBus::default();
-        for (addr, val) in &self.ram {
-            bus.memory.insert(*addr, *val);
-        }
-
-        (w65c816, bus)
-    }
-}
-
-impl From<(Cpu, TomHarteBus)> for CpuState {
-    fn from(value: (Cpu, TomHarteBus)) -> Self {
-        let mut ram: Vec<(u32, u8)> = value.1.memory.into_iter().collect();
-        ram.sort();
-        Self {
-            pc: value.0.program_counter,
-            s: value.0.stack_pointer,
-            p: value.0.status.0,
-            a: value.0.accumulator,
-            x: value.0.index_x,
-            y: value.0.index_y,
-            dbr: value.0.dbr,
-            d: value.0.dpr,
-            pbr: value.0.pbr,
-            e: value.0.emulation_mode as u8,
-            ram,
-        }
-    }
-}
-
-impl std::fmt::Display for CpuState {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "pc:{:04X} s:{:04X} p:{:02X} a:{:04X} x:{:04X} y:{:04X} dbr:{:02X} d:{:04X} pbr:{:02X} e:{:01X} \n\t  ram:{:02X?}",
-            self.pc,
-            self.s,
-            self.p,
-            self.a,
-            self.x,
-            self.y,
-            self.dbr,
-            self.d,
-            self.pbr,
-            self.e,
-            self.ram
-        )
-    }
-}
-
-#[derive(Serialize, Deserialize)]
+#[derive(Deserialize)]
 struct TestCase {
     name: String,
     initial: CpuState,
     #[serde(rename = "final")]
     final_state: CpuState,
-    cycles: Vec<(u32, Option<u8>, String)>,
+    #[serde(deserialize_with = "deserialize_cycles")]
+    cycles: Vec<Cycle>,
+}
+
+fn deserialize_cycles<'de, D>(deserializer: D) -> Result<Vec<Cycle>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let v: Vec<(Option<u32>, Option<u8>, String)> = Deserialize::deserialize(deserializer)?;
+    let cycles = v
+        .iter()
+        .map(|(addr, value, state)| {
+            if state.contains('r') {
+                Cycle::Read(addr.unwrap_or_default(), *value)
+            } else if state.contains('w') {
+                Cycle::Write(addr.unwrap_or_default(), value.unwrap_or_default())
+            } else {
+                Cycle::Internal
+            }
+        })
+        .collect();
+    Ok(cycles)
 }
 
 impl TestCase {
@@ -138,9 +69,12 @@ pub fn run_test(name: &str) {
         w65c816.test_step(&mut bus);
 
         test_case.final_state.ram.sort();
+        let result_cycles = bus.cycles.clone();
         let result_state = CpuState::from((w65c816.cpu, bus));
         let states_match = result_state == test_case.final_state;
-        if states_match {
+        let cycles_match = result_cycles == test_case.cycles;
+
+        if states_match && cycles_match {
             success += 1;
             continue;
         }
@@ -149,9 +83,17 @@ pub fn run_test(name: &str) {
             "\nTest {} Failed: {:#04X} {} {:?}",
             test_case.name, opcode.code, opcode.mnemonic, opcode.mode
         );
-        println!("Initial:  {}", &test_case.initial);
-        println!("Got:      {}", &result_state);
-        println!("Expected: {}", &test_case.final_state);
+        if !states_match {
+            println!("Initial:  {}", &test_case.initial);
+            println!("Got:      {}", &result_state);
+            println!("Expected: {}", &test_case.final_state);
+        }
+        if !cycles_match {
+            println!("Got:");
+            println!("{:?}", &result_cycles);
+            println!("Expected:");
+            println!("{:?}", &test_case.cycles);
+        }
     }
     println!("{name} Passed({success}/{total})");
     assert_eq!(success, total);
