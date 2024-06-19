@@ -1,7 +1,8 @@
 mod utils;
 
+use core::panic;
 use pretty_assertions::Comparison;
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 use std::{
     fs::File,
     io::{BufRead, BufReader},
@@ -21,10 +22,7 @@ struct TestCase {
     cycles: Vec<Cycle>,
 }
 
-fn deserialize_cycles<'de, D>(deserializer: D) -> Result<Vec<Cycle>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
+fn deserialize_cycles<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Vec<Cycle>, D::Error> {
     let v: Vec<(Option<u32>, Option<u8>, String)> = Deserialize::deserialize(deserializer)?;
     let cycles = v
         .iter()
@@ -82,20 +80,26 @@ pub fn run_test(name: &str) {
             continue;
         }
 
-        println!(
-            "\nTest {} Failed: {:#04X} {} {:?}",
-            test_case.name, opcode.code, opcode.mnemonic, opcode.mode
-        );
         if !cpu_match {
             println!("Initial:  {}", &test_case.initial);
             println!("Result: {}", Comparison::new(&w65c816.cpu, &final_cpu.cpu));
         }
         if !memory_match {
-            println!("Memory: {}", Comparison::new(&bus.memory, &final_bus.memory));
+            println!(
+                "Memory: {}",
+                Comparison::new(&bus.memory, &final_bus.memory)
+            );
         }
         if !cycles_match {
-            println!("Cycles: {}", Comparison::new(&bus.cycles, &final_bus.cycles));
+            println!(
+                "Cycles: {}",
+                Comparison::new(&bus.cycles, &final_bus.cycles)
+            );
         }
+        panic!(
+            "\nTest {} failed: {:#04X} {} {:?}",
+            test_case.name, opcode.code, opcode.mnemonic, opcode.mode
+        );
     }
     println!("{name} Passed({success}/10000)");
     assert_eq!(success, 10000);
