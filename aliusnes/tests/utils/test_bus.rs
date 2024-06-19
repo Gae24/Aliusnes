@@ -24,6 +24,10 @@ impl TomHarteBus {
 }
 
 impl Bus for TomHarteBus {
+    fn peek_at(&self, addr: Address) -> Option<u8> {
+        self.read(addr)
+    }
+
     fn read_and_tick(&mut self, addr: Address) -> u8 {
         let val = self.read(addr);
         self.cycles.push(Cycle::Read(addr.into(), val));

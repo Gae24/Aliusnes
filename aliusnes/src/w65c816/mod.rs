@@ -102,9 +102,11 @@ impl<B: Bus> W65C816<B> {
         instr(&mut self.cpu, bus, opcode.mode);
     }
 
-    pub fn peek_opcode(&self, bus: &mut B) -> OpCode<Instr<B>> {
-        let op = bus.read_and_tick(Address::new(self.cpu.program_counter, self.cpu.pbr)) as usize;
-        self.instruction_set[op]
+    pub fn peek_opcode(&self, bus: &B) -> OpCode<Instr<B>> {
+        let op = bus
+            .peek_at(Address::new(self.cpu.program_counter, self.cpu.pbr))
+            .unwrap_or_default();
+        self.instruction_set[op as usize]
     }
 
     pub fn opcode_table() -> [OpCode<Instr<B>>; 256] {

@@ -8,6 +8,7 @@ mod math;
 mod wram;
 
 pub trait Bus {
+    fn peek_at(&self, addr: Address) -> Option<u8>;
     fn read_and_tick(&mut self, addr: Address) -> u8;
     fn write_and_tick(&mut self, addr: Address, data: u8);
     fn add_io_cycles(&mut self, cycles: usize);
@@ -196,6 +197,10 @@ impl SystemBus {
 }
 
 impl Bus for SystemBus {
+    fn peek_at(&self, addr: Address) -> Option<u8> {
+        todo!()
+    }
+
     fn read_and_tick(&mut self, addr: Address) -> u8 {
         self.cycles += self.memory_access_cycles(&addr) as usize;
         self.read::<false>(addr)
