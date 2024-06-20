@@ -174,14 +174,6 @@ impl SystemBus {
             },
         }
     }
-
-    pub fn requested_nmi(&self) -> bool {
-        self.ppu.nmi_requested
-    }
-
-    pub fn requested_irq(&self) -> bool {
-        self.ppu.is_in_irq()
-    }
 }
 
 impl Bus for SystemBus {
@@ -201,5 +193,13 @@ impl Bus for SystemBus {
 
     fn add_io_cycles(&mut self, cycles: usize) {
         self.cycles += cycles * 6;
+    }
+
+    fn fired_nmi(&self) -> bool {
+        self.ppu.nmi_requested
+    }
+
+    fn fired_irq(&self) -> bool {
+        self.ppu.is_in_irq()
     }
 }

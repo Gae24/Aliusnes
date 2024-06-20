@@ -44,4 +44,12 @@ impl Bus for TomHarteBus {
             self.cycles.push(Cycle::Internal)
         }
     }
+
+    fn fired_nmi(&self) -> bool {
+        false
+    }
+
+    fn fired_irq(&self) -> bool {
+        false
+    }
 }

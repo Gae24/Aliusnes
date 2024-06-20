@@ -52,10 +52,10 @@ impl<B: Bus> W65C816<B> {
             return 0;
         }
         if self.cpu.waiting_interrupt {
-            if bus.requested_nmi() {
+            if bus.fired_nmi() {
                 self.cpu.waiting_interrupt = false;
                 self.cpu.handle_interrupt(bus, Vectors::Nmi);
-            } else if !self.cpu.status.irq_disable() && bus.requested_irq() {
+            } else if !self.cpu.status.irq_disable() && bus.fired_irq() {
                 self.cpu.waiting_interrupt = false;
                 self.cpu.handle_interrupt(bus, Vectors::Irq);
             } else {
