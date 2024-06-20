@@ -50,9 +50,7 @@ impl Dma {
         }
     }
 
-    pub fn do_dma(bus: &mut SystemBus) -> u32 {
-        let mut cycles: u32 = 0;
-
+    pub fn do_dma(bus: &mut SystemBus) {
         for index in 0..8 {
             if bus.dma.enable_channels & (1 << index) == 0 {
                 continue;
@@ -105,10 +103,9 @@ impl Dma {
                 }
             }
             bus.dma.channels[index].byte_count_or_h_indirect_addr = 0;
-            cycles += 8 + 8 * count as u32 + 2;
+            bus.add_cycles(8 + (8 * count) + 2);
         }
         bus.dma.enable_channels = 0;
-        cycles
     }
 }
 
