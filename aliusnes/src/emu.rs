@@ -2,7 +2,11 @@ use simplelog::{
     ColorChoice, CombinedLogger, Config, ConfigBuilder, TermLogger, TerminalMode, WriteLogger,
 };
 
-use crate::{bus::system_bus::SystemBus, cart::Cart, w65c816::W65C816};
+use crate::{
+    bus::{dma::Dma, system_bus::SystemBus},
+    cart::Cart,
+    w65c816::W65C816,
+};
 
 pub struct Emu {
     w65c816: W65C816<SystemBus>,
@@ -28,11 +32,13 @@ impl Emu {
             ref mut bus,
             ref mut w65c816,
         } = self;
-        let ticks = w65c816.step(bus);
 
-        for _ in 0..ticks {
-            bus.tick();
+        if bus.dma.enable_channels > 0 {
+            Dma::do_dma(bus);
         }
+
+        w65c816.step(bus);
+        bus.tick();
     }
 
     pub fn frame_ready(&self) -> bool {

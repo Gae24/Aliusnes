@@ -35,7 +35,6 @@ impl CpuState {
             emulation_mode: self.e == 1,
             stopped: false,
             waiting_interrupt: false,
-            cycles: 0,
         };
 
         let w65c816 = W65C816 {

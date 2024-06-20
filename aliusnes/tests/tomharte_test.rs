@@ -66,7 +66,7 @@ pub fn run_test(name: &str) {
         final_bus.cycles = test_case.cycles;
 
         let opcode = w65c816.peek_opcode(&bus);
-        w65c816.test_step(&mut bus);
+        w65c816.step(&mut bus);
 
         bus.cycles.sort();
         final_bus.cycles.sort();

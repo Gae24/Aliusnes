@@ -1,4 +1,4 @@
-use crate::bus::{dma::Dma, system_bus::SystemBus, Bus};
+use crate::bus::Bus;
 use addressing::{Address, AddressingMode};
 use cpu::Vectors;
 
@@ -45,11 +45,9 @@ impl<B: Bus> W65C816<B> {
         }
     }
 
-    pub fn step(&mut self, bus: &mut SystemBus) -> u32 {
-        self.cpu.cycles = 0;
-
+    pub fn step(&mut self, bus: &mut B) {
         if self.cpu.stopped {
-            return 0;
+            return;
         }
         if self.cpu.waiting_interrupt {
             if bus.fired_nmi() {
@@ -59,22 +57,13 @@ impl<B: Bus> W65C816<B> {
                 self.cpu.waiting_interrupt = false;
                 self.cpu.handle_interrupt(bus, Vectors::Irq);
             } else {
-                return 0;
+                return;
             }
         }
 
-        let op = self.cpu.get_imm::<u8, SystemBus>(bus);
-
-        // DMA will take place in the middle of the next instruction, just after its opcode is read from memory.
-        // todo a better way that takes account of syncing components
-        if bus.dma.enable_channels > 0 {
-            self.cpu.cycles += Dma::do_dma(bus);
-        }
-
+        let op = self.cpu.get_imm::<u8, B>(bus);
         let opcode = self.instruction_set[op as usize];
 
-        let instr = opcode.function;
-        // instr(&mut self.cpu, bus, opcode.mode);
         // log::trace!(
         //     "Instr {} A:{:#06x} X:{:#06x} Y:{:#06x}, PC:{:#06x}, SP:{:#06x}, P:{:#04x} {}",
         //     opcode.mnemonic,
@@ -86,18 +75,6 @@ impl<B: Bus> W65C816<B> {
         //     self.status.0,
         //     format_status(&self.status)
         // );
-
-        self.cpu.cycles
-    }
-
-    pub fn test_step(&mut self, bus: &mut B) {
-        if self.cpu.stopped {
-            return;
-        }
-
-        let op = self.cpu.get_imm::<u8, B>(bus);
-        let opcode = self.instruction_set[op as usize];
-
         let instr = opcode.function;
         instr(&mut self.cpu, bus, opcode.mode);
     }

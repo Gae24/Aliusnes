@@ -30,17 +30,16 @@ impl SystemBus {
     pub fn tick(&mut self) {
         //todo apu, joypad, hdma
 
-        self.ppu.tick();
+        let ticks = self.cycles;
+        self.cycles = 0;
+
+        for _ in 0..ticks {
+            self.ppu.tick();
+        }
     }
 
-    pub fn read_and_tick(&mut self, addr: Address) -> u8 {
-        self.cycles += self.memory_access_cycles(&addr) as usize;
-        self.read::<false>(addr)
-    }
-
-    pub fn write_and_tick(&mut self, addr: Address, data: u8) {
-        self.cycles += self.memory_access_cycles(&addr) as usize;
-        self.write::<false>(addr, data);
+    pub fn add_cycles(&mut self, cycles: usize) {
+        self.cycles += cycles;
     }
 
     pub fn read_b(&mut self, addr: u16) -> u8 {

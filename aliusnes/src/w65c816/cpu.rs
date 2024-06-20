@@ -2,12 +2,8 @@ use super::{
     addressing::{Address, AddressingMode},
     functions::do_push,
     regsize::RegSize,
-    Instr, OpCode,
 };
-use crate::{
-    bus::{dma::Dma, Bus},
-    utils::int_traits::ManipulateU16,
-};
+use crate::{bus::Bus, utils::int_traits::ManipulateU16};
 
 pub enum Vectors {
     Cop,
@@ -80,7 +76,6 @@ pub struct Cpu {
     pub emulation_mode: bool,
     pub stopped: bool,
     pub waiting_interrupt: bool,
-    pub cycles: u32,
 }
 
 impl Cpu {
@@ -98,7 +93,6 @@ impl Cpu {
             emulation_mode: true,
             stopped: false,
             waiting_interrupt: false,
-            cycles: 0,
         }
     }
 
