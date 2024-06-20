@@ -1,4 +1,4 @@
-use crate::bus::{dma::Dma, Bus, SystemBus};
+use crate::bus::{dma::Dma, system_bus::SystemBus, Bus};
 use addressing::{Address, AddressingMode};
 use cpu::Vectors;
 

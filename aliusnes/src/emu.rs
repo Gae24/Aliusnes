@@ -2,7 +2,7 @@ use simplelog::{
     ColorChoice, CombinedLogger, Config, ConfigBuilder, TermLogger, TerminalMode, WriteLogger,
 };
 
-use crate::{bus::SystemBus, cart::Cart, w65c816::W65C816};
+use crate::{bus::system_bus::SystemBus, cart::Cart, w65c816::W65C816};
 
 pub struct Emu {
     w65c816: W65C816<SystemBus>,

@@ -1,4 +1,4 @@
-use super::access::Access;
+use super::Access;
 use crate::utils::int_traits::ManipulateU16;
 
 // In hardware multiplication takes 8 cycles,

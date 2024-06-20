@@ -7,7 +7,7 @@ use self::{
     oam::{Oam, Objsel},
     vram::{VideoPortControl, Vram},
 };
-use crate::{bus::access::Access, cart::info::Model, utils::int_traits::ManipulateU16};
+use crate::{bus::Access, cart::info::Model, utils::int_traits::ManipulateU16};
 
 mod background;
 mod cgram;
