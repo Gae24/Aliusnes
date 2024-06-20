@@ -1,18 +1,6 @@
-use self::{access::Access, dma::Dma, math::Math, wram::Wram};
-use crate::w65c816::addressing::Address;
-use crate::{cart::Cart, ppu::Ppu, utils::int_traits::ManipulateU16};
+use crate::{cart::Cart, ppu::Ppu, utils::int_traits::ManipulateU16, w65c816::addressing::Address};
 
-pub mod access;
-pub(super) mod dma;
-mod math;
-mod wram;
-
-pub trait Bus {
-    fn peek_at(&self, addr: Address) -> Option<u8>;
-    fn read_and_tick(&mut self, addr: Address) -> u8;
-    fn write_and_tick(&mut self, addr: Address, data: u8);
-    fn add_io_cycles(&mut self, cycles: usize);
-}
+use super::{dma::Dma, math::Math, wram::Wram, Access, Bus};
 
 pub struct SystemBus {
     mdr: u8,
