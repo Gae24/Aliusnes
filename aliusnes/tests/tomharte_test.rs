@@ -27,7 +27,9 @@ fn deserialize_cycles<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Vec<
     let cycles = v
         .iter()
         .map(|(addr, value, state)| {
-            if state.contains('r') {
+            if !(state.contains('p') || state.contains('d')) {
+                Cycle::Internal
+            } else if state.contains('r') {
                 Cycle::Read(addr.unwrap_or_default(), *value)
             } else if state.contains('w') {
                 Cycle::Write(addr.unwrap_or_default(), value.unwrap_or_default())
