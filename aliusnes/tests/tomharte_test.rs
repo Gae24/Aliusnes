@@ -24,7 +24,7 @@ struct TestCase {
 
 fn deserialize_cycles<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Vec<Cycle>, D::Error> {
     let v: Vec<(Option<u32>, Option<u8>, String)> = Deserialize::deserialize(deserializer)?;
-    let cycles = v
+    let mut cycles: Vec<Cycle> = v
         .iter()
         .map(|(addr, value, state)| {
             if !(state.contains('p') || state.contains('d')) {
@@ -38,6 +38,7 @@ fn deserialize_cycles<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Vec<
             }
         })
         .collect();
+    cycles.sort();
     Ok(cycles)
 }
 
@@ -61,47 +62,41 @@ pub fn run_test(name: &str) {
     let mut success = 0;
     let json_path = PathBuf::from(format!("../../65816/v1/{name}.json"));
 
-    for test_case in TestCase::iter_json(&json_path) {
+    for mut test_case in TestCase::iter_json(&json_path) {
         let (mut w65c816, mut bus) = test_case.initial.from_state();
-
-        let (final_cpu, mut final_bus) = test_case.final_state.from_state();
-        final_bus.cycles = test_case.cycles;
 
         let opcode = w65c816.peek_opcode(&bus);
         w65c816.step(&mut bus);
 
-        bus.cycles.sort();
-        final_bus.cycles.sort();
+        let mut cycles = bus.cycles.clone();
+        cycles.sort();
 
-        let cpu_match = w65c816.cpu == final_cpu.cpu;
-        let memory_match = bus.memory == final_bus.memory;
-        let cycles_match = bus.cycles == final_bus.cycles;
+        let cpu_state = CpuState::from((w65c816.cpu, bus));
+        test_case.final_state.ram.sort();
 
-        if cpu_match && memory_match && cycles_match {
+        let state_match = cpu_state == test_case.final_state;
+        let cycles_match = cycles == test_case.cycles;
+
+        if state_match && cycles_match {
             success += 1;
             continue;
         }
 
-        if !cpu_match {
-            println!("Initial:  {}", &test_case.initial);
-            println!("Result: {}", Comparison::new(&w65c816.cpu, &final_cpu.cpu));
-        }
-        if !memory_match {
+        println!(
+            "Test {} failed: {:#04X} {} {:?}",
+            test_case.name, opcode.code, opcode.mnemonic, opcode.mode
+        );
+        if !state_match {
+            println!("Initial: {}", &test_case.initial);
             println!(
-                "Memory: {}",
-                Comparison::new(&bus.memory, &final_bus.memory)
+                "Result: {}",
+                Comparison::new(&cpu_state, &test_case.final_state)
             );
         }
         if !cycles_match {
-            println!(
-                "Cycles: {}",
-                Comparison::new(&bus.cycles, &final_bus.cycles)
-            );
+            println!("Cycles: {}", Comparison::new(&cycles, &test_case.cycles));
         }
-        panic!(
-            "\nTest {} failed: {:#04X} {} {:?}",
-            test_case.name, opcode.code, opcode.mnemonic, opcode.mode
-        );
+        panic!();
     }
     println!("{name} Passed({success}/10000)");
     assert_eq!(success, 10000);
