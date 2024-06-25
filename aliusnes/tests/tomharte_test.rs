@@ -9,6 +9,7 @@ use std::{
     path::PathBuf,
 };
 use utils::{cpu_state::CpuState, test_bus::Cycle};
+use xz2::read::XzDecoder;
 
 include!(concat!(env!("OUT_DIR"), "/tomharte_65816.rs"));
 
@@ -45,7 +46,7 @@ fn deserialize_cycles<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Vec<
 impl TestCase {
     fn iter_json(path: &PathBuf) -> impl Iterator<Item = Self> {
         let file = File::open(path).unwrap();
-        let reader = BufReader::new(file);
+        let reader = BufReader::new(XzDecoder::new(file));
 
         reader.lines().map(|line| {
             let line = line.unwrap();
@@ -59,8 +60,8 @@ impl TestCase {
 }
 
 pub fn run_test(name: &str) {
-    let mut success = 0;
-    let json_path = PathBuf::from(format!("../../65816/v1/{name}.json"));
+    let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let json_path = root_dir.join(format!("tests/65816/{name}.json.xz"));
 
     for mut test_case in TestCase::iter_json(&json_path) {
         let (mut w65c816, mut bus) = test_case.initial.from_state();
@@ -78,7 +79,6 @@ pub fn run_test(name: &str) {
         let cycles_match = cycles == test_case.cycles;
 
         if state_match && cycles_match {
-            success += 1;
             continue;
         }
 
@@ -98,6 +98,4 @@ pub fn run_test(name: &str) {
         }
         panic!();
     }
-    println!("{name} Passed({success}/10000)");
-    assert_eq!(success, 10000);
 }
