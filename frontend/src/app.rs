@@ -8,7 +8,6 @@ use eframe::{
 const U5_TO_U8_CONVERSION: f32 = 8.225806;
 
 pub struct App {
-    name: &'static str,
     emu_state: EmuState,
     texture: egui::TextureHandle,
 }
@@ -17,7 +16,6 @@ impl App {
     pub fn new(cc: &CreationContext<'_>, cart: Cart) -> Self {
         cc.egui_ctx.set_visuals(egui::Visuals::dark());
         Self {
-            name: "Aliusnes",
             emu_state: EmuState::new(cart),
             texture: cc.egui_ctx.load_texture(
                 "Framebuffer",

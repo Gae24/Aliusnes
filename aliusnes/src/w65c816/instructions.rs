@@ -844,7 +844,7 @@ impl<B: Bus> super::W65C816<B> {
         cpu.waiting_interrupt = true;
     }
 
-    pub fn wdm(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+    pub fn wdm(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         bus.add_io_cycles(1);
         cpu.program_counter += 1;
     }

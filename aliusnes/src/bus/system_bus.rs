@@ -176,7 +176,7 @@ impl SystemBus {
 }
 
 impl Bus for SystemBus {
-    fn peek_at(&self, addr: Address) -> Option<u8> {
+    fn peek_at(&self, _addr: Address) -> Option<u8> {
         todo!()
     }
 
