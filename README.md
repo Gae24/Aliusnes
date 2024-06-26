@@ -1,5 +1,12 @@
+
+# Credits
+
+TomHarte for [SingleStepTests](https://github.com/SingleStepTests).
+
 # Status
+
 ## Ricoh 5A22
+
 - W65C816
 	- [x] All instructions implemented
 	- [ ] Cycle accurate
@@ -11,7 +18,9 @@
 	- [x] Multiplication
 	- [x] Division
 	- [ ] Cycle accurate
+
 ## PPU
+
 - Components
 	- [x] Cgram
 	- [x] Oam
@@ -47,10 +56,14 @@
 	- [ ] Color math
 	- [ ] Mosaic
 	- [ ] Window
+
 ## APU
+
 - DSP
 - SPC-700
+
 ## Cartridge
+
 - Mapper
 	- [x] LoROM
 	- [ ] HiROM
