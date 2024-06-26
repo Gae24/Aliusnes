@@ -674,7 +674,7 @@ impl<B: Bus> super::W65C816<B> {
 
     pub fn stp(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         cpu.stopped = true;
-        bus.add_io_cycles(2);
+        bus.add_io_cycles(3);
     }
 
     pub fn stx(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
@@ -840,7 +840,7 @@ impl<B: Bus> super::W65C816<B> {
     }
 
     pub fn wai(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
-        bus.add_io_cycles(2);
+        bus.add_io_cycles(3);
         cpu.waiting_interrupt = true;
     }
 
