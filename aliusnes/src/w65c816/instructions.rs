@@ -845,7 +845,8 @@ impl<B: Bus> super::W65C816<B> {
     }
 
     pub fn wdm(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        let _thrown = cpu.get_operand::<u8, B>(bus, &mode);
+        bus.add_io_cycles(1);
+        cpu.program_counter += 1;
     }
 
     pub fn xba(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
