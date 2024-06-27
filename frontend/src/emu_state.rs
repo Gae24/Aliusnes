@@ -1,13 +1,14 @@
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
-        mpsc, Arc,
+        mpsc
     },
     thread,
 };
 
 use aliusnes::{cart::Cart, emu::Emu};
 
+#[allow(dead_code)]
 pub enum Message {
     Pause,
     Stop,
@@ -19,8 +20,8 @@ pub struct Frame {
     pub buffer: [u16; 61184],
 }
 
+#[allow(dead_code)]
 pub struct EmuState {
-    paused: Arc<AtomicBool>,
     message_tx: mpsc::Sender<Message>,
     pub frame_rx: rtrb::Consumer<Frame>,
     emu_thread: thread::JoinHandle<()>,
@@ -28,23 +29,25 @@ pub struct EmuState {
 
 impl EmuState {
     pub fn new(cart: Cart) -> Self {
-        let paused = Arc::new(AtomicBool::new(false));
         let (message_tx, message_rx) = mpsc::channel::<Message>();
         let (frame_tx, frame_rx) = rtrb::RingBuffer::<Frame>::new(5);
         Self {
-            paused: Arc::clone(&paused),
             message_tx,
             frame_rx,
-            emu_thread: thread::spawn(move || Self::run(cart, frame_tx, message_rx, paused)),
+            emu_thread: thread::spawn(move || Self::run(cart, frame_tx, message_rx)),
         }
+    }
+
+    pub fn send_message(&self, msg: Message) {
+        self.message_tx.send(msg).expect("Error on sending message");
     }
 
     fn run(
         cart: Cart,
         mut frame_tx: rtrb::Producer<Frame>,
         message_rx: mpsc::Receiver<Message>,
-        paused: Arc<AtomicBool>,
     ) {
+        let paused = AtomicBool::new(false);
         let mut emu = Emu::new(cart);
         'main: loop {
             for msg in message_rx.try_iter() {

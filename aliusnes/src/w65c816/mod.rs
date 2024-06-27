@@ -64,17 +64,18 @@ impl<B: Bus> W65C816<B> {
         let op = self.cpu.get_imm::<u8, B>(bus);
         let opcode = self.instruction_set[op as usize];
 
-        // log::trace!(
-        //     "Instr {} A:{:#06x} X:{:#06x} Y:{:#06x}, PC:{:#06x}, SP:{:#06x}, P:{:#04x} {}",
-        //     opcode.mnemonic,
-        //     self.accumulator,
-        //     self.index_x,
-        //     self.index_y,
-        //     (self.program_counter - 1),
-        //     self.stack_pointer,
-        //     self.status.0,
-        //     format_status(&self.status)
-        // );
+        #[cfg(feature = "log")]
+        log::trace!(
+            "Instr {} A:{:#06x} X:{:#06x} Y:{:#06x}, PC:{:#06x}, SP:{:#06x}, P:{:#04x} {}",
+            opcode.mnemonic,
+            self.accumulator,
+            self.index_x,
+            self.index_y,
+            (self.program_counter - 1),
+            self.stack_pointer,
+            self.status.0,
+            format_status(&self.cpu.status)
+        );
         let instr = opcode.function;
         instr(&mut self.cpu, bus, opcode.mode);
     }

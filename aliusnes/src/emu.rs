@@ -1,7 +1,3 @@
-use simplelog::{
-    ColorChoice, CombinedLogger, Config, ConfigBuilder, TermLogger, TerminalMode, WriteLogger,
-};
-
 use crate::{
     bus::{dma::Dma, system_bus::SystemBus},
     cart::Cart,
@@ -15,6 +11,9 @@ pub struct Emu {
 
 impl Emu {
     pub fn new(cart: Cart) -> Self {
+        #[cfg(feature = "log")]
+        init_log();
+
         let mut emu = Emu {
             bus: SystemBus::new(cart),
             w65c816: W65C816::new(),
@@ -57,7 +56,13 @@ impl Emu {
         self.bus.ppu.frame_buffer.as_slice()
     }
 
+    #[cfg(feature = "log")]
     fn init_log() {
+        use simplelog::{
+            ColorChoice, CombinedLogger, Config, ConfigBuilder, TermLogger, TerminalMode,
+            WriteLogger,
+        };
+
         CombinedLogger::init(vec![
             TermLogger::new(
                 log::LevelFilter::Warn,

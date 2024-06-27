@@ -48,6 +48,7 @@ bitfield!(
     }
 );
 
+#[cfg(feature = "log")]
 fn format_status(status: &Status) -> String {
     let mut string = String::with_capacity(8);
     string += if status.negative() { "N" } else { "n" };
