@@ -72,7 +72,7 @@ impl Ppu {
                         }
                     }
                 }
-                Object(_) => {}
+                Object(_layer_priority) => {}
             }
         }
     }
