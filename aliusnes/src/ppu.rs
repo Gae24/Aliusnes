@@ -29,8 +29,8 @@ pub const WIDTH: usize = 256;
 pub const NTSC_HEIGHT: usize = 224;
 pub const PAL_HEIGHT: usize = 239;
 
-pub const FB_WIDTH: usize = WIDTH << 1;
-pub const FB_HEIGHT: usize = PAL_HEIGHT << 1;
+//pub const FB_WIDTH: usize = WIDTH << 1;
+//pub const FB_HEIGHT: usize = PAL_HEIGHT << 1;
 
 bitfield! {
     struct IniDisplay(pub u8) {
