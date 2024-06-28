@@ -56,7 +56,7 @@ impl Ppu {
 
         let fb_line = &mut self.frame_buffer[fb_line_start..fb_line_start + self.screen_width];
 
-        fb_line.fill(self.cgram.ram[0]);
+        fb_line.fill(self.color.cgram[0]);
         for layer in layers.iter().rev() {
             match layer {
                 Background(id, layer_priority) => {
@@ -148,7 +148,7 @@ impl Ppu {
             let pixel = if raw_pixel == 0 {
                 0
             } else {
-                self.cgram.pixel_color::<BPP, BG_MODE>(
+                self.color.pixel_color::<BPP, BG_MODE>(
                     bg_idx as u8,
                     tile.palette_selection(),
                     raw_pixel,

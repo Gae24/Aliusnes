@@ -1,7 +1,6 @@
 use self::{
     background::{Background, BgMode, Mosaic},
-    cgram::Cgram,
-    color_math::{Cgadsub, Cgwsel, ColorData, ColorMath},
+    color::{Cgadsub, Cgwsel, Color, ColorData},
     counters::Counters,
     mode7::Mode7,
     oam::{Oam, Objsel},
@@ -10,8 +9,7 @@ use self::{
 use crate::{bus::Access, cart::info::Model, utils::int_traits::ManipulateU16};
 
 mod background;
-mod cgram;
-mod color_math;
+mod color;
 mod counters;
 mod mode7;
 mod oam;
@@ -52,8 +50,7 @@ bitfield! {
 
 pub struct Ppu {
     background: Background,
-    cgram: Cgram,
-    color_math: ColorMath,
+    color: Color,
     counters: Counters,
     mode7: Mode7,
     oam: Oam,
@@ -76,8 +73,7 @@ impl Ppu {
             .with_is_pal(model == Model::Pal);
         Self {
             background: Background::new(),
-            cgram: Cgram::new(),
-            color_math: ColorMath::new(),
+            color: Color::new(),
             counters: Counters::new(stat78),
             mode7: Mode7::new(),
             oam: Oam::new(),
@@ -192,12 +188,12 @@ impl Access for Ppu {
             0x19 => self.vram.vm_addh_write(data),
             0x1B => self.mode7.set_mode_7_matrix_a(data),
             0x1C => self.mode7.set_mode_7_matrix_b(data),
-            0x21 => self.cgram.cg_addr(data),
-            0x22 => self.cgram.cg_addr_write(data),
+            0x21 => self.color.cg_addr(data),
+            0x22 => self.color.cg_addr_write(data),
             0x2C => self.main_screen_layer_enable(data),
-            0x30 => self.color_math.cgwsel = Cgwsel(data),
-            0x31 => self.color_math.cgadsub = Cgadsub(data),
-            0x32 => self.color_math.color_data_write(ColorData(data)),
+            0x30 => self.color.cgwsel = Cgwsel(data),
+            0x31 => self.color.cgadsub = Cgadsub(data),
+            0x32 => self.color.color_data_write(ColorData(data)),
             0x33 => self.set_ini_write(SetIni(data)),
             _ => println!("Tried to write at {:#0x} val: {:#04x}", addr, data),
         }
