@@ -68,13 +68,13 @@ impl<B: Bus> W65C816<B> {
         log::trace!(
             "Instr {} A:{:#06x} X:{:#06x} Y:{:#06x}, PC:{:#06x}, SP:{:#06x}, P:{:#04x} {}",
             opcode.mnemonic,
-            self.accumulator,
-            self.index_x,
-            self.index_y,
-            (self.program_counter - 1),
-            self.stack_pointer,
-            self.status.0,
-            format_status(&self.cpu.status)
+            self.cpu.accumulator,
+            self.cpu.index_x,
+            self.cpu.index_y,
+            (self.cpu.program_counter - 1),
+            self.cpu.stack_pointer,
+            self.cpu.status.0,
+            self::cpu::format_status(&self.cpu.status)
         );
         let instr = opcode.function;
         instr(&mut self.cpu, bus, opcode.mode);
