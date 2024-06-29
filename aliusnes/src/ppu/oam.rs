@@ -1,6 +1,7 @@
 use crate::utils::int_traits::ManipulateU16;
 
 bitfield! {
+    #[allow(dead_code)]
     #[derive(Clone, Copy)]
     pub(super) struct Objsel(pub u8) {
         name_base_addr: u8 @ 0..=2,
