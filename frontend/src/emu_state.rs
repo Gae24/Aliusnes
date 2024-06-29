@@ -1,7 +1,7 @@
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
-        mpsc
+        mpsc,
     },
     thread,
 };
@@ -42,11 +42,7 @@ impl EmuState {
         self.message_tx.send(msg).expect("Error on sending message");
     }
 
-    fn run(
-        cart: Cart,
-        mut frame_tx: rtrb::Producer<Frame>,
-        message_rx: mpsc::Receiver<Message>,
-    ) {
+    fn run(cart: Cart, mut frame_tx: rtrb::Producer<Frame>, message_rx: mpsc::Receiver<Message>) {
         let paused = AtomicBool::new(false);
         let mut emu = Emu::new(cart);
         'main: loop {
