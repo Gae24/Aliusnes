@@ -182,28 +182,6 @@ impl Cpu {
         bus.write_and_tick(addr.wrapping_add(1), data.high_byte());
     }
 
-    pub fn do_write<T: RegSize, B: Bus>(&mut self, bus: &mut B, mode: &AddressingMode, val: T) {
-        match mode {
-            AddressingMode::Direct
-            | AddressingMode::DirectX
-            | AddressingMode::DirectY
-            | AddressingMode::StackRelative => {
-                let (_, page) = self.read_from_direct_page::<T, B>(bus, mode);
-                match T::IS_U16 {
-                    true => self.write_bank0(bus, page, val.as_u16()),
-                    false => bus.write_and_tick(page.into(), val.as_u8()),
-                }
-            }
-            _ => {
-                let addr = self.decode_addressing_mode::<true, B>(bus, *mode);
-                match T::IS_U16 {
-                    true => self.write_16(bus, addr, val.as_u16()),
-                    false => bus.write_and_tick(addr, val.as_u8()),
-                }
-            }
-        }
-    }
-
     pub fn do_rmw<T: RegSize, B: Bus>(
         &mut self,
         bus: &mut B,
