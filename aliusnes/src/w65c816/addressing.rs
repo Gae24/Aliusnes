@@ -261,17 +261,21 @@ impl Cpu {
         }
     }
 
+    pub fn direct_page_address<B: Bus>(&mut self, bus: &mut B, mode: &AddressingMode) -> u16 {
+        match mode {
+            AddressingMode::DirectX => self.direct_page_indexed(bus, self.index_x),
+            AddressingMode::DirectY => self.direct_page_indexed(bus, self.index_y),
+            AddressingMode::StackRelative => self.stack_relative_address(bus),
+            _ => self.direct_offset(bus),
+        }
+    }
+
     pub fn read_from_direct_page<T: RegSize, B: Bus>(
         &mut self,
         bus: &mut B,
         mode: &AddressingMode,
     ) -> (T, u16) {
-        let page = match mode {
-            AddressingMode::DirectX => self.direct_page_indexed(bus, self.index_x),
-            AddressingMode::DirectY => self.direct_page_indexed(bus, self.index_y),
-            AddressingMode::StackRelative => self.stack_relative_address(bus),
-            _ => self.direct_offset(bus),
-        };
+        let page = self.direct_page_address(bus, mode);
         match T::IS_U16 {
             true => (T::from_u16(self.read_bank0(bus, page)), page),
             false => (T::from_u8(bus.read_and_tick(page.into())), page),

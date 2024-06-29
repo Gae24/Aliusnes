@@ -666,9 +666,9 @@ impl<B: Bus> super::W65C816<B> {
 
     pub fn sta(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         if cpu.status.a_reg_size() {
-            cpu.do_write(bus, &mode, cpu.accumulator as u8);
+            do_store(cpu, bus, &mode, cpu.accumulator as u8);
         } else {
-            cpu.do_write(bus, &mode, cpu.accumulator);
+            do_store(cpu, bus, &mode, cpu.accumulator);
         }
     }
 
@@ -679,25 +679,25 @@ impl<B: Bus> super::W65C816<B> {
 
     pub fn stx(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         if cpu.status.index_regs_size() {
-            cpu.do_write(bus, &mode, cpu.index_x as u8);
+            do_store(cpu, bus, &mode, cpu.index_x as u8);
         } else {
-            cpu.do_write(bus, &mode, cpu.index_x);
+            do_store(cpu, bus, &mode, cpu.index_x);
         }
     }
 
     pub fn sty(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         if cpu.status.index_regs_size() {
-            cpu.do_write(bus, &mode, cpu.index_y as u8);
+            do_store(cpu, bus, &mode, cpu.index_y as u8);
         } else {
-            cpu.do_write(bus, &mode, cpu.index_y);
+            do_store(cpu, bus, &mode, cpu.index_y);
         }
     }
 
     pub fn stz(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         if cpu.status.a_reg_size() {
-            cpu.do_write::<u8, B>(bus, &mode, 0);
+            do_store::<u8, B>(cpu, bus, &mode, 0);
         } else {
-            cpu.do_write::<u16, B>(bus, &mode, 0);
+            do_store::<u16, B>(cpu, bus, &mode, 0);
         }
     }
 
