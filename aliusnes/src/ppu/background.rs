@@ -10,6 +10,7 @@ bitfield! {
 }
 
 bitfield! {
+    #[allow(dead_code)]
     pub struct Mosaic(pub u8) {
         bg1_enabled: bool @ 0,
         bg2_enabled: bool @ 1,
