@@ -1,5 +1,5 @@
 use super::{
-    addressing::{Address, AddressingMode},
+    addressing::AddressingMode,
     cpu::{Cpu, Vectors},
     functions::*,
 };
@@ -380,39 +380,19 @@ impl<B: Bus> super::W65C816<B> {
         }
     }
 
-    pub fn mvn(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        let banks = cpu.get_operand::<u16, B>(bus, &mode);
-        let dst_bank = (banks >> 8) as u8;
-        let src_bank = (banks & 0xFF) as u8;
-        bus.add_io_cycles(2);
-        loop {
-            let src = bus.read_and_tick(Address::new(cpu.index_x, src_bank));
-            let dst = cpu.index_y as u32 | (dst_bank as u32) << 16;
-            bus.write_and_tick(dst.into(), src);
-            cpu.index_x = cpu.index_x.wrapping_add(1);
-            cpu.index_y = cpu.index_y.wrapping_add(1);
-            cpu.accumulator = cpu.accumulator.wrapping_sub(1);
-            if cpu.accumulator == 0xFFFF {
-                break;
-            }
+    pub fn mvn(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        if cpu.status.index_regs_size() {
+            do_block_move::<u8, B>(cpu, bus, u8::wrapping_add);
+        } else {
+            do_block_move::<u16, B>(cpu, bus, u16::wrapping_add);
         }
     }
 
-    pub fn mvp(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        let banks = cpu.get_operand::<u16, B>(bus, &mode);
-        let dst_bank = (banks >> 8) as u8;
-        let src_bank = (banks & 0xFF) as u8;
-        bus.add_io_cycles(2);
-        loop {
-            let src = bus.read_and_tick(Address::new(cpu.index_x, src_bank));
-            let dst = cpu.index_y as u32 | (dst_bank as u32) << 16;
-            bus.write_and_tick(dst.into(), src);
-            cpu.index_x = cpu.index_x.wrapping_sub(1);
-            cpu.index_y = cpu.index_y.wrapping_sub(1);
-            cpu.accumulator = cpu.accumulator.wrapping_sub(1);
-            if cpu.accumulator == 0xFFFF {
-                break;
-            }
+    pub fn mvp(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        if cpu.status.index_regs_size() {
+            do_block_move::<u8, B>(cpu, bus, u8::wrapping_sub);
+        } else {
+            do_block_move::<u16, B>(cpu, bus, u16::wrapping_sub);
         }
     }
 
