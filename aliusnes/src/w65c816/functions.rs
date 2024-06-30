@@ -109,6 +109,27 @@ pub(super) fn do_bit<T: RegSize>(cpu: &mut Cpu, operand: T, mode: &AddressingMod
     }
 }
 
+pub(super) fn do_block_move<T: RegSize, B: Bus>(cpu: &mut Cpu, bus: &mut B, op: fn(T, T) -> T) {
+    let dst_bank = bus.read_and_tick(Address::new(cpu.program_counter, cpu.pbr));
+    let src_bank = bus.read_and_tick(Address::new(cpu.program_counter.wrapping_add(1), cpu.pbr));
+    cpu.dbr = dst_bank;
+    let src = Address::new(cpu.index_x, src_bank);
+    let dst = Address::new(cpu.index_y, dst_bank);
+
+    let val = bus.read_and_tick(src);
+    bus.write_and_tick(dst, val);
+    bus.add_io_cycles(2);
+
+    cpu.index_x = op(T::from_u16(cpu.index_x), T::from_u8(1)).as_u16();
+    cpu.index_y = op(T::from_u16(cpu.index_y), T::from_u8(1)).as_u16();
+    cpu.accumulator = cpu.accumulator.wrapping_sub(1);
+    if cpu.accumulator == 0xFFFF {
+        cpu.program_counter = cpu.program_counter.wrapping_add(2);
+    } else {
+        cpu.program_counter = cpu.program_counter.wrapping_sub(1);
+    }
+}
+
 pub(super) fn do_branch<B: Bus>(cpu: &mut Cpu, bus: &mut B, mode: &AddressingMode, cond: bool) {
     let offset = cpu.get_operand::<u8, B>(bus, mode) as i8;
     if cond {
@@ -255,7 +276,12 @@ pub(super) fn do_dec_sbc<T: RegSize>(cpu: &mut Cpu, operand: T) {
     }
 }
 
-pub fn do_store<T: RegSize, B: Bus>(cpu: &mut Cpu, bus: &mut B, mode: &AddressingMode, val: T) {
+pub(super) fn do_store<T: RegSize, B: Bus>(
+    cpu: &mut Cpu,
+    bus: &mut B,
+    mode: &AddressingMode,
+    val: T,
+) {
     match mode {
         AddressingMode::Direct
         | AddressingMode::DirectX
