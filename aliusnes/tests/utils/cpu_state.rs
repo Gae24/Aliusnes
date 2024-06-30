@@ -7,7 +7,7 @@ use super::test_bus::TomHarteBus;
 
 #[derive(Debug, PartialEq, serde::Deserialize)]
 pub struct CpuState {
-    pc: u16,
+    pub pc: u16,
     s: u16,
     p: u8,
     a: u16,
