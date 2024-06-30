@@ -3,7 +3,7 @@ use super::{
     cpu::Cpu,
     regsize::RegSize,
 };
-use crate::bus::Bus;
+use crate::{bus::Bus, utils::int_traits::ManipulateU16};
 
 pub(super) fn do_bin_adc<T: RegSize>(cpu: &mut Cpu, operand: T) {
     if T::IS_U16 {
@@ -110,11 +110,11 @@ pub(super) fn do_bit<T: RegSize>(cpu: &mut Cpu, operand: T, mode: &AddressingMod
 }
 
 pub(super) fn do_block_move<T: RegSize, B: Bus>(cpu: &mut Cpu, bus: &mut B, op: fn(T, T) -> T) {
-    let dst_bank = bus.read_and_tick(Address::new(cpu.program_counter, cpu.pbr));
-    let src_bank = bus.read_and_tick(Address::new(cpu.program_counter.wrapping_add(1), cpu.pbr));
-    cpu.dbr = dst_bank;
+    let banks = cpu.get_operand::<u16, B>(bus, &AddressingMode::BlockMove);
+    let src_bank = banks.high_byte();
+    cpu.dbr = banks.low_byte();
     let src = Address::new(cpu.index_x, src_bank);
-    let dst = Address::new(cpu.index_y, dst_bank);
+    let dst = Address::new(cpu.index_y, cpu.dbr);
 
     let val = bus.read_and_tick(src);
     bus.write_and_tick(dst, val);
@@ -123,10 +123,8 @@ pub(super) fn do_block_move<T: RegSize, B: Bus>(cpu: &mut Cpu, bus: &mut B, op: 
     cpu.index_x = op(T::from_u16(cpu.index_x), T::from_u8(1)).as_u16();
     cpu.index_y = op(T::from_u16(cpu.index_y), T::from_u8(1)).as_u16();
     cpu.accumulator = cpu.accumulator.wrapping_sub(1);
-    if cpu.accumulator == 0xFFFF {
-        cpu.program_counter = cpu.program_counter.wrapping_add(2);
-    } else {
-        cpu.program_counter = cpu.program_counter.wrapping_sub(1);
+    if cpu.accumulator != 0xFFFF {
+        cpu.program_counter = cpu.program_counter.wrapping_sub(3);
     }
 }
 
