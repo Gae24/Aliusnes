@@ -78,7 +78,7 @@ pub struct Cpu {
 }
 
 impl Cpu {
-    pub fn new() -> Self {
+    pub(super) fn new() -> Self {
         Cpu {
             accumulator: 0x00,
             index_x: 0x00,
