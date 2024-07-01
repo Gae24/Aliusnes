@@ -74,7 +74,7 @@ impl From<u32> for Address {
 
 impl From<Address> for u32 {
     fn from(value: Address) -> Self {
-        (value.bank as u32) << 16 | value.offset as u32
+        u32::from(value.bank) << 16 | u32::from(value.offset)
     }
 }
 
@@ -87,8 +87,10 @@ impl From<Address> for usize {
 impl Cpu {
     pub fn read_bank0<B: Bus>(&mut self, bus: &mut B, offset: u16) -> u16 {
         let addr = Address::new(offset, 0);
-        bus.read_and_tick(addr) as u16
-            | (bus.read_and_tick(addr.wrapping_offset_add(1)) as u16) << 8
+        u16::from_le_bytes([
+            bus.read_and_tick(addr),
+            bus.read_and_tick(addr.wrapping_offset_add(1)),
+        ])
     }
 
     pub fn write_bank0<B: Bus>(&mut self, bus: &mut B, offset: u16, data: u16) {
@@ -100,8 +102,10 @@ impl Cpu {
     pub fn get_imm<T: RegSize, B: Bus>(&mut self, bus: &mut B) -> T {
         let addr = Address::new(self.program_counter, self.pbr);
         if T::IS_U16 {
-            let res = bus.read_and_tick(addr) as u16
-                | (bus.read_and_tick(addr.wrapping_offset_add(1)) as u16) << 8;
+            let res = u16::from_le_bytes([
+                bus.read_and_tick(addr),
+                bus.read_and_tick(addr.wrapping_offset_add(1)),
+            ]);
             self.program_counter = self.program_counter.wrapping_add(2);
             T::from_u16(res)
         } else {
@@ -125,7 +129,7 @@ impl Cpu {
         if dpr.low_byte() != 0 {
             bus.add_io_cycles(1);
         }
-        dpr.wrapping_add(self.get_imm::<u8, B>(bus) as u16)
+        dpr.wrapping_add(u16::from(self.get_imm::<u8, B>(bus)))
     }
 
     fn direct_page_indexed<B: Bus>(&mut self, bus: &mut B, index: u16) -> u16 {
@@ -149,7 +153,7 @@ impl Cpu {
     fn stack_relative_address<B: Bus>(&mut self, bus: &mut B) -> u16 {
         bus.add_io_cycles(1);
         self.stack_pointer
-            .wrapping_add(self.get_imm::<u8, B>(bus) as u16)
+            .wrapping_add(u16::from(self.get_imm::<u8, B>(bus)))
     }
 
     pub fn decode_addressing_mode<const WRITE: bool, B: Bus>(
@@ -173,7 +177,7 @@ impl Cpu {
                 let indirect = self.direct_offset(bus);
                 let offset = self.read_bank0(bus, indirect);
                 let unindexed = Address::new(offset, self.dbr);
-                let indexed = unindexed.wrapping_add(self.index_y as u32);
+                let indexed = unindexed.wrapping_add(u32::from(self.index_y));
                 if self.detect_penalty_cycle::<WRITE>(
                     unindexed.offset.high_byte(),
                     indexed.offset.high_byte(),
@@ -189,12 +193,12 @@ impl Cpu {
             AddressingMode::IndirectLongY => {
                 let indirect = self.direct_offset(bus);
                 self.indirect_long_address(bus, indirect)
-                    .wrapping_add(self.index_y as u32)
+                    .wrapping_add(u32::from(self.index_y))
             }
             AddressingMode::Absolute => self.absolute_address(bus),
             AddressingMode::AbsoluteX => {
                 let unindexed = self.absolute_address(bus);
-                let indexed = unindexed.wrapping_add(self.index_x as u32);
+                let indexed = unindexed.wrapping_add(u32::from(self.index_x));
                 if self.detect_penalty_cycle::<WRITE>(
                     unindexed.offset.high_byte(),
                     indexed.offset.high_byte(),
@@ -205,7 +209,7 @@ impl Cpu {
             }
             AddressingMode::AbsoluteY => {
                 let unindexed = self.absolute_address(bus);
-                let indexed = unindexed.wrapping_add(self.index_y as u32);
+                let indexed = unindexed.wrapping_add(u32::from(self.index_y));
                 if self.detect_penalty_cycle::<WRITE>(
                     unindexed.offset.high_byte(),
                     indexed.offset.high_byte(),
@@ -217,7 +221,7 @@ impl Cpu {
             AddressingMode::AbsoluteLong => self.absolute_long_address(bus),
             AddressingMode::AbsoluteLongX => self
                 .absolute_long_address(bus)
-                .wrapping_add(self.index_x as u32),
+                .wrapping_add(u32::from(self.index_x)),
             AddressingMode::AbsoluteIndirect => Address::new(self.get_imm(bus), 0),
             AddressingMode::AbsoluteIndirectX => {
                 bus.add_io_cycles(1);
@@ -230,7 +234,7 @@ impl Cpu {
                 bus.add_io_cycles(1);
                 let indirect = self.stack_relative_address(bus);
                 let offset = self.read_bank0(bus, indirect);
-                Address::new(offset, self.dbr).wrapping_add(self.index_y as u32)
+                Address::new(offset, self.dbr).wrapping_add(u32::from(self.index_y))
             }
             _ => unreachable!(),
         }
@@ -253,9 +257,10 @@ impl Cpu {
             | AddressingMode::StackPEI => self.read_from_direct_page(bus, mode).0,
             _ => {
                 let addr = self.decode_addressing_mode::<false, B>(bus, *mode);
-                match T::IS_U16 {
-                    true => T::from_u16(self.read_16(bus, addr)),
-                    false => T::from_u8(bus.read_and_tick(addr)),
+                if T::IS_U16 {
+                    T::from_u16(self.read_16(bus, addr))
+                } else {
+                    T::from_u8(bus.read_and_tick(addr))
                 }
             }
         }
@@ -276,9 +281,10 @@ impl Cpu {
         mode: &AddressingMode,
     ) -> (T, u16) {
         let page = self.direct_page_address(bus, mode);
-        match T::IS_U16 {
-            true => (T::from_u16(self.read_bank0(bus, page)), page),
-            false => (T::from_u8(bus.read_and_tick(page.into())), page),
+        if T::IS_U16 {
+            (T::from_u16(self.read_bank0(bus, page)), page)
+        } else {
+            (T::from_u8(bus.read_and_tick(page.into())), page)
         }
     }
 }

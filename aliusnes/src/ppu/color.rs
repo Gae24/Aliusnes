@@ -64,7 +64,7 @@ impl Color {
         match self.latch {
             None => self.latch = Some(data),
             Some(byte) => {
-                self.cgram[self.cg_addr as usize] = byte as u16 | (data as u16) << 8;
+                self.cgram[self.cg_addr as usize] = u16::from(byte) | u16::from(data) << 8;
                 self.cg_addr = self.cg_addr.wrapping_add(1);
                 self.latch = None;
             }
@@ -73,15 +73,15 @@ impl Color {
 
     pub fn color_data_write(&mut self, color_data: ColorData) {
         if color_data.write_to_red_channel() {
-            self.fixed_color = (color_data.val() as u16 & 0x1F) | (self.fixed_color & !0x1F);
+            self.fixed_color = (u16::from(color_data.val()) & 0x1F) | (self.fixed_color & !0x1F);
         }
         if color_data.write_to_green_channel() {
             self.fixed_color =
-                ((color_data.val() as u16 & 0x1F) << 5) | (self.fixed_color & !(0x1F << 5))
+                ((u16::from(color_data.val()) & 0x1F) << 5) | (self.fixed_color & !(0x1F << 5));
         }
         if color_data.write_to_blue_channel() {
             self.fixed_color =
-                ((color_data.val() as u16 & 0x1F) << 10) | (self.fixed_color & !(0x1F << 10))
+                ((u16::from(color_data.val()) & 0x1F) << 10) | (self.fixed_color & !(0x1F << 10));
         }
     }
 
@@ -108,8 +108,8 @@ impl Color {
     /// index: character data that is treated as BBGGGRRR
     /// Returns an RGB555 in this format BBb00:GGGg0:RRRr0
     fn direct_color(palette: u8, index: u8) -> u16 {
-        let palette = palette as u16;
-        let index = index as u16;
+        let palette = u16::from(palette);
+        let index = u16::from(index);
 
         ((index & 0xC0) << 7 | (palette & 4) << 10)
             | ((index & 0x38) << 4 | (palette & 2) << 5)
@@ -119,19 +119,16 @@ impl Color {
 
 impl Ppu {
     pub fn cg_addr_read(&mut self) -> u8 {
-        match self.color.latch {
-            Some(high_byte) => {
-                self.color.cg_addr = self.color.cg_addr.wrapping_add(1);
-                self.color.latch = None;
-                self.ppu2_mdr = (high_byte & 0x7F) | (self.ppu2_mdr & 0x80);
-                self.ppu2_mdr
-            }
-            None => {
-                let val = self.color.cgram[self.color.cg_addr as usize];
-                self.color.latch = Some(val.high_byte());
-                self.ppu2_mdr = val.low_byte();
-                self.ppu2_mdr
-            }
+        if let Some(high_byte) = self.color.latch {
+            self.color.cg_addr = self.color.cg_addr.wrapping_add(1);
+            self.color.latch = None;
+            self.ppu2_mdr = (high_byte & 0x7F) | (self.ppu2_mdr & 0x80);
+            self.ppu2_mdr
+        } else {
+            let val = self.color.cgram[self.color.cg_addr as usize];
+            self.color.latch = Some(val.high_byte());
+            self.ppu2_mdr = val.low_byte();
+            self.ppu2_mdr
         }
     }
 }

@@ -59,41 +59,41 @@ impl<B: Bus> super::W65C816<B> {
     }
 
     pub fn bcc(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        do_branch(cpu, bus, &mode, !cpu.status.carry());
+        do_branch(cpu, bus, mode, !cpu.status.carry());
     }
 
     pub fn bcs(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        do_branch(cpu, bus, &mode, cpu.status.carry());
+        do_branch(cpu, bus, mode, cpu.status.carry());
     }
 
     pub fn beq(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        do_branch(cpu, bus, &mode, cpu.status.zero());
+        do_branch(cpu, bus, mode, cpu.status.zero());
     }
 
     pub fn bit(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         if cpu.status.a_reg_size() {
             let operand = cpu.get_operand::<u8, B>(bus, &mode);
-            do_bit::<u8>(cpu, operand, &mode);
+            do_bit::<u8>(cpu, operand, mode);
         } else {
             let operand = cpu.get_operand::<u16, B>(bus, &mode);
-            do_bit::<u16>(cpu, operand, &mode);
+            do_bit::<u16>(cpu, operand, mode);
         }
     }
 
     pub fn bmi(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        do_branch(cpu, bus, &mode, cpu.status.negative());
+        do_branch(cpu, bus, mode, cpu.status.negative());
     }
 
     pub fn bne(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        do_branch(cpu, bus, &mode, !cpu.status.zero());
+        do_branch(cpu, bus, mode, !cpu.status.zero());
     }
 
     pub fn bpl(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        do_branch(cpu, bus, &mode, !cpu.status.negative());
+        do_branch(cpu, bus, mode, !cpu.status.negative());
     }
 
     pub fn bra(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        do_branch(cpu, bus, &mode, true);
+        do_branch(cpu, bus, mode, true);
     }
 
     pub fn brl(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
@@ -103,28 +103,28 @@ impl<B: Bus> super::W65C816<B> {
     }
 
     pub fn bvc(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        do_branch(cpu, bus, &mode, !cpu.status.overflow());
+        do_branch(cpu, bus, mode, !cpu.status.overflow());
     }
 
     pub fn bvs(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        do_branch(cpu, bus, &mode, cpu.status.overflow());
+        do_branch(cpu, bus, mode, cpu.status.overflow());
     }
 
     pub fn brk(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let _thrown = cpu.get_operand::<u8, B>(bus, &mode);
-        if !cpu.emulation_mode() {
-            cpu.handle_interrupt(bus, Vectors::Brk);
-        } else {
+        if cpu.emulation_mode {
             cpu.handle_interrupt(bus, Vectors::EmuBrk);
+        } else {
+            cpu.handle_interrupt(bus, Vectors::Brk);
         }
     }
 
     pub fn cop(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let _thrown = cpu.get_operand::<u8, B>(bus, &mode);
-        if !cpu.emulation_mode() {
-            cpu.handle_interrupt(bus, Vectors::Cop);
-        } else {
+        if cpu.emulation_mode {
             cpu.handle_interrupt(bus, Vectors::EmuCop);
+        } else {
+            cpu.handle_interrupt(bus, Vectors::Cop);
         }
     }
 
@@ -309,16 +309,15 @@ impl<B: Bus> super::W65C816<B> {
     }
 
     pub fn jsr(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        let val = match mode {
-            AddressingMode::AbsoluteIndirectX => {
-                let addr = cpu.decode_addressing_mode::<false, B>(bus, mode);
-                bus.read_and_tick(addr) as u16
-                    | (bus.read_and_tick(addr.wrapping_offset_add(1)) as u16) << 8
-            }
-            _ => {
-                bus.add_io_cycles(1);
-                cpu.get_operand(bus, &mode)
-            }
+        let val = if mode == AddressingMode::AbsoluteIndirectX {
+            let addr = cpu.decode_addressing_mode::<false, B>(bus, mode);
+            u16::from_le_bytes([
+                bus.read_and_tick(addr),
+                bus.read_and_tick(addr.wrapping_offset_add(1)),
+            ])
+        } else {
+            bus.add_io_cycles(1);
+            cpu.get_operand(bus, &mode)
         };
         do_push(cpu, bus, cpu.program_counter.wrapping_sub(1));
         cpu.program_counter = val;
@@ -587,7 +586,7 @@ impl<B: Bus> super::W65C816<B> {
         bus.add_io_cycles(2);
         let new_status = do_pull::<u8, B>(cpu, bus);
         cpu.program_counter = do_pull::<u16, B>(cpu, bus);
-        if !cpu.emulation_mode() {
+        if !cpu.emulation_mode {
             cpu.pbr = do_pull::<u8, B>(cpu, bus);
         }
         cpu.set_status_register(new_status);
@@ -646,9 +645,9 @@ impl<B: Bus> super::W65C816<B> {
 
     pub fn sta(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         if cpu.status.a_reg_size() {
-            do_store(cpu, bus, &mode, cpu.accumulator.low_byte());
+            do_store(cpu, bus, mode, cpu.accumulator.low_byte());
         } else {
-            do_store(cpu, bus, &mode, cpu.accumulator);
+            do_store(cpu, bus, mode, cpu.accumulator);
         }
     }
 
@@ -659,25 +658,25 @@ impl<B: Bus> super::W65C816<B> {
 
     pub fn stx(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         if cpu.status.index_regs_size() {
-            do_store(cpu, bus, &mode, cpu.index_x.low_byte());
+            do_store(cpu, bus, mode, cpu.index_x.low_byte());
         } else {
-            do_store(cpu, bus, &mode, cpu.index_x);
+            do_store(cpu, bus, mode, cpu.index_x);
         }
     }
 
     pub fn sty(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         if cpu.status.index_regs_size() {
-            do_store(cpu, bus, &mode, cpu.index_y.low_byte());
+            do_store(cpu, bus, mode, cpu.index_y.low_byte());
         } else {
-            do_store(cpu, bus, &mode, cpu.index_y);
+            do_store(cpu, bus, mode, cpu.index_y);
         }
     }
 
     pub fn stz(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         if cpu.status.a_reg_size() {
-            do_store::<u8, B>(cpu, bus, &mode, 0);
+            do_store::<u8, B>(cpu, bus, mode, 0);
         } else {
-            do_store::<u16, B>(cpu, bus, &mode, 0);
+            do_store::<u16, B>(cpu, bus, mode, 0);
         }
     }
 
@@ -752,7 +751,7 @@ impl<B: Bus> super::W65C816<B> {
         if cpu.status.index_regs_size() {
             let value = cpu.stack_pointer.low_byte();
             cpu.set_nz(value);
-            cpu.set_index_x(value as u16);
+            cpu.set_index_x(u16::from(value));
         } else {
             cpu.set_nz(cpu.stack_pointer);
             cpu.set_index_x(cpu.stack_pointer);
@@ -838,7 +837,7 @@ impl<B: Bus> super::W65C816<B> {
     pub fn xce(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         bus.add_io_cycles(1);
         let carry = cpu.status.carry();
-        cpu.status.set_carry(cpu.emulation_mode());
+        cpu.status.set_carry(cpu.emulation_mode);
         cpu.set_emulation_mode(carry);
     }
 }

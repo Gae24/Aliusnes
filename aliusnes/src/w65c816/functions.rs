@@ -7,9 +7,9 @@ use crate::{bus::Bus, utils::int_traits::ManipulateU16};
 
 pub(super) fn do_bin_adc<T: RegSize>(cpu: &mut Cpu, operand: T) {
     if T::IS_U16 {
-        let src = cpu.accumulator as u32;
-        let operand = operand.as_u16() as u32;
-        let result = src + operand + cpu.status.carry() as u32;
+        let src = u32::from(cpu.accumulator);
+        let operand = u32::from(operand.as_u16());
+        let result = src + operand + u32::from(cpu.status.carry());
         let is_overflow = !(src ^ operand) & (src ^ result) & 1 << 15 != 0;
         cpu.status.set_carry(result >> 16 != 0);
         cpu.status.set_overflow(is_overflow);
@@ -19,7 +19,7 @@ pub(super) fn do_bin_adc<T: RegSize>(cpu: &mut Cpu, operand: T) {
     } else {
         let src = cpu.accumulator & 0xFF;
         let operand = operand.as_u16();
-        let result = src + operand + cpu.status.carry() as u16;
+        let result = src + operand + u16::from(cpu.status.carry());
         let is_overflow = !(src ^ operand) & (src ^ result) & 1 << 7 != 0;
         cpu.status.set_carry(result >> 8 != 0);
         cpu.status.set_overflow(is_overflow);
@@ -30,25 +30,25 @@ pub(super) fn do_bin_adc<T: RegSize>(cpu: &mut Cpu, operand: T) {
 
 pub(super) fn do_dec_adc<T: RegSize>(cpu: &mut Cpu, operand: T) {
     if T::IS_U16 {
-        let src = cpu.accumulator as u32;
-        let operand = operand.as_u16() as u32;
-        let mut result = (src & 0xF) + (operand & 0xF) + cpu.status.carry() as u32;
+        let src = u32::from(cpu.accumulator);
+        let operand = u32::from(operand.as_u16());
+        let mut result = (src & 0xF) + (operand & 0xF) + u32::from(cpu.status.carry());
         if result > 9 {
             result += 6;
         }
-        result = (src & 0xF0) + (operand & 0xF0) + (result & 0xF) + (((result > 0xF) as u32) << 4);
+        result = (src & 0xF0) + (operand & 0xF0) + (result & 0xF) + (u32::from(result > 0xF) << 4);
         if result > 0x9F {
             result += 0x60;
         }
         result =
-            (src & 0xF00) + (operand & 0xF00) + (result & 0xFF) + (((result > 0xFF) as u32) << 8);
+            (src & 0xF00) + (operand & 0xF00) + (result & 0xFF) + (u32::from(result > 0xFF) << 8);
         if result > 0x9FF {
             result += 0x600;
         }
         result = (src & 0xF000)
             + (operand & 0xF000)
             + (result & 0xFFF)
-            + (((result > 0xFFF) as u32) << 12);
+            + (u32::from(result > 0xFFF) << 12);
         let is_overflow = !(src ^ operand) & (src ^ result) & 1 << 15 != 0;
         cpu.status.set_overflow(is_overflow);
         if result > 0x9FFF {
@@ -61,11 +61,11 @@ pub(super) fn do_dec_adc<T: RegSize>(cpu: &mut Cpu, operand: T) {
     } else {
         let src = cpu.accumulator & 0xFF;
         let operand = operand.as_u16();
-        let mut result = (src & 0xF) + (operand & 0xF) + cpu.status.carry() as u16;
+        let mut result = (src & 0xF) + (operand & 0xF) + u16::from(cpu.status.carry());
         if result > 9 {
             result += 6;
         }
-        result = (src & 0xF0) + (operand & 0xF0) + (result & 0xF) + (((result > 0xF) as u16) << 4);
+        result = (src & 0xF0) + (operand & 0xF0) + (result & 0xF) + (u16::from(result > 0xF) << 4);
         let is_overflow = !(src ^ operand) & (src ^ result) & 1 << 7 != 0;
         cpu.status.set_overflow(is_overflow);
         if result > 0x9F {
@@ -93,17 +93,14 @@ pub(super) fn do_asl<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
     }
 }
 
-pub(super) fn do_bit<T: RegSize>(cpu: &mut Cpu, operand: T, mode: &AddressingMode) {
+pub(super) fn do_bit<T: RegSize>(cpu: &mut Cpu, operand: T, mode: AddressingMode) {
     let result = T::from_u16(cpu.accumulator) & operand;
-    match mode {
-        AddressingMode::Immediate => {
-            cpu.status.set_zero(result.is_zero());
-        }
-        _ => {
-            cpu.status.set_negative(operand.is_negative());
-            cpu.status.set_overflow(operand.is_overflow());
-            cpu.status.set_zero(result.is_zero());
-        }
+    if mode == AddressingMode::Immediate {
+        cpu.status.set_zero(result.is_zero());
+    } else {
+        cpu.status.set_negative(operand.is_negative());
+        cpu.status.set_overflow(operand.is_overflow());
+        cpu.status.set_zero(result.is_zero());
     }
 }
 
@@ -126,8 +123,8 @@ pub(super) fn do_block_move<T: RegSize, B: Bus>(cpu: &mut Cpu, bus: &mut B, op: 
     }
 }
 
-pub(super) fn do_branch<B: Bus>(cpu: &mut Cpu, bus: &mut B, mode: &AddressingMode, cond: bool) {
-    let offset = cpu.get_operand::<u8, B>(bus, mode) as i8;
+pub(super) fn do_branch<B: Bus>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode, cond: bool) {
+    let offset = cpu.get_operand::<u8, B>(bus, &mode) as i8;
     if cond {
         bus.add_io_cycles(1);
         cpu.program_counter = cpu.program_counter.wrapping_add(offset as u16);
@@ -193,13 +190,13 @@ pub(super) fn do_pull<T: RegSize, B: Bus>(cpu: &mut Cpu, bus: &mut B) -> T {
 pub(super) fn do_rol<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
     if T::IS_U16 {
         let operand = operand.as_u16();
-        let result = operand << 1 | cpu.status.carry() as u16;
+        let result = operand << 1 | u16::from(cpu.status.carry());
         cpu.status.set_carry(operand >> 15 != 0);
         cpu.set_nz(result);
         T::from_u16(result)
     } else {
         let operand = operand.as_u8();
-        let result = operand << 1 | cpu.status.carry() as u8;
+        let result = operand << 1 | u8::from(cpu.status.carry());
         cpu.status.set_carry(operand >> 7 != 0);
         cpu.set_nz(result);
         T::from_u8(result)
@@ -209,13 +206,13 @@ pub(super) fn do_rol<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
 pub(super) fn do_ror<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
     if T::IS_U16 {
         let operand = operand.as_u16();
-        let result = operand >> 1 | (cpu.status.carry() as u16) << 15;
+        let result = operand >> 1 | u16::from(cpu.status.carry()) << 15;
         cpu.status.set_carry(operand & 1 != 0);
         cpu.set_nz(result);
         T::from_u16(result)
     } else {
         let operand = operand.as_u8();
-        let result = operand >> 1 | (cpu.status.carry() as u8) << 7;
+        let result = operand >> 1 | u8::from(cpu.status.carry()) << 7;
         cpu.status.set_carry(operand & 1 != 0);
         cpu.set_nz(result);
         T::from_u8(result)
@@ -224,25 +221,25 @@ pub(super) fn do_ror<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
 
 pub(super) fn do_dec_sbc<T: RegSize>(cpu: &mut Cpu, operand: T) {
     if T::IS_U16 {
-        let src = cpu.accumulator as i32;
-        let operand = operand.as_u16() as i32;
-        let mut result = (src & 0xF) + (operand & 0xF) + cpu.status.carry() as i32;
+        let src = i32::from(cpu.accumulator);
+        let operand = i32::from(operand.as_u16());
+        let mut result = (src & 0xF) + (operand & 0xF) + i32::from(cpu.status.carry());
         if result <= 0xF {
             result -= 6;
         }
-        result = (src & 0xF0) + (operand & 0xF0) + (result & 0xF) + (((result > 0xF) as i32) << 4);
+        result = (src & 0xF0) + (operand & 0xF0) + (result & 0xF) + (i32::from(result > 0xF) << 4);
         if result <= 0xFF {
             result -= 0x60;
         }
         result =
-            (src & 0xF00) + (operand & 0xF00) + (result & 0xFF) + (((result > 0xFF) as i32) << 8);
+            (src & 0xF00) + (operand & 0xF00) + (result & 0xFF) + (i32::from(result > 0xFF) << 8);
         if result <= 0xFFF {
             result -= 0x600;
         }
         result = (src & 0xF000)
             + (operand & 0xF000)
             + (result & 0xFFF)
-            + (((result > 0xFFF) as i32) << 12);
+            + (i32::from(result > 0xFFF) << 12);
         let is_overflow = !(src ^ operand) & (src ^ result) & 1 << 15 != 0;
         cpu.status.set_overflow(is_overflow);
         if result <= 0xFFFF {
@@ -255,11 +252,11 @@ pub(super) fn do_dec_sbc<T: RegSize>(cpu: &mut Cpu, operand: T) {
     } else {
         let src = cpu.accumulator as i16 & 0xFF;
         let operand = operand.as_u16() as i16;
-        let mut result = (src & 0xF) + (operand & 0xF) + cpu.status.carry() as i16;
+        let mut result = (src & 0xF) + (operand & 0xF) + i16::from(cpu.status.carry());
         if result <= 0xF {
             result = result.wrapping_sub(6);
         }
-        result = (src & 0xF0) + (operand & 0xF0) + (result & 0xF) + (((result > 0xF) as i16) << 4);
+        result = (src & 0xF0) + (operand & 0xF0) + (result & 0xF) + (i16::from(result > 0xF) << 4);
         let is_overflow = !(src ^ operand) & (src ^ result) & 1 << 7 != 0;
         cpu.status.set_overflow(is_overflow);
         if result <= 0xFF {
@@ -275,7 +272,7 @@ pub(super) fn do_dec_sbc<T: RegSize>(cpu: &mut Cpu, operand: T) {
 pub(super) fn do_store<T: RegSize, B: Bus>(
     cpu: &mut Cpu,
     bus: &mut B,
-    mode: &AddressingMode,
+    mode: AddressingMode,
     val: T,
 ) {
     match mode {
@@ -283,7 +280,7 @@ pub(super) fn do_store<T: RegSize, B: Bus>(
         | AddressingMode::DirectX
         | AddressingMode::DirectY
         | AddressingMode::StackRelative => {
-            let addr = cpu.direct_page_address(bus, mode);
+            let addr = cpu.direct_page_address(bus, &mode);
             if T::IS_U16 {
                 cpu.write_bank0(bus, addr, val.as_u16());
             } else {
@@ -291,10 +288,11 @@ pub(super) fn do_store<T: RegSize, B: Bus>(
             }
         }
         _ => {
-            let addr = cpu.decode_addressing_mode::<true, B>(bus, *mode);
-            match T::IS_U16 {
-                true => cpu.write_16(bus, addr, val.as_u16()),
-                false => bus.write_and_tick(addr, val.as_u8()),
+            let addr = cpu.decode_addressing_mode::<true, B>(bus, mode);
+            if T::IS_U16 {
+                cpu.write_16(bus, addr, val.as_u16());
+            } else {
+                bus.write_and_tick(addr, val.as_u8());
             }
         }
     }

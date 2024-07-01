@@ -80,13 +80,13 @@ impl Dma {
 
                 //WRAM to WRAM is invalid
                 if byte == 0x80
-                    && ((u32::from(a_addr) & 0xFE0000) == 0x7E0000
-                        || (u32::from(a_addr) & 0x40E000) == 0)
+                    && ((u32::from(a_addr) & 0x00FE_0000) == 0x007E_0000
+                        || (u32::from(a_addr) & 0x0040_E000) == 0)
                 {
                     continue;
                 }
 
-                let b_addr = 0x2100 | byte as u16;
+                let b_addr = 0x2100 | u16::from(byte);
 
                 if channel.parameters.direction() {
                     let data = bus.read_b(b_addr);
