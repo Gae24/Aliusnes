@@ -8,12 +8,9 @@ fn main() {
 
     for i in 0..256 {
         let attribute = "#[test]".to_string();
-        let test_name = format!("test_{:02x}", i);
-        let test_body = format!("run_test(\"{:02x}.n\");", i);
-        let test_fn = format!(
-            "{}\npub fn {}() {{\n\t{}\n}}\n\n",
-            attribute, test_name, test_body
-        );
+        let test_name = format!("test_{i:02x}");
+        let test_body = format!("run_test(\"{i:02x}.n\");");
+        let test_fn = format!("{attribute}\npub fn {test_name}() {{\n\t{test_body}\n}}\n\n",);
 
         file.write_all(test_fn.as_bytes())
             .expect("Could not write to file");

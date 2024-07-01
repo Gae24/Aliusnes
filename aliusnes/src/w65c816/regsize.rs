@@ -33,7 +33,7 @@ impl RegSize for u8 {
     }
 
     fn as_u16(self) -> u16 {
-        self as u16
+        u16::from(self)
     }
 
     fn as_u8(self) -> u8 {
@@ -69,7 +69,7 @@ impl RegSize for u16 {
     }
 
     fn from_u8(value: u8) -> Self {
-        value as u16
+        u16::from(value)
     }
 
     fn as_u16(self) -> u16 {

@@ -68,17 +68,17 @@ impl Header {
 
         let dev_id = bytes[0x2A];
         let version = bytes[0x2B];
-        let checksum = (bytes[0x2D] as u16) << 8 | bytes[0x2C] as u16;
-        let complement = (bytes[0x2F] as u16) << 8 | bytes[0x2E] as u16;
+        let checksum = u16::from_le_bytes([bytes[0x2C], bytes[0x2D]]);
+        let complement = u16::from_le_bytes([bytes[0x2E], bytes[0x2F]]);
 
         println!("Title: {title}");
-        println!("Mapper: {:?}", mapper);
+        println!("Mapper: {mapper:?}");
         println!("Is fast rom: {fast_rom}");
         println!("Rom size: {rom_size}");
         println!("Ram size: {ram_size}");
-        println!("Country: {:?}", country);
-        println!("checksum: {checksum}");
-        println!("complement: {complement}");
+        println!("Country: {country:?}");
+        println!("Checksum: {checksum}");
+        println!("Complement: {complement}");
 
         Some(Header {
             title,
@@ -102,7 +102,7 @@ impl Header {
                     .get(0xFFB0..0x10000)
                     .and_then(|header_bytes| Header::new(header_bytes, Mapper::HiROM))
             })
-            .or_else(|| Header::new(&rom[0x40FFB0..0x410000], Mapper::ExHiROM))?;
+            .or_else(|| Header::new(&rom[0x0040_FFB0..0x0041_0000], Mapper::ExHiROM))?;
 
         Some(header)
     }

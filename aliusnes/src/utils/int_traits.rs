@@ -18,11 +18,11 @@ impl ManipulateU16 for u16 {
 
     #[inline]
     fn set_low_byte(&mut self, low: u8) {
-        *self = (*self & 0xFF00) | (low as u16);
+        *self = (*self & 0xFF00) | u16::from(low);
     }
 
     #[inline]
     fn set_high_byte(&mut self, high: u8) {
-        *self = (*self & 0x00FF) | ((high as u16) << 8);
+        *self = (*self & 0x00FF) | (u16::from(high) << 8);
     }
 }
