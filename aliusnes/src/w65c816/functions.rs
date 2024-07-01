@@ -23,9 +23,8 @@ pub(super) fn do_bin_adc<T: RegSize>(cpu: &mut Cpu, operand: T) {
         let is_overflow = !(src ^ operand) & (src ^ result) & 1 << 7 != 0;
         cpu.status.set_carry(result >> 8 != 0);
         cpu.status.set_overflow(is_overflow);
-        let result = result as u8;
-        cpu.set_nz(result);
-        cpu.set_accumulator(result);
+        cpu.set_nz(result.low_byte());
+        cpu.set_accumulator(result.low_byte());
     }
 }
 
@@ -73,9 +72,8 @@ pub(super) fn do_dec_adc<T: RegSize>(cpu: &mut Cpu, operand: T) {
             result += 0x60;
         }
         cpu.status.set_carry(result >> 8 != 0);
-        let result = result as u8;
-        cpu.set_nz(result);
-        cpu.set_accumulator(result);
+        cpu.set_nz(result.low_byte());
+        cpu.set_accumulator(result.low_byte());
     }
 }
 
