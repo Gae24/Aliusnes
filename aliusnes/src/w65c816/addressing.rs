@@ -122,7 +122,7 @@ impl Cpu {
 
     fn direct_offset<B: Bus>(&mut self, bus: &mut B) -> u16 {
         let dpr = self.dpr;
-        if dpr as u8 != 0 {
+        if dpr.low_byte() != 0 {
             bus.add_io_cycles(1);
         }
         dpr.wrapping_add(self.get_imm::<u8, B>(bus) as u16)
