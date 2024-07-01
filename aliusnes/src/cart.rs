@@ -46,17 +46,19 @@ impl Cart {
             && addr < 0x8000
             && self.header.chipset.has_ram
         {
-            return Some(self.ram[((((bank & 0xF) as u16) << 15) as u32 | addr as u32) as usize]);
+            return Some(
+                self.ram[(u32::from(u16::from(bank & 0xF) << 15) | u32::from(addr)) as usize],
+            );
         }
         bank &= 0x7F;
         if addr >= 0x8000 || bank >= 0x40 {
             return Some(
-                self.rom[(((bank as u16) << 15) as u32 | (addr & 0x7FFF) as u32) as usize],
+                self.rom[(u32::from(u16::from(bank) << 15) | u32::from(addr & 0x7FFF)) as usize],
             );
         }
         println!(
             "Attempt to read at 0x{:02x}{:04x}",
-            ((bank as u16) << 15),
+            (u16::from(bank) << 15),
             (addr & 0x7FFF)
         );
         None
@@ -67,7 +69,7 @@ impl Cart {
             && addr < 0x8000
             && self.header.chipset.has_ram
         {
-            self.ram[((((bank & 0xF) as u16) << 15) as u32 | addr as u32) as usize] = val;
+            self.ram[(u32::from(u16::from(bank & 0xF) << 15) | u32::from(addr)) as usize] = val;
         }
     }
 }

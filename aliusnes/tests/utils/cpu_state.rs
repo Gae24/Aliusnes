@@ -1,13 +1,13 @@
 use aliusnes::w65c816::{
     cpu::{Cpu, Status},
-    W65C816,
+    opcode_table, W65C816,
 };
 
 use super::test_bus::TomHarteBus;
 
 #[derive(Debug, PartialEq, serde::Deserialize)]
 pub struct CpuState {
-    pc: u16,
+    pub pc: u16,
     s: u16,
     p: u8,
     a: u16,
@@ -39,7 +39,7 @@ impl CpuState {
 
         let w65c816 = W65C816 {
             cpu,
-            instruction_set: W65C816::opcode_table(),
+            instruction_set: opcode_table(),
         };
         let mut bus = TomHarteBus::default();
         for (addr, val) in &self.ram {

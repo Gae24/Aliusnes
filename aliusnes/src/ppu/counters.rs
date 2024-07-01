@@ -63,9 +63,10 @@ pub struct Counters {
 
 impl Counters {
     pub fn new(stat78: Stat78) -> Self {
-        let (vblank_start, vblank_end) = match stat78.is_pal() {
-            false => (NTSC_HEIGHT + 1, NTSC_SCANLINES),
-            true => (PAL_HEIGHT + 1, PAL_SCANLINES),
+        let (vblank_start, vblank_end) = if stat78.is_pal() {
+            (PAL_HEIGHT + 1, PAL_SCANLINES)
+        } else {
+            (NTSC_HEIGHT + 1, NTSC_SCANLINES)
         };
         Self {
             vertical_counter: 0,
@@ -137,7 +138,7 @@ impl Counters {
             PAL_SCANLINES
         } else {
             NTSC_SCANLINES
-        } + (interlacing && !self.stat78.odd_frame()) as usize;
+        } + usize::from(interlacing && !self.stat78.odd_frame());
     }
 
     pub fn start_scanline(&mut self, interlacing: bool) {
@@ -251,7 +252,7 @@ impl Ppu {
     }
 
     pub fn read_irq_flag(&mut self) -> u8 {
-        let result = (self.counters.in_irq as u8) << 7;
+        let result = u8::from(self.counters.in_irq) << 7;
         self.counters.in_irq = false;
         result
     }

@@ -10,13 +10,15 @@ bitfield! {
 
 impl TileMapEntry {
     pub fn adjust_coords_to_flipping(&self, x: usize, y: usize) -> (usize, usize) {
-        let h_shift = match self.flip_horizontal() {
-            true => x % 8,
-            false => 7 - (x % 8),
+        let h_shift = if self.flip_horizontal() {
+            x % 8
+        } else {
+            7 - (x % 8)
         };
-        let v_shift = match self.flip_vertical() {
-            true => 7 - (y % 8),
-            false => y % 8,
+        let v_shift = if self.flip_vertical() {
+            7 - (y % 8)
+        } else {
+            y % 8
         };
         (h_shift, v_shift)
     }

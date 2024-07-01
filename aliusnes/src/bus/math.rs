@@ -25,7 +25,7 @@ impl Math {
     }
 
     fn do_multiplication(&mut self) {
-        self.result_or_remainder = self.factor_a as u16 * self.factor_b as u16;
+        self.result_or_remainder = u16::from(self.factor_a) * u16::from(self.factor_b);
     }
 
     fn do_division(&mut self) {
@@ -33,8 +33,8 @@ impl Math {
             self.quotient = 0xFFFF;
             self.result_or_remainder = self.dividend;
         } else {
-            self.quotient = self.dividend / self.divisor as u16;
-            self.result_or_remainder = self.dividend % self.divisor as u16;
+            self.quotient = self.dividend / u16::from(self.divisor);
+            self.result_or_remainder = self.dividend % u16::from(self.divisor);
         }
     }
 }

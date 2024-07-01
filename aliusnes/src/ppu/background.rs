@@ -83,8 +83,8 @@ impl Background {
     }
 
     pub fn set_bg_tileset_addr(&mut self, idx: usize, data: u8) {
-        self.backgrounds[idx].tileset_addr = ((data & 0x0F) as u16) << 12;
-        self.backgrounds[idx + 1].tileset_addr = (((data >> 4) & 0x0F) as u16) << 12;
+        self.backgrounds[idx].tileset_addr = u16::from(data & 0x0F) << 12;
+        self.backgrounds[idx + 1].tileset_addr = u16::from((data >> 4) & 0x0F) << 12;
     }
 
     pub fn set_bg_h_scroll_offset(&mut self, addr_low_byte: usize, data: u16) {

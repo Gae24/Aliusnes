@@ -55,29 +55,28 @@ impl Emu {
     pub fn frame(&self) -> &[u16] {
         self.bus.ppu.frame_buffer.as_slice()
     }
+}
 
-    #[cfg(feature = "log")]
-    fn init_log() {
-        use simplelog::{
-            ColorChoice, CombinedLogger, Config, ConfigBuilder, TermLogger, TerminalMode,
-            WriteLogger,
-        };
+#[cfg(feature = "log")]
+fn init_log() {
+    use simplelog::{
+        ColorChoice, CombinedLogger, Config, ConfigBuilder, TermLogger, TerminalMode, WriteLogger,
+    };
 
-        CombinedLogger::init(vec![
-            TermLogger::new(
-                log::LevelFilter::Warn,
-                Config::default(),
-                TerminalMode::Mixed,
-                ColorChoice::Auto,
-            ),
-            WriteLogger::new(
-                log::LevelFilter::Trace,
-                ConfigBuilder::new()
-                    .set_time_level(log::LevelFilter::Off)
-                    .build(),
-                std::fs::File::create("cpu_trace.log").unwrap(),
-            ),
-        ])
-        .unwrap();
-    }
+    CombinedLogger::init(vec![
+        TermLogger::new(
+            log::LevelFilter::Warn,
+            Config::default(),
+            TerminalMode::Mixed,
+            ColorChoice::Auto,
+        ),
+        WriteLogger::new(
+            log::LevelFilter::Trace,
+            ConfigBuilder::new()
+                .set_time_level(log::LevelFilter::Off)
+                .build(),
+            std::fs::File::create("cpu_trace.log").unwrap(),
+        ),
+    ])
+    .unwrap();
 }

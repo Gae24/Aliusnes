@@ -19,7 +19,7 @@ pub enum Vectors {
 }
 
 impl Vectors {
-    pub const fn get_addr(&self) -> u16 {
+    const fn get_addr(self) -> u16 {
         match self {
             Vectors::Cop => 0xFFE4,
             Vectors::Brk => 0xFFE6,
@@ -49,7 +49,7 @@ bitfield!(
 );
 
 #[cfg(feature = "log")]
-fn format_status(status: &Status) -> String {
+pub fn format_status(status: &Status) -> String {
     let mut string = String::with_capacity(8);
     string += if status.negative() { "N" } else { "n" };
     string += if status.overflow() { "O" } else { "o" };
@@ -78,7 +78,7 @@ pub struct Cpu {
 }
 
 impl Cpu {
-    pub fn new() -> Self {
+    pub(super) fn new() -> Self {
         Cpu {
             accumulator: 0x00,
             index_x: 0x00,
@@ -132,10 +132,6 @@ impl Cpu {
         }
     }
 
-    pub fn emulation_mode(&self) -> bool {
-        self.emulation_mode
-    }
-
     pub fn set_emulation_mode(&mut self, val: bool) {
         if val {
             // not supported
@@ -174,34 +170,15 @@ impl Cpu {
     }
 
     pub fn read_16<B: Bus>(&mut self, bus: &mut B, addr: Address) -> u16 {
-        bus.read_and_tick(addr) as u16 | (bus.read_and_tick(addr.wrapping_add(1)) as u16) << 8
+        u16::from_le_bytes([
+            bus.read_and_tick(addr),
+            bus.read_and_tick(addr.wrapping_add(1)),
+        ])
     }
 
     pub fn write_16<B: Bus>(&mut self, bus: &mut B, addr: Address, data: u16) {
         bus.write_and_tick(addr, data.low_byte());
         bus.write_and_tick(addr.wrapping_add(1), data.high_byte());
-    }
-
-    pub fn do_write<T: RegSize, B: Bus>(&mut self, bus: &mut B, mode: &AddressingMode, val: T) {
-        match mode {
-            AddressingMode::Direct
-            | AddressingMode::DirectX
-            | AddressingMode::DirectY
-            | AddressingMode::StackRelative => {
-                let (_, page) = self.read_from_direct_page::<T, B>(bus, mode);
-                match T::IS_U16 {
-                    true => self.write_bank0(bus, page, val.as_u16()),
-                    false => bus.write_and_tick(page.into(), val.as_u8()),
-                }
-            }
-            _ => {
-                let addr = self.decode_addressing_mode::<true, B>(bus, *mode);
-                match T::IS_U16 {
-                    true => self.write_16(bus, addr, val.as_u16()),
-                    false => bus.write_and_tick(addr, val.as_u8()),
-                }
-            }
-        }
     }
 
     pub fn do_rmw<T: RegSize, B: Bus>(
@@ -217,9 +194,10 @@ impl Cpu {
             | AddressingMode::StackRelative => {
                 let (data, page) = self.read_from_direct_page::<T, B>(bus, mode);
                 let result = f(self, data);
-                match T::IS_U16 {
-                    true => self.write_bank0(bus, page, result.as_u16()),
-                    false => bus.write_and_tick(page.into(), result.as_u8()),
+                if T::IS_U16 {
+                    self.write_bank0(bus, page, result.as_u16());
+                } else {
+                    bus.write_and_tick(page.into(), result.as_u8());
                 }
             }
             _ => {

@@ -106,13 +106,13 @@ impl Ppu {
     }
 
     fn set_ini_write(&mut self, set_ini: SetIni) {
-        self.screen_width <<= set_ini.high_res_mode() as usize;
+        self.screen_width <<= usize::from(set_ini.high_res_mode());
         self.screen_height = if set_ini.overscan_mode() {
             PAL_HEIGHT
         } else {
             NTSC_HEIGHT
         };
-        self.screen_height <<= set_ini.screen_interlacing() as usize;
+        self.screen_height <<= usize::from(set_ini.screen_interlacing());
         self.set_ini = set_ini;
     }
 
@@ -155,7 +155,7 @@ impl Access for Ppu {
             0x3D => Some(self.opvct_read()),
             0x3F => Some(self.status78_read()),
             _ => {
-                println!("Tried to read at {:#0x}", addr);
+                println!("Tried to read at {addr:#0x}");
                 Some(self.ppu1_mdr)
             }
         }
@@ -176,10 +176,12 @@ impl Access for Ppu {
             0x0C => self.background.set_bg_tileset_addr(2, data),
             // todo 0D and 0E are also mode 7 regs
             0x0D | 0x0F | 0x11 | 0x13 => {
-                self.background.set_bg_h_scroll_offset(nibble, data as u16)
+                self.background
+                    .set_bg_h_scroll_offset(nibble, u16::from(data));
             }
             0x0E | 0x10 | 0x12 | 0x14 => {
-                self.background.set_bg_v_scroll_offset(nibble, data as u16)
+                self.background
+                    .set_bg_v_scroll_offset(nibble, u16::from(data));
             }
             0x15 => self.vram.video_port_control = VideoPortControl(data),
             0x16 => self.vram.vm_addl(data),
@@ -195,7 +197,7 @@ impl Access for Ppu {
             0x31 => self.color.cgadsub = Cgadsub(data),
             0x32 => self.color.color_data_write(ColorData(data)),
             0x33 => self.set_ini_write(SetIni(data)),
-            _ => println!("Tried to write at {:#0x} val: {:#04x}", addr, data),
+            _ => println!("Tried to write at {addr:#0x} val: {data:#04x}"),
         }
     }
 }

@@ -75,14 +75,14 @@ impl SystemBus {
                                 let joypad_autoread_status = false; // todo
                                 Some(
                                     self.ppu.read_hv_status()
-                                        | joypad_autoread_status as u8
+                                        | u8::from(joypad_autoread_status)
                                         | (self.mdr & 0x3E),
                                 )
                             }
                             0x4214..=0x4217 => self.math.read(page),
                             0x4300..=0x437F => self.dma.read(page),
                             _ => {
-                                println!("Tried to read at {:#0x}", page);
+                                println!("Tried to read at {page:#0x}");
                                 None
                             }
                         }
@@ -109,7 +109,7 @@ impl SystemBus {
             0x00..=0x33 => self.ppu.write(addr, data),
             0x40..=0x43 => todo!("apu area"),
             0x80..=0x83 => self.wram.write(addr, data),
-            _ => println!("Tried to write at {:#0x} val: {:#04x}", addr, data),
+            _ => println!("Tried to write at {addr:#0x} val: {data:#04x}"),
         }
     }
 
@@ -131,7 +131,7 @@ impl SystemBus {
                         0x420A => self.ppu.set_v_timer_high(data),
                         0x420B | 0x420C | 0x4300..=0x437f => self.dma.write(page, data),
                         0x420D => self.fast_rom_enabled = data & 1 != 0,
-                        _ => println!("Tried to write at {:#0x} val: {:#04x}", page, data),
+                        _ => println!("Tried to write at {page:#0x} val: {data:#04x}"),
                     }
                 }
                 _ => {}
@@ -144,9 +144,9 @@ impl SystemBus {
     }
 
     pub fn memory_access_cycles(&self, addr: &Address) -> u32 {
-        static FAST: u32 = 6;
-        static SLOW: u32 = 8;
-        static XSLOW: u32 = 12;
+        const FAST: u32 = 6;
+        const SLOW: u32 = 8;
+        const XSLOW: u32 = 12;
 
         match addr.bank {
             0x40..=0x7F => SLOW,
@@ -158,11 +158,9 @@ impl SystemBus {
                 }
             }
             _ => match addr.offset {
-                0x0000..=0x1FFF => SLOW,
-                0x2000..=0x3FFF => FAST,
+                0x0000..=0x1FFF | 0x6000..=0x7FFF => SLOW,
+                0x2000..=0x3FFF | 0x4200..=0x5FFF => FAST,
                 0x4000..=0x41FF => XSLOW,
-                0x4200..=0x5FFF => FAST,
-                0x6000..=0x7FFF => SLOW,
                 0x8000..=0xFFFF => {
                     if (0x80..0xBF).contains(&addr.bank) && self.fast_rom_enabled {
                         FAST
