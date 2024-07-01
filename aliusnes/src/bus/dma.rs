@@ -32,7 +32,7 @@ pub struct Dma {
 }
 
 impl Dma {
-    pub fn new() -> Self {
+    pub(super) fn new() -> Self {
         Dma {
             channels: [Channel {
                 parameters: Parameters(0xFF),

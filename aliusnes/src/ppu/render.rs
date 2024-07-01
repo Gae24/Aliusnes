@@ -133,7 +133,7 @@ impl Ppu {
         }
 
         let y = screen_y + bg.bg_vofs as usize;
-        for screen_x in 0..self.screen_width {
+        for (screen_x, pixel_data) in data.iter_mut().enumerate().take(self.screen_width) {
             let x = screen_x + bg.bg_hofs as usize;
 
             let tile_map_addr = bg.tile_map_addr(x / 8, y / 8);
@@ -155,7 +155,7 @@ impl Ppu {
                 )
             };
 
-            data[screen_x] = (pixel, tile.priority());
+            *pixel_data = (pixel, tile.priority());
         }
     }
 }
