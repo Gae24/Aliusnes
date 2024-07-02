@@ -1,5 +1,5 @@
 use crate::bus::Bus;
-use cpu::Vectors;
+use cpu::Vector;
 
 pub mod addressing;
 pub mod cpu;
@@ -64,10 +64,10 @@ impl<B: Bus> W65C816<B> {
         if self.cpu.waiting_interrupt {
             if bus.fired_nmi() {
                 self.cpu.waiting_interrupt = false;
-                self.cpu.handle_interrupt(bus, Vectors::Nmi);
+                self.cpu.handle_interrupt(bus, Vector::Nmi);
             } else if !self.cpu.status.irq_disable() && bus.fired_irq() {
                 self.cpu.waiting_interrupt = false;
-                self.cpu.handle_interrupt(bus, Vectors::Irq);
+                self.cpu.handle_interrupt(bus, Vector::Irq);
             } else {
                 return;
             }

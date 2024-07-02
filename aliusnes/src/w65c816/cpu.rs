@@ -5,32 +5,28 @@ use super::{
 };
 use crate::{bus::Bus, utils::int_traits::ManipulateU16};
 
-pub enum Vectors {
+pub enum Vector {
     Cop,
     Brk,
     Abort,
     Nmi,
     Irq,
-    EmuCop,
-    EmuAbort,
-    EmuNmi,
-    EmuReset,
-    EmuBrk,
+    Reset,
 }
 
-impl Vectors {
-    const fn get_addr(self) -> u16 {
-        match self {
-            Vectors::Cop => 0xFFE4,
-            Vectors::Brk => 0xFFE6,
-            Vectors::Abort => 0xFFE8,
-            Vectors::Nmi => 0xFFEA,
-            Vectors::Irq => 0xFFEE,
-            Vectors::EmuCop => 0xFFF4,
-            Vectors::EmuAbort => 0xFFF8,
-            Vectors::EmuNmi => 0xFFFA,
-            Vectors::EmuReset => 0xFFFC,
-            Vectors::EmuBrk => 0xFFFE,
+impl Vector {
+    const fn get_addr(self, emu_mode: bool) -> u16 {
+        match (self, emu_mode) {
+            (Vector::Cop, true) => 0xFFF4,
+            (Vector::Cop, false) => 0xFFE4,
+            (Vector::Brk | Vector::Irq, true) => 0xFFFE,
+            (Vector::Brk, false) => 0xFFE6,
+            (Vector::Abort, true) => 0xFFF8,
+            (Vector::Abort, false) => 0xFFE8,
+            (Vector::Nmi, true) => 0xFFFA,
+            (Vector::Nmi, false) => 0xFFEA,
+            (Vector::Irq, false) => 0xFFEE,
+            (Vector::Reset, _) => 0xFFFC,
         }
     }
 }
@@ -154,10 +150,10 @@ impl Cpu {
         self.status.set_decimal(false);
         self.status.set_irq_disable(true);
         self.pbr = 0;
-        self.program_counter = self.read_bank0(bus, Vectors::EmuReset.get_addr());
+        self.program_counter = self.read_bank0(bus, Vector::Reset.get_addr(self.emulation_mode));
     }
 
-    pub fn handle_interrupt<B: Bus>(&mut self, bus: &mut B, interrupt: Vectors) {
+    pub fn handle_interrupt<B: Bus>(&mut self, bus: &mut B, interrupt: Vector) {
         if !self.emulation_mode {
             do_push(self, bus, self.pbr);
         }
@@ -166,7 +162,7 @@ impl Cpu {
         self.status.set_decimal(false);
         self.status.set_irq_disable(true);
         self.pbr = 0;
-        self.program_counter = self.read_bank0(bus, interrupt.get_addr());
+        self.program_counter = self.read_bank0(bus, interrupt.get_addr(self.emulation_mode));
     }
 
     pub fn read_16<B: Bus>(&mut self, bus: &mut B, addr: Address) -> u16 {

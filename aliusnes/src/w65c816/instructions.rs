@@ -1,6 +1,6 @@
 use super::{
     addressing::AddressingMode,
-    cpu::{Cpu, Vectors},
+    cpu::{Cpu, Vector},
     functions::*,
 };
 use crate::{bus::Bus, utils::int_traits::ManipulateU16};
@@ -112,20 +112,12 @@ impl<B: Bus> super::W65C816<B> {
 
     pub fn brk(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let _thrown = cpu.get_operand::<u8, B>(bus, &mode);
-        if cpu.emulation_mode {
-            cpu.handle_interrupt(bus, Vectors::EmuBrk);
-        } else {
-            cpu.handle_interrupt(bus, Vectors::Brk);
-        }
+        cpu.handle_interrupt(bus, Vector::Brk);
     }
 
     pub fn cop(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let _thrown = cpu.get_operand::<u8, B>(bus, &mode);
-        if cpu.emulation_mode {
-            cpu.handle_interrupt(bus, Vectors::EmuCop);
-        } else {
-            cpu.handle_interrupt(bus, Vectors::Cop);
-        }
+        cpu.handle_interrupt(bus, Vector::Cop);
     }
 
     pub fn clc(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
