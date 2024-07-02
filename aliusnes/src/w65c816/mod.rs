@@ -79,7 +79,7 @@ impl<B: Bus> W65C816<B> {
         #[cfg(feature = "log")]
         log::trace!(
             "Instr {} A:{:#06x} X:{:#06x} Y:{:#06x}, PC:{:#06x}, SP:{:#06x}, P:{:#04x} {}",
-            opcode.mnemonic,
+            opcode.meta.mnemonic,
             self.cpu.accumulator,
             self.cpu.index_x,
             self.cpu.index_y,
