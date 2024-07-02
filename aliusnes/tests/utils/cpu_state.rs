@@ -21,7 +21,7 @@ pub struct CpuState {
 }
 
 impl CpuState {
-    pub fn from_state(&self) -> (W65C816<TomHarteBus>, TomHarteBus) {
+    pub fn convert_state(&self) -> (W65C816<TomHarteBus>, TomHarteBus) {
         let cpu = Cpu {
             accumulator: self.a,
             index_x: self.x,

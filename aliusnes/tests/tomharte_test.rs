@@ -64,7 +64,7 @@ pub fn run_test(name: &str) {
     let json_path = root_dir.join(format!("tests/65816/{name}.json.xz"));
 
     for mut test_case in TestCase::iter_json(&json_path) {
-        let (mut w65c816, mut bus) = test_case.initial.from_state();
+        let (mut w65c816, mut bus) = test_case.initial.convert_state();
 
         let opcode = w65c816.peek_opcode(&bus);
         let skip_cycles = if opcode.code == 0x44 || opcode.code == 0x54 {
