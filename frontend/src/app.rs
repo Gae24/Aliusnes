@@ -57,5 +57,7 @@ impl eframe::App for App {
             egui::Image::new((self.texture.id(), self.texture.size_vec2()))
                 .paint_at(ui, whole_rect);
         });
+
+        ctx.request_repaint();
     }
 }
