@@ -8,6 +8,7 @@ use std::{
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=tests");
     generate_tomharte_65816_test();
 
     let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));

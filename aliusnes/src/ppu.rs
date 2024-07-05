@@ -123,6 +123,10 @@ impl Ppu {
         self.oam.enabled_on_main_screen = data >> 4 & 1 != 0;
     }
 
+    pub fn frame_counter(&self) -> u64 {
+        self.counters.frame_counter
+    }
+
     pub fn frame_ready(&self) -> bool {
         self.counters.frame_ready
     }

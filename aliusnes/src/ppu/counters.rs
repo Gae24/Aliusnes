@@ -42,7 +42,7 @@ pub struct Counters {
     vblank_end: usize,
     elapsed_cycles: u16,
     cycles_per_scanline: u16,
-    frame_counter: u64,
+    pub frame_counter: u64,
 
     ophct_latch: bool,
     opvct_latch: bool,

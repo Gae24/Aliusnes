@@ -1,3 +1,5 @@
+use std::u64;
+
 use crate::{
     bus::{dma::Dma, system_bus::SystemBus},
     cart::Cart,
@@ -38,6 +40,12 @@ impl Emu {
 
         w65c816.step(bus);
         bus.tick();
+    }
+
+    pub fn run_for_frames(&mut self, frames: u64) {
+        while self.bus.ppu.frame_counter() <= frames {
+            self.step();
+        }
     }
 
     pub fn frame_ready(&self) -> bool {
