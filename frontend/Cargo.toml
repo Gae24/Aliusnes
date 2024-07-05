@@ -7,5 +7,5 @@ edition = "2021"
 
 [dependencies]
 aliusnes = {path = "../aliusnes"}
-eframe = {version = "0.27.2", default-features = false, features = ["wgpu", "x11", "wayland", "default_fonts"]}
+eframe = {version = "0.28", default-features = false, features = ["wgpu", "x11", "wayland", "default_fonts"]}
 rtrb = "0.3.0"

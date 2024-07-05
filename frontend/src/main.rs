@@ -31,7 +31,7 @@ fn main() {
         eframe::run_native(
             "Aliusnes",
             native_options,
-            Box::new(|cc| Box::new(app::App::new(cc, cart))),
+            Box::new(|cc| Ok(Box::new(app::App::new(cc, cart)))),
         )
         .unwrap();
     } else {

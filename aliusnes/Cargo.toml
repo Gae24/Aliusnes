@@ -10,9 +10,10 @@ log = ["simplelog"]
 [dependencies]
 log = "0.4.21"
 simplelog = { version = "0.12.2", optional = true}
-proc-bitfield = "0.3.0"
+proc-bitfield = "0.4.0"
 
 [dev-dependencies]
+image = { version = "0.25", default-features = false, features = ["png"] }
 pretty_assertions = "1.4.0"
 serde = { version = "1.0.202", features = ["derive"] }
 serde_json = "1.0.117"
