@@ -1,5 +1,3 @@
-use std::u64;
-
 use crate::{
     bus::{dma::Dma, system_bus::SystemBus},
     cart::Cart,
