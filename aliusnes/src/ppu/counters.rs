@@ -189,6 +189,7 @@ impl Counters {
         self.last_scanline != self.vertical_counter
             && !self.hv_status.in_hblank()
             && !self.hv_status.in_vblank()
+            && self.vertical_counter > 0
     }
 }
 

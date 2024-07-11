@@ -37,7 +37,7 @@ const H4: Layer = Background(BG4, true);
 
 impl Ppu {
     pub fn render_scanline(&mut self, screen_y: usize) {
-        let fb_line_start = screen_y * WIDTH;
+        let fb_line_start = (screen_y - 1) * WIDTH;
 
         if self.ini_display.screen_brightness() == 0 || self.ini_display.force_blanking() {
             self.frame_buffer[fb_line_start..fb_line_start + self.screen_width].fill(0);
