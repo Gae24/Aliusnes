@@ -2,6 +2,7 @@
 # Credits
 
 TomHarte for [SingleStepTests](https://github.com/SingleStepTests).
+krom(Peter Lemon) for the test roms found at [SNES](https://github.com/PeterLemon/SNES)
 
 # Status
 
