@@ -27,7 +27,7 @@ impl TileMapEntry {
 pub trait BitPlane {
     const PLANES: usize;
     const NUM_COLORS: u8;
-    const WORDS_PER_ROW: usize;
+    const WORDS_PER_ROW: u16;
 
     fn pixel(planes: [u8; Self::PLANES], px_index: usize) -> u8 {
         let mut pixel = 0;
@@ -38,26 +38,26 @@ pub trait BitPlane {
     }
 }
 
-pub struct Bpp2 {}
+pub struct Bpp2;
 
-pub struct Bpp4 {}
+pub struct Bpp4;
 
-pub struct Bpp8 {}
+pub struct Bpp8;
 
 impl BitPlane for Bpp2 {
     const PLANES: usize = 2;
     const NUM_COLORS: u8 = 4;
-    const WORDS_PER_ROW: usize = 1;
+    const WORDS_PER_ROW: u16 = 1;
 }
 
 impl BitPlane for Bpp4 {
     const PLANES: usize = 4;
     const NUM_COLORS: u8 = 16;
-    const WORDS_PER_ROW: usize = 2;
+    const WORDS_PER_ROW: u16 = 2;
 }
 
 impl BitPlane for Bpp8 {
     const PLANES: usize = 8;
     const NUM_COLORS: u8 = 255;
-    const WORDS_PER_ROW: usize = 4;
+    const WORDS_PER_ROW: u16 = 4;
 }
