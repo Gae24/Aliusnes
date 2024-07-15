@@ -2,6 +2,7 @@ use std::{fs, path::Path};
 
 use aliusnes::emu::Emu;
 use image::{Rgb, RgbImage};
+use pretty_assertions::assert_eq;
 
 include!(concat!(env!("OUT_DIR"), "/krom_test.rs"));
 
@@ -23,8 +24,8 @@ fn compare_to_reference(rom_path: &Path, png_path: &Path) {
         }
     }
 
-    if result != reference {
-        panic!("Frame does not match reference");
+    for (px_res, px_ref) in result.pixels().zip(reference.pixels()) {
+        assert_eq!(px_res, px_ref);
     }
 }
 
@@ -98,6 +99,6 @@ const FIVEBIT_TO_EIGHTBIT_LUT: [[u8; 0x20]; 0x10] = [
     ],
     [
         0, 8, 16, 24, 33, 41, 49, 57, 66, 74, 82, 90, 99, 107, 115, 123, 132, 140, 148, 156, 165,
-        173, 181, 189, 198, 205, 214, 222, 230, 239, 247, 255,
+        173, 181, 189, 198, 206, 214, 222, 231, 239, 247, 255,
     ],
 ];
