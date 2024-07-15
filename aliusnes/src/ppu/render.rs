@@ -141,7 +141,7 @@ impl Ppu {
 
             let (col, row) = tile.adjust_coords_to_flipping(x, y);
 
-            let tile_addr = bg.tileset_addr + tile.tile_index() * BPP::WORDS_PER_ROW as u16 * 8;
+            let tile_addr = bg.tileset_addr + tile.tile_index() * BPP::WORDS_PER_ROW * 8;
             let planes = self.vram.planes(tile_addr as usize + row);
 
             let raw_pixel = BPP::pixel(planes, col);

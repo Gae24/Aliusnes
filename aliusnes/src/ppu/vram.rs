@@ -93,10 +93,10 @@ impl Vram {
 
     pub fn planes<T: BitPlane>(&self, addr: usize) -> [u8; T::PLANES] {
         let mut planes = [0; T::PLANES];
-        for index in 0..T::WORDS_PER_ROW {
+        for index in 0..(T::PLANES >> 1) {
             let bitplane = self[addr + (index << 3)];
-            planes[index] = bitplane.low_byte();
-            planes[index + 1] = bitplane.high_byte();
+            planes[index << 1] = bitplane.low_byte();
+            planes[(index << 1) + 1] = bitplane.high_byte();
         }
         planes
     }
