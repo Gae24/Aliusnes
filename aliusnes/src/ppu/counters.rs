@@ -1,3 +1,4 @@
+#[cfg(feature = "log")]
 use std::time::Instant;
 
 use crate::{
