@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use crate::{
     ppu::{Ppu, NTSC_HEIGHT, NTSC_SCANLINES, PAL_HEIGHT, PAL_SCANLINES, SCANLINE_CYCLES},
     utils::int_traits::ManipulateU16,
@@ -59,6 +61,10 @@ pub struct Counters {
 
     pub frame_ready: bool,
     pub last_scanline: usize,
+    #[cfg(feature = "log")]
+    vblank_count: f32,
+    #[cfg(feature = "log")]
+    log_time: Instant,
 }
 
 impl Counters {
@@ -88,6 +94,10 @@ impl Counters {
             in_irq: false,
             frame_ready: false,
             last_scanline: 0,
+            #[cfg(feature = "log")]
+            vblank_count: 0.0,
+            #[cfg(feature = "log")]
+            log_time: Instant::now(),
         }
     }
 
@@ -139,6 +149,19 @@ impl Counters {
         } else {
             NTSC_SCANLINES
         } + usize::from(interlacing && !self.stat78.odd_frame());
+
+        #[cfg(feature = "log")]
+        {
+            self.vblank_count += 1.0;
+            if self.log_time.elapsed().as_secs() >= 2 {
+                log::warn!(
+                    "PPU: {:0.2} VBlank/sec",
+                    self.vblank_count / self.log_time.elapsed().as_secs_f32()
+                );
+                self.vblank_count = 0.0;
+                self.log_time = Instant::now();
+            }
+        }
     }
 
     pub fn start_scanline(&mut self, interlacing: bool) {
