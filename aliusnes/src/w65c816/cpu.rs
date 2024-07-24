@@ -46,16 +46,18 @@ bitfield!(
 
 #[cfg(feature = "log")]
 pub fn format_status(status: &Status) -> String {
-    let mut string = String::with_capacity(8);
-    string += if status.negative() { "N" } else { "n" };
-    string += if status.overflow() { "O" } else { "o" };
-    string += if status.a_reg_size() { "A" } else { "a" };
-    string += if status.index_regs_size() { "X" } else { "x" };
-    string += if status.decimal() { "D" } else { "d" };
-    string += if status.irq_disable() { "I" } else { "i" };
-    string += if status.zero() { "Z" } else { "z" };
-    string += if status.carry() { "C" } else { "c" };
-    string
+    [
+        if status.negative() { 'N' } else { 'n' },
+        if status.overflow() { 'O' } else { 'o' },
+        if status.a_reg_size() { 'A' } else { 'a' },
+        if status.index_regs_size() { 'X' } else { 'x' },
+        if status.decimal() { 'D' } else { 'd' },
+        if status.irq_disable() { 'I' } else { 'i' },
+        if status.zero() { 'Z' } else { 'z' },
+        if status.carry() { 'C' } else { 'c' },
+    ]
+    .iter()
+    .collect()
 }
 
 pub struct Cpu {
