@@ -40,7 +40,7 @@ impl Ppu {
         let fb_line_start = (screen_y - 1) * WIDTH;
 
         if self.ini_display.screen_brightness() == 0 || self.ini_display.force_blanking() {
-            self.frame_buffer[fb_line_start..fb_line_start + self.screen_width].fill(0);
+            self.frame_buffer[fb_line_start..fb_line_start + self.screen_width].fill([0; 3]);
             return;
         }
 
@@ -56,7 +56,7 @@ impl Ppu {
 
         let fb_line = &mut self.frame_buffer[fb_line_start..fb_line_start + self.screen_width];
 
-        fb_line.fill(self.color.cgram[0]);
+        fb_line.fill(Self::rgb555_to_rgb888(self.color.cgram[0]));
         for layer in layers.iter().rev() {
             match layer {
                 Background(id, layer_priority) => {
@@ -68,7 +68,7 @@ impl Ppu {
                             continue;
                         }
                         if *pixel > 0 {
-                            fb_line[x] = *pixel;
+                            fb_line[x] = Self::rgb555_to_rgb888(*pixel);
                         }
                     }
                 }

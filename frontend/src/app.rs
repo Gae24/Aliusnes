@@ -5,8 +5,6 @@ use eframe::{
     CreationContext,
 };
 
-const U5_TO_U8_CONVERSION: f32 = 8.225806;
-
 pub struct App {
     emu_state: EmuState,
     texture: egui::TextureHandle,
@@ -24,14 +22,6 @@ impl App {
             ),
         }
     }
-
-    pub fn r_g_b_from_rgb5(value: u16) -> (u8, u8, u8) {
-        (
-            ((value & 0x1F) as f32 * U5_TO_U8_CONVERSION) as u8,
-            ((value >> 5 & 0x1F) as f32 * U5_TO_U8_CONVERSION) as u8,
-            ((value >> 10 & 0x1F) as f32 * U5_TO_U8_CONVERSION) as u8,
-        )
-    }
 }
 
 impl eframe::App for App {
@@ -45,7 +35,7 @@ impl eframe::App for App {
 
                 for y in 0..image.height() {
                     for x in 0..image.width() {
-                        let (r, g, b) = App::r_g_b_from_rgb5(frame.buffer[y * image.width() + x]);
+                        let [r, g, b] = frame.buffer[y * image.width() + x];
                         image[(x, y)] = Color32::from_rgb(r, g, b);
                     }
                 }

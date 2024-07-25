@@ -17,7 +17,7 @@ pub enum Message {
 pub struct Frame {
     pub width: usize,
     pub height: usize,
-    pub buffer: [u16; 61184],
+    pub buffer: [[u8; 3]; 61184],
 }
 
 #[allow(dead_code)]
@@ -61,7 +61,7 @@ impl EmuState {
                 let mut frame = Frame {
                     width: emu.frame_width(),
                     height: emu.frame_height(),
-                    buffer: [0; 61184],
+                    buffer: [[0; 3]; 61184],
                 };
                 frame.buffer.copy_from_slice(emu.frame());
 
