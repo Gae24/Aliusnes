@@ -62,7 +62,7 @@ pub struct Ppu {
     set_ini: SetIni,
     pub screen_width: usize,
     pub screen_height: usize,
-    pub frame_buffer: Box<[u16; WIDTH * PAL_HEIGHT]>,
+    pub frame_buffer: Box<[[u8; 3]; WIDTH * PAL_HEIGHT]>,
     pub nmi_requested: bool,
 }
 
@@ -88,7 +88,7 @@ impl Ppu {
             } else {
                 NTSC_HEIGHT
             },
-            frame_buffer: Box::new([0; WIDTH * PAL_HEIGHT]),
+            frame_buffer: Box::new([[0; 3]; WIDTH * PAL_HEIGHT]),
             nmi_requested: false,
         }
     }

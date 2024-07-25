@@ -58,7 +58,7 @@ impl Emu {
         self.bus.ppu.screen_height
     }
 
-    pub fn frame(&self) -> &[u16] {
+    pub fn frame(&self) -> &[[u8; 3]] {
         self.bus.ppu.frame_buffer.as_slice()
     }
 }
