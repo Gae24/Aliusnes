@@ -14,7 +14,7 @@ fn compare_to_reference(rom_path: &Path, png_path: &Path) {
     let cart = aliusnes::load_cart(&rom, ram);
     let mut emu = Emu::new(cart);
 
-    emu.run_for_frames(6);
+    emu.run_for_frames(20);
 
     let mut result = RgbImage::new(256, 224);
     for y in 0..224 {
