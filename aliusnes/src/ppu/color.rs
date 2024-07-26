@@ -199,10 +199,11 @@ impl Ppu {
         }
     }
 
-    pub fn rgb555_to_rgb888(value: u16) -> [u8; 3] {
-        let r = FIVEBIT_TO_EIGHTBIT_LUT[0xF][usize::from(value & 0x1F)];
-        let g = FIVEBIT_TO_EIGHTBIT_LUT[0xF][usize::from(value >> 5 & 0x1F)];
-        let b = FIVEBIT_TO_EIGHTBIT_LUT[0xF][usize::from(value >> 10 & 0x1F)];
+    pub fn rgb555_to_rgb888(&self, value: u16) -> [u8; 3] {
+        let brightness = usize::from(self.ini_display.screen_brightness());
+        let r = FIVEBIT_TO_EIGHTBIT_LUT[brightness][usize::from(value & 0x1F)];
+        let g = FIVEBIT_TO_EIGHTBIT_LUT[brightness][usize::from(value >> 5 & 0x1F)];
+        let b = FIVEBIT_TO_EIGHTBIT_LUT[brightness][usize::from(value >> 10 & 0x1F)];
         [r, g, b]
     }
 }

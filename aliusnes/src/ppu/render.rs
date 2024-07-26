@@ -38,11 +38,14 @@ const H4: Layer = Background(BG4, true);
 impl Ppu {
     pub fn render_scanline(&mut self, screen_y: usize) {
         let fb_line_start = (screen_y - 1) * WIDTH;
+        let fb_line_end = fb_line_start + self.screen_width;
 
         if self.ini_display.screen_brightness() == 0 || self.ini_display.force_blanking() {
-            self.frame_buffer[fb_line_start..fb_line_start + self.screen_width].fill([0; 3]);
+            self.frame_buffer[fb_line_start..fb_line_end].fill([0; 3]);
             return;
         }
+        let backdrop = self.rgb555_to_rgb888(self.color.cgram[0]);
+        self.frame_buffer[fb_line_start..fb_line_end].fill(backdrop);
 
         let mut bg_data: [[(u16, bool); WIDTH]; 4] = [
             [(0, false); WIDTH],
@@ -50,13 +53,10 @@ impl Ppu {
             [(0, false); WIDTH],
             [(0, false); WIDTH],
         ];
-        let layers = self.decode_bg_mode(screen_y, &mut bg_data);
+        let layers = self.decode_bg_mode(screen_y, &mut bg_data).to_vec();
 
         //todo sprite and sub screen rendering
 
-        let fb_line = &mut self.frame_buffer[fb_line_start..fb_line_start + self.screen_width];
-
-        fb_line.fill(Self::rgb555_to_rgb888(self.color.cgram[0]));
         for layer in layers.iter().rev() {
             match layer {
                 Background(id, layer_priority) => {
@@ -68,7 +68,8 @@ impl Ppu {
                             continue;
                         }
                         if *pixel > 0 {
-                            fb_line[x] = Self::rgb555_to_rgb888(*pixel);
+                            self.frame_buffer[fb_line_start..fb_line_end][x] =
+                                self.rgb555_to_rgb888(*pixel);
                         }
                     }
                 }
@@ -77,43 +78,39 @@ impl Ppu {
         }
     }
 
-    fn decode_bg_mode(
-        &self,
-        screen_y: usize,
-        bg_data: &mut [[(u16, bool); WIDTH]; 4],
-    ) -> Vec<Layer> {
+    fn decode_bg_mode(&self, screen_y: usize, bg_data: &mut [[(u16, bool); WIDTH]; 4]) -> &[Layer] {
         match self.background.bg_mode.bg_mode() {
             0 => {
                 self.draw_background::<Bpp2, 0>(screen_y, BG1, &mut (bg_data)[BG1 as usize]);
                 self.draw_background::<Bpp2, 0>(screen_y, BG2, &mut (bg_data)[BG2 as usize]);
                 self.draw_background::<Bpp2, 0>(screen_y, BG3, &mut (bg_data)[BG3 as usize]);
                 self.draw_background::<Bpp2, 0>(screen_y, BG4, &mut (bg_data)[BG4 as usize]);
-                vec![S3, H1, H2, S2, L1, L2, S1, H3, H4, S0, L3, L4]
+                &[S3, H1, H2, S2, L1, L2, S1, H3, H4, S0, L3, L4]
             }
             1 => {
                 self.draw_background::<Bpp4, 1>(screen_y, BG1, &mut (*bg_data)[BG1 as usize]);
                 self.draw_background::<Bpp4, 1>(screen_y, BG2, &mut (*bg_data)[BG2 as usize]);
                 self.draw_background::<Bpp2, 1>(screen_y, BG3, &mut (*bg_data)[BG3 as usize]);
                 if self.background.bg_mode.bg3_has_priority() {
-                    vec![H3, S3, H1, H2, S2, L1, L2, S1, S0, L3]
+                    &[H3, S3, H1, H2, S2, L1, L2, S1, S0, L3]
                 } else {
-                    vec![S3, H1, H2, S2, L1, L2, S1, H3, S0, L3]
+                    &[S3, H1, H2, S2, L1, L2, S1, H3, S0, L3]
                 }
             }
             2 => {
                 self.draw_background::<Bpp4, 2>(screen_y, BG1, &mut (*bg_data)[BG1 as usize]);
                 self.draw_background::<Bpp4, 2>(screen_y, BG2, &mut (*bg_data)[BG2 as usize]);
-                vec![S3, H1, S2, H2, S1, L1, S0, L2]
+                &[S3, H1, S2, H2, S1, L1, S0, L2]
             }
             3 => {
                 self.draw_background::<Bpp8, 3>(screen_y, BG1, &mut (*bg_data)[BG1 as usize]);
                 self.draw_background::<Bpp4, 3>(screen_y, BG2, &mut (*bg_data)[BG2 as usize]);
-                vec![S3, H1, S2, H2, S1, L1, S0, L2]
+                &[S3, H1, S2, H2, S1, L1, S0, L2]
             }
             4 => {
                 self.draw_background::<Bpp8, 4>(screen_y, BG1, &mut (*bg_data)[BG1 as usize]);
                 self.draw_background::<Bpp2, 4>(screen_y, BG2, &mut (*bg_data)[BG2 as usize]);
-                vec![S3, H1, S2, H2, S1, L1, S0, L2]
+                &[S3, H1, S2, H2, S1, L1, S0, L2]
             }
             _ => unimplemented!("mode {}", self.background.bg_mode.bg_mode()),
         }
