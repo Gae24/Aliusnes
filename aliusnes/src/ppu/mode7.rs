@@ -14,12 +14,12 @@ impl Mode7 {
     }
 
     pub fn set_mode_7_matrix_a(&mut self, data: u8) {
-        self.matrix_a = i16::from(data) << 8 | i16::from(self.mode_7_latch);
+        self.matrix_a = (i16::from(data) << 8) | i16::from(self.mode_7_latch);
         self.mode_7_latch = data;
     }
 
     pub fn set_mode_7_matrix_b(&mut self, data: u8) {
-        self.matrix_b = i16::from(data) << 8 | i16::from(self.mode_7_latch);
+        self.matrix_b = (i16::from(data) << 8) | i16::from(self.mode_7_latch);
         self.mode_7_latch = data;
     }
 

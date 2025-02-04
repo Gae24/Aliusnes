@@ -118,9 +118,9 @@ impl Ppu {
 
     pub fn main_screen_layer_enable(&mut self, data: u8) {
         for idx in 0..4 {
-            self.background.backgrounds[idx].enabled_on_main_screen = data >> idx & 1 != 0;
+            self.background.backgrounds[idx].enabled_on_main_screen = (data >> idx) & 1 != 0;
         }
-        self.oam.enabled_on_main_screen = data >> 4 & 1 != 0;
+        self.oam.enabled_on_main_screen = (data >> 4) & 1 != 0;
     }
 
     pub fn frame_counter(&self) -> u64 {

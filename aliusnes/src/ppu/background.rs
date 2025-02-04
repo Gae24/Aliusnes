@@ -90,14 +90,14 @@ impl Background {
     pub fn set_bg_h_scroll_offset(&mut self, addr_low_byte: usize, data: u16) {
         let idx = (addr_low_byte - 0x0D) >> 1;
         self.backgrounds[idx].bg_hofs =
-            data << 8 | (self.offset_latch & !7) | (self.h_offset_latch & 7);
+            (data << 8) | (self.offset_latch & !7) | (self.h_offset_latch & 7);
         self.h_offset_latch = data;
         self.offset_latch = data;
     }
 
     pub fn set_bg_v_scroll_offset(&mut self, addr_low_byte: usize, data: u16) {
         let idx = (addr_low_byte - 0x0E) >> 1;
-        self.backgrounds[idx].bg_vofs = data << 8 | self.offset_latch;
+        self.backgrounds[idx].bg_vofs = (data << 8) | self.offset_latch;
         self.offset_latch = data;
     }
 }

@@ -111,7 +111,7 @@ impl Dma {
 
 impl Access for Dma {
     fn read(&mut self, addr: u16) -> Option<u8> {
-        let channel = self.channels[(addr >> 4 & 7) as usize];
+        let channel = self.channels[((addr >> 4) & 7) as usize];
         match addr & 0xF {
             0x0 => Some(channel.parameters.0),
             0x1 => Some(channel.b_addr),
@@ -134,7 +134,7 @@ impl Access for Dma {
             0x420B => self.enable_channels = data,
             0x420C => self.h_enable_channels = data,
             _ => {
-                let channel = &mut self.channels[(addr >> 4 & 7) as usize];
+                let channel = &mut self.channels[((addr >> 4) & 7) as usize];
                 match addr & 0xF {
                     0x0 => channel.parameters = Parameters(data),
                     0x1 => channel.b_addr = data,
