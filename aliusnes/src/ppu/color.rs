@@ -131,7 +131,7 @@ impl Color {
         match self.latch {
             None => self.latch = Some(data),
             Some(byte) => {
-                self.cgram[self.cg_addr as usize] = u16::from(byte) | u16::from(data) << 8;
+                self.cgram[self.cg_addr as usize] = u16::from(byte) | (u16::from(data) << 8);
                 self.cg_addr = self.cg_addr.wrapping_add(1);
                 self.latch = None;
             }
@@ -178,9 +178,9 @@ impl Color {
         let palette = u16::from(palette);
         let index = u16::from(index);
 
-        ((index & 0xC0) << 7 | (palette & 4) << 10)
-            | ((index & 0x38) << 4 | (palette & 2) << 5)
-            | ((index & 7) << 2 | (palette & 1) << 1)
+        (((index & 0xC0) << 7) | ((palette & 4) << 10))
+            | (((index & 0x38) << 4) | ((palette & 2) << 5))
+            | (((index & 7) << 2) | ((palette & 1) << 1))
     }
 }
 
@@ -202,8 +202,8 @@ impl Ppu {
     pub fn rgb555_to_rgb888(&self, value: u16) -> [u8; 3] {
         let brightness = usize::from(self.ini_display.screen_brightness());
         let r = FIVEBIT_TO_EIGHTBIT_LUT[brightness][usize::from(value & 0x1F)];
-        let g = FIVEBIT_TO_EIGHTBIT_LUT[brightness][usize::from(value >> 5 & 0x1F)];
-        let b = FIVEBIT_TO_EIGHTBIT_LUT[brightness][usize::from(value >> 10 & 0x1F)];
+        let g = FIVEBIT_TO_EIGHTBIT_LUT[brightness][usize::from((value >> 5) & 0x1F)];
+        let b = FIVEBIT_TO_EIGHTBIT_LUT[brightness][usize::from((value >> 10) & 0x1F)];
         [r, g, b]
     }
 }

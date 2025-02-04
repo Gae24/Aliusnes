@@ -74,13 +74,13 @@ impl From<u32> for Address {
 
 impl From<Address> for u32 {
     fn from(value: Address) -> Self {
-        u32::from(value.bank) << 16 | u32::from(value.offset)
+        (u32::from(value.bank) << 16) | u32::from(value.offset)
     }
 }
 
 impl From<Address> for usize {
     fn from(value: Address) -> Self {
-        (value.bank as usize) << 16 | value.offset as usize
+        ((value.bank as usize) << 16) | value.offset as usize
     }
 }
 

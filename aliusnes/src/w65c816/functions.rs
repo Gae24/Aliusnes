@@ -10,7 +10,7 @@ pub(super) fn do_bin_adc<T: RegSize>(cpu: &mut Cpu, operand: T) {
         let src = u32::from(cpu.accumulator);
         let operand = u32::from(operand.as_u16());
         let result = src + operand + u32::from(cpu.status.carry());
-        let is_overflow = !(src ^ operand) & (src ^ result) & 1 << 15 != 0;
+        let is_overflow = !(src ^ operand) & (src ^ result) & 0x8000 != 0;
         cpu.status.set_carry(result >> 16 != 0);
         cpu.status.set_overflow(is_overflow);
         let result = result as u16;
@@ -20,7 +20,7 @@ pub(super) fn do_bin_adc<T: RegSize>(cpu: &mut Cpu, operand: T) {
         let src = cpu.accumulator & 0xFF;
         let operand = operand.as_u16();
         let result = src + operand + u16::from(cpu.status.carry());
-        let is_overflow = !(src ^ operand) & (src ^ result) & 1 << 7 != 0;
+        let is_overflow = !(src ^ operand) & (src ^ result) & 0x80 != 0;
         cpu.status.set_carry(result >> 8 != 0);
         cpu.status.set_overflow(is_overflow);
         cpu.set_nz(result.low_byte());
@@ -49,7 +49,7 @@ pub(super) fn do_dec_adc<T: RegSize>(cpu: &mut Cpu, operand: T) {
             + (operand & 0xF000)
             + (result & 0xFFF)
             + (u32::from(result > 0xFFF) << 12);
-        let is_overflow = !(src ^ operand) & (src ^ result) & 1 << 15 != 0;
+        let is_overflow = !(src ^ operand) & (src ^ result) & 0x8000 != 0;
         cpu.status.set_overflow(is_overflow);
         if result > 0x9FFF {
             result += 0x6000;
@@ -66,7 +66,7 @@ pub(super) fn do_dec_adc<T: RegSize>(cpu: &mut Cpu, operand: T) {
             result += 6;
         }
         result = (src & 0xF0) + (operand & 0xF0) + (result & 0xF) + (u16::from(result > 0xF) << 4);
-        let is_overflow = !(src ^ operand) & (src ^ result) & 1 << 7 != 0;
+        let is_overflow = !(src ^ operand) & (src ^ result) & 0x80 != 0;
         cpu.status.set_overflow(is_overflow);
         if result > 0x9F {
             result += 0x60;
@@ -190,13 +190,13 @@ pub(super) fn do_pull<T: RegSize, B: Bus>(cpu: &mut Cpu, bus: &mut B) -> T {
 pub(super) fn do_rol<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
     if T::IS_U16 {
         let operand = operand.as_u16();
-        let result = operand << 1 | u16::from(cpu.status.carry());
+        let result = (operand << 1) | u16::from(cpu.status.carry());
         cpu.status.set_carry(operand >> 15 != 0);
         cpu.set_nz(result);
         T::from_u16(result)
     } else {
         let operand = operand.as_u8();
-        let result = operand << 1 | u8::from(cpu.status.carry());
+        let result = (operand << 1) | u8::from(cpu.status.carry());
         cpu.status.set_carry(operand >> 7 != 0);
         cpu.set_nz(result);
         T::from_u8(result)
@@ -206,13 +206,13 @@ pub(super) fn do_rol<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
 pub(super) fn do_ror<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
     if T::IS_U16 {
         let operand = operand.as_u16();
-        let result = operand >> 1 | u16::from(cpu.status.carry()) << 15;
+        let result = (operand >> 1) | (u16::from(cpu.status.carry()) << 15);
         cpu.status.set_carry(operand & 1 != 0);
         cpu.set_nz(result);
         T::from_u16(result)
     } else {
         let operand = operand.as_u8();
-        let result = operand >> 1 | u8::from(cpu.status.carry()) << 7;
+        let result = (operand >> 1) | (u8::from(cpu.status.carry()) << 7);
         cpu.status.set_carry(operand & 1 != 0);
         cpu.set_nz(result);
         T::from_u8(result)
@@ -240,7 +240,7 @@ pub(super) fn do_dec_sbc<T: RegSize>(cpu: &mut Cpu, operand: T) {
             + (operand & 0xF000)
             + (result & 0xFFF)
             + (i32::from(result > 0xFFF) << 12);
-        let is_overflow = !(src ^ operand) & (src ^ result) & 1 << 15 != 0;
+        let is_overflow = !(src ^ operand) & (src ^ result) & 0x8000 != 0;
         cpu.status.set_overflow(is_overflow);
         if result <= 0xFFFF {
             result = result.wrapping_sub(0x6000);
@@ -257,7 +257,7 @@ pub(super) fn do_dec_sbc<T: RegSize>(cpu: &mut Cpu, operand: T) {
             result = result.wrapping_sub(6);
         }
         result = (src & 0xF0) + (operand & 0xF0) + (result & 0xF) + (i16::from(result > 0xF) << 4);
-        let is_overflow = !(src ^ operand) & (src ^ result) & 1 << 7 != 0;
+        let is_overflow = !(src ^ operand) & (src ^ result) & 0x80 != 0;
         cpu.status.set_overflow(is_overflow);
         if result <= 0xFF {
             result = result.wrapping_sub(0x60);

@@ -38,6 +38,7 @@ impl EmuState {
         }
     }
 
+    #[allow(dead_code)]
     pub fn send_message(&self, msg: Message) {
         self.message_tx.send(msg).expect("Error on sending message");
     }
