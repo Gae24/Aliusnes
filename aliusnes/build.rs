@@ -26,7 +26,7 @@ fn generate_tomharte_65816_test() {
 
     for i in 0..256 {
         let test_name = format!("test_{i:02x}");
-        let test_body = format!("run_test(\"{i:02x}.n\");");
+        let test_body = format!("run_test::<CpuState>(\"{i:02x}.n\");");
         let test = format!("#[test]\nfn {test_name}() {{\n\t{test_body}\n}}\n\n");
 
         file.write_all(test.as_bytes())

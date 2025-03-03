@@ -1,13 +1,15 @@
+use std::collections::HashMap;
+
+use crate::{Cycle, OpcodeTest, TomHarteBus};
 use aliusnes::w65c816::{
     cpu::{Cpu, Status},
-    opcode_table, W65C816,
+    W65C816,
 };
-
-use super::test_bus::TomHarteBus;
+use serde::{Deserialize, Deserializer};
 
 #[derive(Debug, PartialEq, serde::Deserialize)]
 pub struct CpuState {
-    pub pc: u16,
+    pc: u16,
     s: u16,
     p: u8,
     a: u16,
@@ -17,34 +19,30 @@ pub struct CpuState {
     d: u16,
     pbr: u8,
     e: u8,
-    pub ram: Vec<(u32, u8)>,
+    #[serde(deserialize_with = "deserialize_as_map")]
+    ram: HashMap<u32, u8>,
 }
 
 impl CpuState {
     pub fn convert_state(&self) -> (W65C816<TomHarteBus>, TomHarteBus) {
-        let cpu = Cpu {
-            accumulator: self.a,
-            index_x: self.x,
-            index_y: self.y,
-            stack_pointer: self.s,
-            program_counter: self.pc,
-            status: Status(self.p),
-            dpr: self.d,
-            pbr: self.pbr,
-            dbr: self.dbr,
-            emulation_mode: self.e == 1,
-            stopped: false,
-            waiting_interrupt: false,
-        };
+        let mut w65c816 = W65C816::new();
+        w65c816.cpu.accumulator = self.a;
+        w65c816.cpu.index_x = self.x;
+        w65c816.cpu.index_y = self.y;
+        w65c816.cpu.stack_pointer = self.s;
+        w65c816.cpu.program_counter = self.pc;
+        w65c816.cpu.status = Status(self.p);
+        w65c816.cpu.dpr = self.d;
+        w65c816.cpu.pbr = self.pbr;
+        w65c816.cpu.dbr = self.dbr;
+        w65c816.cpu.emulation_mode = self.e == 1;
+        w65c816.cpu.stopped = false;
+        w65c816.cpu.waiting_interrupt = false;
 
-        let w65c816 = W65C816 {
-            cpu,
-            instruction_set: opcode_table(),
+        let bus = TomHarteBus {
+            memory: self.ram.clone(),
+            ..Default::default()
         };
-        let mut bus = TomHarteBus::default();
-        for (addr, val) in &self.ram {
-            bus.memory.insert(*addr, *val);
-        }
 
         (w65c816, bus)
     }
@@ -52,8 +50,6 @@ impl CpuState {
 
 impl From<(Cpu, TomHarteBus)> for CpuState {
     fn from(value: (Cpu, TomHarteBus)) -> Self {
-        let mut ram: Vec<(u32, u8)> = value.1.memory.into_iter().collect();
-        ram.sort();
         Self {
             pc: value.0.program_counter,
             s: value.0.stack_pointer,
@@ -65,7 +61,7 @@ impl From<(Cpu, TomHarteBus)> for CpuState {
             d: value.0.dpr,
             pbr: value.0.pbr,
             e: value.0.emulation_mode as u8,
-            ram,
+            ram: value.1.memory,
         }
     }
 }
@@ -88,4 +84,57 @@ impl std::fmt::Display for CpuState {
             self.ram
         )
     }
+}
+
+impl OpcodeTest for CpuState {
+    type Proc = Cpu;
+
+    fn do_step(&mut self, other: &Self, cycles_len: usize) -> (Self::Proc, TomHarteBus, bool) {
+        let (mut w65c816, mut bus) = self.convert_state();
+
+        let opcode = w65c816.peek_opcode(&bus);
+        let skip_cycles = if opcode.code == 0x44 || opcode.code == 0x54 {
+            loop {
+                if bus.cycles.len() >= (cycles_len - 2) {
+                    break;
+                }
+                w65c816.step(&mut bus);
+            }
+            w65c816.cpu.program_counter = other.pc;
+            true
+        } else {
+            w65c816.step(&mut bus);
+            false
+        };
+
+        (w65c816.cpu, bus, skip_cycles)
+    }
+
+    fn deserialize_cycles<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Vec<Cycle>, D::Error> {
+        let v: Vec<(Option<u32>, Option<u8>, String)> = Deserialize::deserialize(deserializer)?;
+        let mut cycles: Vec<Cycle> = v
+            .iter()
+            .map(|(addr, value, state)| {
+                if !(state.contains('p') || state.contains('d')) {
+                    Cycle::Internal
+                } else if state.contains('r') {
+                    Cycle::Read(addr.unwrap_or_default(), *value)
+                } else if state.contains('w') {
+                    Cycle::Write(addr.unwrap_or_default(), value.unwrap_or_default())
+                } else {
+                    Cycle::Internal
+                }
+            })
+            .collect();
+        cycles.sort();
+        Ok(cycles)
+    }
+}
+
+pub(crate) fn deserialize_as_map<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<HashMap<u32, u8>, D::Error> {
+    Vec::deserialize(deserializer).map(|vec| vec.into_iter().collect())
 }
