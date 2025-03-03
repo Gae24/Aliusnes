@@ -1,108 +1,74 @@
 mod utils;
 
-use core::panic;
-use pretty_assertions::Comparison;
-use serde::{Deserialize, Deserializer};
 use std::{
+    fmt::{Debug, Display},
     fs::File,
-    io::{BufRead, BufReader},
+    io::BufReader,
     path::PathBuf,
 };
-use utils::{cpu_state::CpuState, test_bus::Cycle};
+
+use pretty_assertions::Comparison;
+use serde::{Deserialize, Deserializer};
+use utils::{
+    cpu_state::CpuState,
+    test_bus::{Cycle, TomHarteBus},
+};
 use xz2::read::XzDecoder;
 
 include!(concat!(env!("OUT_DIR"), "/tomharte_65816.rs"));
 
 #[derive(Deserialize)]
-struct TestCase {
+struct TestCase<T> {
     name: String,
-    initial: CpuState,
+    #[serde(bound(deserialize = "T: OpcodeTest"))]
+    initial: T,
     #[serde(rename = "final")]
-    final_state: CpuState,
-    #[serde(deserialize_with = "deserialize_cycles")]
+    #[serde(bound(deserialize = "T: OpcodeTest"))]
+    final_state: T,
+    #[serde(deserialize_with = "T::deserialize_cycles")]
+    #[serde(bound(deserialize = "T: OpcodeTest"))]
     cycles: Vec<Cycle>,
 }
 
-fn deserialize_cycles<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Vec<Cycle>, D::Error> {
-    let v: Vec<(Option<u32>, Option<u8>, String)> = Deserialize::deserialize(deserializer)?;
-    let mut cycles: Vec<Cycle> = v
-        .iter()
-        .map(|(addr, value, state)| {
-            if !(state.contains('p') || state.contains('d')) {
-                Cycle::Internal
-            } else if state.contains('r') {
-                Cycle::Read(addr.unwrap_or_default(), *value)
-            } else if state.contains('w') {
-                Cycle::Write(addr.unwrap_or_default(), value.unwrap_or_default())
-            } else {
-                Cycle::Internal
-            }
-        })
-        .collect();
-    cycles.sort();
-    Ok(cycles)
-}
-
-impl TestCase {
+impl<T: OpcodeTest> TestCase<T> {
     fn iter_json(path: &PathBuf) -> impl Iterator<Item = Self> {
         let file = File::open(path).unwrap();
         let reader = BufReader::new(XzDecoder::new(file));
 
-        reader.lines().map(|line| {
-            let line = line.unwrap();
-            let trimmed = line
-                .trim_end_matches(']')
-                .trim_end_matches(',')
-                .trim_start_matches('[');
-            serde_json::from_str::<Self>(trimmed).unwrap()
-        })
+        serde_json::from_reader::<_, Vec<Self>>(reader)
+            .unwrap()
+            .into_iter()
     }
 }
 
-pub fn run_test(name: &str) {
+pub(crate) fn run_test<T: OpcodeTest>(name: &str) {
     let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let json_path = root_dir.join(format!("tests/65816/{name}.json.xz"));
 
-    for mut test_case in TestCase::iter_json(&json_path) {
-        let (mut w65c816, mut bus) = test_case.initial.convert_state();
-
-        let opcode = w65c816.peek_opcode(&bus);
-        let skip_cycles = if opcode.code == 0x44 || opcode.code == 0x54 {
-            loop {
-                if bus.cycles.len() >= (test_case.cycles.len() - 2) {
-                    break;
-                }
-                w65c816.step(&mut bus);
-            }
-            w65c816.cpu.program_counter = test_case.final_state.pc;
-            true
-        } else {
-            w65c816.step(&mut bus);
-            false
-        };
+    for mut test_case in TestCase::<T>::iter_json(&json_path) {
+        let (proc, bus, skip_cycles) = test_case
+            .initial
+            .do_step(&test_case.final_state, test_case.cycles.len());
 
         let mut cycles = bus.cycles.clone();
         cycles.sort();
 
-        let cpu_state = CpuState::from((w65c816.cpu, bus));
-        test_case.final_state.ram.sort();
+        let state = T::from((proc, bus));
 
-        let state_match = cpu_state == test_case.final_state;
+        let state_match = state == test_case.final_state;
         let cycles_match = cycles == test_case.cycles || skip_cycles;
 
         if state_match && cycles_match {
             continue;
         }
 
-        println!(
-            "Test {} failed: {:#04X} {} {:?}",
-            test_case.name, opcode.code, opcode.mnemonic, opcode.mode
-        );
+        println!("Test {} failed", test_case.name,);
+
         if !state_match {
             println!("Initial: {}", &test_case.initial);
             println!(
                 "Result: {}",
-                Comparison::new(&cpu_state, &test_case.final_state)
+                Comparison::new(&state, &test_case.final_state)
             );
         }
         if !cycles_match {
@@ -110,4 +76,15 @@ pub fn run_test(name: &str) {
         }
         panic!();
     }
+}
+
+pub trait OpcodeTest:
+    Debug + Display + PartialEq + for<'de> Deserialize<'de> + From<(Self::Proc, TomHarteBus)>
+{
+    type Proc;
+
+    fn do_step(&mut self, other: &Self, cycles_len: usize) -> (Self::Proc, TomHarteBus, bool);
+    fn deserialize_cycles<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Vec<Cycle>, D::Error>;
 }
