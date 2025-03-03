@@ -9,13 +9,18 @@ use std::{
 
 use pretty_assertions::Comparison;
 use serde::{Deserialize, Deserializer};
-use utils::{
-    cpu_state::CpuState,
-    test_bus::{Cycle, TomHarteBus},
-};
+use utils::test_bus::{Cycle, TomHarteBus};
 use xz2::read::XzDecoder;
 
-include!(concat!(env!("OUT_DIR"), "/tomharte_65816.rs"));
+mod w65c816 {
+    use crate::{run_test, utils::cpu_state::CpuState};
+    include!(concat!(env!("OUT_DIR"), "/tomharte_65816.rs"));
+}
+
+mod spc700 {
+    use crate::{run_test, utils::cpu_state::Spc700State};
+    include!(concat!(env!("OUT_DIR"), "/tomharte_spc700.rs"));
+}
 
 #[derive(Deserialize)]
 struct TestCase<T> {
@@ -31,7 +36,7 @@ struct TestCase<T> {
 }
 
 impl<T: OpcodeTest> TestCase<T> {
-    fn iter_json(path: &PathBuf) -> impl Iterator<Item = Self> {
+    fn iter_json(path: PathBuf) -> impl Iterator<Item = Self> {
         let file = File::open(path).unwrap();
         let reader = BufReader::new(XzDecoder::new(file));
 
@@ -42,10 +47,7 @@ impl<T: OpcodeTest> TestCase<T> {
 }
 
 pub(crate) fn run_test<T: OpcodeTest>(name: &str) {
-    let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let json_path = root_dir.join(format!("tests/65816/{name}.json.xz"));
-
-    for mut test_case in TestCase::<T>::iter_json(&json_path) {
+    for mut test_case in TestCase::<T>::iter_json(T::test_path(name)) {
         let (proc, bus, skip_cycles) = test_case
             .initial
             .do_step(&test_case.final_state, test_case.cycles.len());
@@ -83,6 +85,7 @@ pub trait OpcodeTest:
 {
     type Proc;
 
+    fn test_path(name: &str) -> PathBuf;
     fn do_step(&mut self, other: &Self, cycles_len: usize) -> (Self::Proc, TomHarteBus, bool);
     fn deserialize_cycles<'de, D: Deserializer<'de>>(
         deserializer: D,

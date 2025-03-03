@@ -6,10 +6,16 @@ use std::{
     path::{Path, PathBuf},
 };
 
+enum Proc {
+    W65816,
+    Spc700,
+}
+
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=tests");
-    generate_tomharte_65816_test();
+    generate_tomharte_opcode_test(Proc::W65816);
+    generate_tomharte_opcode_test(Proc::Spc700);
 
     let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let base_path = root_dir.join("tests/krom/");
@@ -19,14 +25,21 @@ fn main() {
     visit_dirs(&base_path, &mut file).unwrap();
 }
 
-fn generate_tomharte_65816_test() {
-    let mut file =
-        File::create(Path::new(&env::var_os("OUT_DIR").unwrap()).join("tomharte_65816.rs"))
-            .expect("File creation failed");
+fn generate_tomharte_opcode_test(proc: Proc) {
+    let (file_name, interface) = match proc {
+        Proc::W65816 => ("tomharte_65816.rs", "CpuState"),
+        Proc::Spc700 => ("tomharte_spc700.rs", "Spc700State"),
+    };
+
+    let mut file = File::create(Path::new(&env::var_os("OUT_DIR").unwrap()).join(file_name))
+        .expect("File creation failed");
 
     for i in 0..256 {
         let test_name = format!("test_{i:02x}");
-        let test_body = format!("run_test::<CpuState>(\"{i:02x}.n\");");
+        let test_body = match proc {
+            Proc::W65816 => format!("run_test::<{interface}>(\"{i:02x}.n\");"),
+            Proc::Spc700 => format!("run_test::<{interface}>(\"{i:02x}\");"),
+        };
         let test = format!("#[test]\nfn {test_name}() {{\n\t{test_body}\n}}\n\n");
 
         file.write_all(test.as_bytes())
