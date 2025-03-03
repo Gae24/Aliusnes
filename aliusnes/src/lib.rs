@@ -3,6 +3,7 @@
 
 use cart::{header::Header, Cart};
 
+pub mod apu;
 pub mod bus;
 pub mod cart;
 pub mod emu;
