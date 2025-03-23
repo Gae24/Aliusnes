@@ -1,3 +1,4 @@
+use crate::apu::spc700::addressing::AddressingMode;
 use crate::{bus::Bus, w65c816::addressing::Address};
 
 bitfield!(
@@ -40,5 +41,17 @@ impl Cpu {
             bus.read_and_tick(addr),
             bus.read_and_tick(addr.wrapping_add(1)),
         ])
+    }
+
+    pub fn do_rmw<B: Bus>(
+        &mut self,
+        bus: &mut B,
+        mode: &AddressingMode,
+        f: fn(&mut Cpu, u8) -> u8,
+    ) {
+        let addr = self.decode_addressing_mode(bus, *mode);
+        let data = bus.read_and_tick(addr);
+        let result = f(self, data);
+        bus.write_and_tick(addr, result);
     }
 }
