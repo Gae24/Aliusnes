@@ -10,13 +10,13 @@ log = ["simplelog"]
 [dependencies]
 log = "0.4.21"
 simplelog = { version = "0.12.2", optional = true}
-proc-bitfield = "0.4.0"
+proc-bitfield = "0.5.2"
 
 [dev-dependencies]
 image = { version = "0.25", default-features = false, features = ["png"] }
 pretty_assertions = "1.4.0"
-serde = { version = "1.0.202", features = ["derive"] }
-serde_json = "1.0.117"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
 xz2 = "0.1.7"
 
 [build-dependencies]
