@@ -40,7 +40,7 @@ impl<B: Bus> OpCode<B> {
 
 pub struct Spc700<B: Bus> {
     pub cpu: cpu::Cpu,
-    instruction_set: [OpCode<B>; 4],
+    instruction_set: [OpCode<B>; 10],
 }
 
 impl<B: Bus> Spc700<B> {
@@ -60,12 +60,18 @@ impl<B: Bus> Spc700<B> {
     }
 }
 
-const fn opcode_table<B: Bus>() -> [OpCode<B>; 4] {
+const fn opcode_table<B: Bus>() -> [OpCode<B>; 10] {
     use addressing::AddressingMode::*;
     [
         OpCode::new(Meta::new(0x00, "NOP", Implied), Spc700::nop),
         OpCode::new(Meta::new(0x01, "TCALL", Implied), Spc700::tcall::<1>),
         OpCode::new(Meta::new(0x02, "SET1", DirectPage), Spc700::set1::<0>),
         OpCode::new(Meta::new(0x03, "BBS", DirectPage), Spc700::bbs::<0>),
+        OpCode::new(Meta::new(0x04, "OR", DirectPage), Spc700::or_a),
+        OpCode::new(Meta::new(0x05, "OR", Absolute), Spc700::or_a),
+        OpCode::new(Meta::new(0x06, "OR", IndirectX), Spc700::or_a),
+        OpCode::new(Meta::new(0x07, "OR", XIndirect), Spc700::or_a),
+        OpCode::new(Meta::new(0x08, "OR", Immediate), Spc700::or_a),
+        OpCode::new(Meta::new(0x09, "OR", DirectPage), Spc700::or),
     ]
 }
