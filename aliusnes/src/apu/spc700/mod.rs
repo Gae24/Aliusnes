@@ -40,7 +40,7 @@ impl<B: Bus> OpCode<B> {
 
 pub struct Spc700<B: Bus> {
     pub cpu: cpu::Cpu,
-    instruction_set: [OpCode<B>; 13],
+    instruction_set: [OpCode<B>; 16],
 }
 
 impl<B: Bus> Spc700<B> {
@@ -60,8 +60,8 @@ impl<B: Bus> Spc700<B> {
     }
 }
 
-const fn opcode_table<B: Bus>() -> [OpCode<B>; 13] {
-    use addressing::AddressingMode::*;
+const fn opcode_table<B: Bus>() -> [OpCode<B>; 16] {
+    use addressing::{AddressingMode::*, Source::*};
     [
         OpCode::new(Meta::new(0x00, "NOP", Implied), Spc700::nop),
         OpCode::new(Meta::new(0x01, "TCALL", Implied), Spc700::tcall::<1>),
@@ -76,5 +76,8 @@ const fn opcode_table<B: Bus>() -> [OpCode<B>; 13] {
         OpCode::new(Meta::new(0x0A, "OR1", AbsoluteBooleanBit), Spc700::or1),
         OpCode::new(Meta::new(0x0B, "ASL", DirectPage), Spc700::asl),
         OpCode::new(Meta::new(0x0C, "ASL", Absolute), Spc700::asl),
+        OpCode::new(Meta::new(0x0D, "PUSH", Implied), Spc700::push::<{ PSW }>),
+        OpCode::new(Meta::new(0x0E, "TSET1", Absolute), Spc700::tset1),
+        OpCode::new(Meta::new(0x0F, "BRK", Implied), Spc700::brk),
     ]
 }
