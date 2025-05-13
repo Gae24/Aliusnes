@@ -1,6 +1,7 @@
 use crate::{
     apu::spc700::Cpu, bus::Bus, utils::int_traits::ManipulateU16, w65c816::addressing::Address,
 };
+use std::marker::ConstParamTy;
 
 #[derive(Clone, Copy)]
 pub enum AddressingMode {
@@ -17,6 +18,14 @@ pub enum AddressingMode {
     IndirectY,
     XIndirect,
     YIndirect,
+}
+
+#[derive(ConstParamTy, PartialEq, Eq)]
+pub enum Source {
+    A,
+    X,
+    Y,
+    PSW,
 }
 
 impl Cpu {
