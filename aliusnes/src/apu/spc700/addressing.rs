@@ -8,6 +8,7 @@ pub enum AddressingMode {
     Immediate,
     DirectPage,
     Absolute,
+    AbsoluteBooleanBit,
     DirectX,
     DirectY,
     DirectXPostIncrement,
@@ -73,6 +74,12 @@ impl Cpu {
     pub fn operand<B: Bus>(&mut self, bus: &mut B, mode: AddressingMode) -> u8 {
         match mode {
             AddressingMode::Immediate => self.get_imm(bus),
+            AddressingMode::AbsoluteBooleanBit => {
+                let addr_bit = u16::from_le_bytes([self.get_imm(bus), self.get_imm(bus)]);
+                let val = bus.read_and_tick(Address::new(addr_bit & 0x1FFF, 0));
+
+                val & 1 << (addr_bit >> 13)
+            }
             _ => {
                 let addr = self.decode_addressing_mode(bus, mode);
                 bus.read_and_tick(addr)
