@@ -4,6 +4,17 @@ use crate::{
 };
 
 impl<B: Bus> Spc700<B> {
+    pub fn asl(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        cpu.do_rmw(bus, &mode, |cpu, operand| {
+            let res = operand << 1;
+            cpu.status.set_carry(operand >> 7 != 0);
+            cpu.status.set_negative(res >> 7 != 0);
+            cpu.status.set_zero(res == 0);
+
+            res
+        });
+    }
+
     pub fn bbs<const BIT: u8>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let operand = cpu.operand(bus, mode);
         do_branch(cpu, bus, (operand & (1 << BIT)) != 0);
@@ -29,6 +40,12 @@ impl<B: Bus> Spc700<B> {
         cpu.accumulator |= operand;
         cpu.status.set_negative(cpu.accumulator >> 7 != 0);
         cpu.status.set_zero(cpu.accumulator == 0);
+    }
+
+    pub fn or1(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        let operand = cpu.operand(bus, mode) != 0;
+        cpu.status.set_carry(cpu.status.carry() | operand);
+        bus.add_io_cycles(1);
     }
 
     pub fn set1<const BIT: u8>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
