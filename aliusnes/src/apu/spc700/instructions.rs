@@ -24,7 +24,18 @@ impl<B: Bus> Spc700<B> {
 
     pub fn bbs<const BIT: u8>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let operand = cpu.operand(bus, mode);
+        bus.add_io_cycles(1);
         do_branch(cpu, bus, (operand & (1 << BIT)) != 0);
+    }
+
+    pub fn bbc<const BIT: u8>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        let operand = cpu.operand(bus, mode);
+        bus.add_io_cycles(1);
+        do_branch(cpu, bus, (operand & (1 << BIT)) == 0);
+    }
+
+    pub fn bpl(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        do_branch(cpu, bus, cpu.status.negative() == false);
     }
 
     pub fn brk(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
@@ -38,6 +49,13 @@ impl<B: Bus> Spc700<B> {
         cpu.status.set_irq_enabled(false);
         cpu.status.set_break_(true);
         bus.add_io_cycles(1);
+    }
+
+    pub fn clr1<const BIT: u8>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        cpu.do_rmw(bus, &mode, |_cpu, operand| {
+            let mask = 1 << BIT;
+            operand & !mask
+        });
     }
 
     pub fn nop(_cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
