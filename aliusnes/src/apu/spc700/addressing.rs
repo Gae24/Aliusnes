@@ -3,12 +3,14 @@ use crate::{
 };
 use std::marker::ConstParamTy;
 
-#[derive(Clone, Copy)]
+#[derive(ConstParamTy, PartialEq, Eq, Clone, Copy)]
 pub enum AddressingMode {
     Implied,
     Immediate,
     DirectPage,
     Absolute,
+    AbsoluteX,
+    AbsoluteY,
     AbsoluteBooleanBit,
     DirectX,
     DirectY,
@@ -16,6 +18,7 @@ pub enum AddressingMode {
     DirectYPostIncrement,
     IndirectX,
     IndirectY,
+    DirectPageIndirectY,
     XIndirect,
     YIndirect,
 }
@@ -61,6 +64,10 @@ impl Cpu {
                     0,
                 )
             }
+            AddressingMode::IndirectY => Address::new(
+                u16::from_le_bytes([self.index_y, self.status.direct_page().into()]),
+                0,
+            ),
             AddressingMode::XIndirect => {
                 bus.add_io_cycles(1);
                 let mut page = self.direct_page(bus);
@@ -73,8 +80,33 @@ impl Cpu {
                 Address::new(u16::from_le_bytes([high_byte, low_byte]), 0)
             }
             AddressingMode::DirectX => {
-                let page = self.direct_page(bus).wrapping_add(self.index_x.into());
+                bus.add_io_cycles(1);
+                let mut page = self.direct_page(bus);
+                let offset = page.low_byte().wrapping_add(self.index_x);
+                page.set_low_byte(offset);
+
                 Address::new(page, 0)
+            }
+            AddressingMode::AbsoluteX => {
+                let absolute = u16::from_le_bytes([self.get_imm(bus), self.get_imm(bus)]);
+                bus.add_io_cycles(1);
+                Address::new(absolute.wrapping_add(self.index_x.into()), 0)
+            }
+            AddressingMode::AbsoluteY => {
+                let absolute = u16::from_le_bytes([self.get_imm(bus), self.get_imm(bus)]);
+                bus.add_io_cycles(1);
+                Address::new(absolute.wrapping_add(self.index_y.into()), 0)
+            }
+            AddressingMode::DirectPageIndirectY => {
+                bus.add_io_cycles(1);
+                let mut indirect_addr = self.direct_page(bus);
+
+                let high_byte = bus.read_and_tick(Address::new(indirect_addr, 0));
+                indirect_addr.set_low_byte(indirect_addr.low_byte().wrapping_add(1));
+                let low_byte = bus.read_and_tick(Address::new(indirect_addr, 0));
+
+                let addr = u16::from_le_bytes([high_byte, low_byte]);
+                Address::new(addr.wrapping_add(self.index_y.into()), 0)
             }
             _ => todo!(),
         }

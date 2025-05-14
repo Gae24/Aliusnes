@@ -62,15 +62,14 @@ impl<B: Bus> Spc700<B> {
         bus.add_io_cycles(1);
     }
 
-    pub fn or(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        let operand = cpu.operand(bus, mode);
-        let dest_addr = cpu.decode_addressing_mode(bus, mode);
-
-        let res = bus.read_and_tick(dest_addr) | operand;
-        cpu.status.set_negative(res >> 7 != 0);
-        cpu.status.set_zero(res == 0);
-
-        bus.write_and_tick(dest_addr, res);
+    pub fn or<const DEST: AddressingMode>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        let b = cpu.operand(bus, mode);
+        cpu.do_rmw(bus, &DEST, |cpu, a| {
+            let res = a | b;
+            cpu.status.set_negative(res >> 7 != 0);
+            cpu.status.set_zero(res == 0);
+            res
+        })
     }
 
     pub fn or_a(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
