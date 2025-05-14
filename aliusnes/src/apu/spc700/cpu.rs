@@ -53,7 +53,7 @@ impl Cpu {
         &mut self,
         bus: &mut B,
         mode: &AddressingMode,
-        f: fn(&mut Cpu, u8) -> u8,
+        f: impl FnOnce(&mut Cpu, u8) -> u8,
     ) {
         let addr = self.decode_addressing_mode(bus, *mode);
         let data = bus.read_and_tick(addr);
