@@ -40,7 +40,7 @@ impl<B: Bus> OpCode<B> {
 
 pub struct Spc700<B: Bus> {
     pub cpu: cpu::Cpu,
-    instruction_set: [OpCode<B>; 26],
+    instruction_set: [OpCode<B>; 36],
 }
 
 impl<B: Bus> Spc700<B> {
@@ -61,7 +61,7 @@ impl<B: Bus> Spc700<B> {
 }
 
 #[rustfmt::skip]
-const fn opcode_table<B: Bus>() -> [OpCode<B>; 26] {
+const fn opcode_table<B: Bus>() -> [OpCode<B>; 36] {
     use addressing::{AddressingMode::*, Source::*};
     [
         OpCode::new(Meta::new(0x00, "NOP", Implied), Spc700::nop),
@@ -90,5 +90,15 @@ const fn opcode_table<B: Bus>() -> [OpCode<B>; 26] {
         OpCode::new(Meta::new(0x17, "OR", DirectPageIndirectY), Spc700::or_a),
         OpCode::new(Meta::new(0x18, "OR", Immediate), Spc700::or::<{ DirectPage }>),
         OpCode::new(Meta::new(0x19, "OR", IndirectY), Spc700::or::<{ IndirectX }>),
+        OpCode::new(Meta::new(0x1A, "DECW", DirectPage), Spc700::decw),
+        OpCode::new(Meta::new(0x1B, "ASL", DirectX), Spc700::asl),
+        OpCode::new(Meta::new(0x1C, "ASL", Implied), Spc700::asl_a),
+        OpCode::new(Meta::new(0x1D, "DEC", Implied), Spc700::dec_x),
+        OpCode::new(Meta::new(0x1E, "CMP", Absolute), Spc700::cmp_reg::<{ X }>),
+        OpCode::new(Meta::new(0x1F, "JMP", AbsoluteX), Spc700::jmp),
+        OpCode::new(Meta::new(0x20, "CLRP", Implied), Spc700::clrp),
+        OpCode::new(Meta::new(0x21, "TCALL", Implied), Spc700::tcall::<2>),
+        OpCode::new(Meta::new(0x22, "SET1", DirectPage), Spc700::set1::<1>),
+        OpCode::new(Meta::new(0x23, "BBS", DirectPage), Spc700::bbs::<1>),
     ]
 }
