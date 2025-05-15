@@ -1,4 +1,5 @@
 use crate::apu::spc700::addressing::AddressingMode;
+use crate::utils::int_traits::ManipulateU16;
 use crate::{bus::Bus, w65c816::addressing::Address};
 
 bitfield!(
@@ -59,5 +60,28 @@ impl Cpu {
         let data = bus.read_and_tick(addr);
         let result = f(self, data);
         bus.write_and_tick(addr, result);
+    }
+
+    pub fn do_rmw_word<B: Bus>(
+        &mut self,
+        bus: &mut B,
+        mode: &AddressingMode,
+        f: impl FnOnce(&mut Cpu, u16) -> u16,
+    ) {
+        let mut page = self.decode_addressing_mode(bus, *mode).offset;
+        let offset = page.low_byte().wrapping_add(1);
+
+        let low_byte_addr = Address::new(page, 0);
+        page.set_low_byte(offset);
+        let high_byte_addr = Address::new(page, 0);
+
+        let low_byte = bus.read_and_tick(low_byte_addr);
+        let high_byte = bus.read_and_tick(high_byte_addr);
+
+        let data = u16::from_le_bytes([low_byte, high_byte]);
+
+        let result = f(self, data);
+        bus.write_and_tick(low_byte_addr, result.low_byte());
+        bus.write_and_tick(high_byte_addr, result.high_byte());
     }
 }

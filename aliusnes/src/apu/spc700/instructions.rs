@@ -2,7 +2,7 @@ use crate::{
     apu::spc700::{
         addressing::{AddressingMode, Source},
         cpu::Cpu,
-        functions::do_branch,
+        functions::{do_branch, do_compare},
         Spc700,
     },
     bus::Bus,
@@ -20,6 +20,16 @@ impl<B: Bus> Spc700<B> {
 
             res
         });
+    }
+
+    pub fn asl_a(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        cpu.status.set_carry(cpu.accumulator >> 7 != 0);
+        cpu.accumulator = cpu.accumulator << 1;
+        cpu.status.set_negative(cpu.accumulator >> 7 != 0);
+        cpu.status.set_zero(cpu.accumulator == 0);
+
+        // Dummy read
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
     }
 
     pub fn bbs<const BIT: u8>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
@@ -56,6 +66,51 @@ impl<B: Bus> Spc700<B> {
             let mask = 1 << BIT;
             operand & !mask
         });
+    }
+
+    pub fn clrp(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        // Dummy read
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        cpu.status.set_direct_page(false);
+    }
+
+    pub fn cmp_reg<const REG: Source>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        let a = match REG {
+            Source::A => cpu.accumulator,
+            Source::X => cpu.index_x,
+            Source::Y => cpu.index_y,
+            Source::PSW => cpu.status.0,
+        };
+        let b = cpu.operand(bus, mode);
+
+        do_compare(cpu, a, b);
+    }
+
+    pub fn decw(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        cpu.do_rmw_word(bus, &mode, |cpu, operand| {
+            let res = operand.wrapping_sub(1);
+            cpu.status.set_negative(res >> 15 != 0);
+            cpu.status.set_zero(res == 0);
+            res
+        })
+    }
+
+    pub fn dec_x(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        cpu.index_x = cpu.index_x.wrapping_sub(1);
+        cpu.status.set_negative(cpu.index_x >> 7 != 0);
+        cpu.status.set_zero(cpu.index_x == 0);
+
+        // Dummy read
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+    }
+
+    pub fn jmp(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        let value = cpu.decode_addressing_mode(bus, mode).offset;
+        if let AddressingMode::Absolute = mode {
+            cpu.program_counter = value;
+        } else {
+            cpu.program_counter = cpu.read_16(bus, value);
+        }
     }
 
     pub fn nop(_cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
