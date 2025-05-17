@@ -40,7 +40,7 @@ impl<B: Bus> OpCode<B> {
 
 pub struct Spc700<B: Bus> {
     pub cpu: cpu::Cpu,
-    instruction_set: [OpCode<B>; 36],
+    instruction_set: [OpCode<B>; 46],
 }
 
 impl<B: Bus> Spc700<B> {
@@ -61,7 +61,7 @@ impl<B: Bus> Spc700<B> {
 }
 
 #[rustfmt::skip]
-const fn opcode_table<B: Bus>() -> [OpCode<B>; 36] {
+const fn opcode_table<B: Bus>() -> [OpCode<B>; 46] {
     use addressing::{AddressingMode::*, Source::*};
     [
         OpCode::new(Meta::new(0x00, "NOP", Implied), Spc700::nop),
@@ -74,7 +74,7 @@ const fn opcode_table<B: Bus>() -> [OpCode<B>; 36] {
         OpCode::new(Meta::new(0x07, "OR", XIndirect), Spc700::or_a),
         OpCode::new(Meta::new(0x08, "OR", Immediate), Spc700::or_a),
         OpCode::new(Meta::new(0x09, "OR", DirectPage), Spc700::or::<{ DirectPage }>),
-        OpCode::new(Meta::new(0x0A, "OR1", AbsoluteBooleanBit), Spc700::or1),
+        OpCode::new(Meta::new(0x0A, "OR1", AbsoluteBooleanBit), Spc700::or1::<false>),
         OpCode::new(Meta::new(0x0B, "ASL", DirectPage), Spc700::asl),
         OpCode::new(Meta::new(0x0C, "ASL", Absolute), Spc700::asl),
         OpCode::new(Meta::new(0x0D, "PUSH", Implied), Spc700::push::<{ PSW }>),
@@ -100,5 +100,15 @@ const fn opcode_table<B: Bus>() -> [OpCode<B>; 36] {
         OpCode::new(Meta::new(0x21, "TCALL", Implied), Spc700::tcall::<2>),
         OpCode::new(Meta::new(0x22, "SET1", DirectPage), Spc700::set1::<1>),
         OpCode::new(Meta::new(0x23, "BBS", DirectPage), Spc700::bbs::<1>),
+        OpCode::new(Meta::new(0x24, "AND", DirectPage), Spc700::and_a),
+        OpCode::new(Meta::new(0x25, "AND", Absolute), Spc700::and_a),
+        OpCode::new(Meta::new(0x26, "AND", XIndirect), Spc700::and_a),
+        OpCode::new(Meta::new(0x27, "AND", DirectX), Spc700::and_a),
+        OpCode::new(Meta::new(0x28, "AND", Immediate), Spc700::and_a),
+        OpCode::new(Meta::new(0x29, "AND", DirectPage), Spc700::and_a),
+        OpCode::new(Meta::new(0x2A, "OR1", AbsoluteBooleanBit), Spc700::or1::<true>),
+        OpCode::new(Meta::new(0x2B, "ROL", DirectPage), Spc700::rol),
+        OpCode::new(Meta::new(0x2C, "ROL", Absolute), Spc700::rol),
+        OpCode::new(Meta::new(0x2D, "PUSH", Implied), Spc700::push::<{ A }>),
     ]
 }
