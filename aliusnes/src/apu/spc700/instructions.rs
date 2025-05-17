@@ -51,8 +51,16 @@ impl<B: Bus> Spc700<B> {
         do_branch(cpu, bus, (operand & (1 << BIT)) == 0);
     }
 
+    pub fn bmi(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        do_branch(cpu, bus, cpu.status.negative());
+    }
+
     pub fn bpl(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         do_branch(cpu, bus, cpu.status.negative() == false);
+    }
+
+    pub fn bra(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        do_branch(cpu, bus, true);
     }
 
     pub fn brk(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
@@ -66,6 +74,12 @@ impl<B: Bus> Spc700<B> {
         cpu.status.set_irq_enabled(false);
         cpu.status.set_break_(true);
         bus.add_io_cycles(1);
+    }
+
+    pub fn cbne(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        let operand = cpu.operand(bus, mode);
+        bus.add_io_cycles(1);
+        do_branch(cpu, bus, cpu.accumulator != operand);
     }
 
     pub fn clr1<const BIT: u8>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
