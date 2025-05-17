@@ -11,6 +11,13 @@ use crate::{
 };
 
 impl<B: Bus> Spc700<B> {
+    pub fn and_a(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        let operand = cpu.operand(bus, mode);
+        cpu.accumulator &= operand;
+        cpu.status.set_negative(cpu.accumulator >> 7 != 0);
+        cpu.status.set_zero(cpu.accumulator == 0);
+    }
+
     pub fn asl(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         cpu.do_rmw(bus, &mode, |cpu, operand| {
             let res = operand << 1;
@@ -134,8 +141,8 @@ impl<B: Bus> Spc700<B> {
         cpu.status.set_zero(cpu.accumulator == 0);
     }
 
-    pub fn or1(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        let operand = cpu.operand(bus, mode) != 0;
+    pub fn or1<const INVERSE: bool>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        let operand = (cpu.operand(bus, mode) != 0) ^ INVERSE;
         cpu.status.set_carry(cpu.status.carry() | operand);
         bus.add_io_cycles(1);
     }
@@ -152,6 +159,17 @@ impl<B: Bus> Spc700<B> {
         // Dummy read
         let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
         bus.add_io_cycles(1);
+    }
+
+    pub fn rol(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        cpu.do_rmw(bus, &mode, |cpu, operand| {
+            let res = (operand << 1) | u8::from(cpu.status.carry());
+            cpu.status.set_carry(operand >> 7 != 0);
+            cpu.status.set_negative(res >> 7 != 0);
+            cpu.status.set_zero(res == 0);
+
+            res
+        });
     }
 
     pub fn set1<const BIT: u8>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
