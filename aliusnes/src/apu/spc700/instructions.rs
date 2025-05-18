@@ -125,6 +125,24 @@ impl<B: Bus> Spc700<B> {
         let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
     }
 
+    pub fn incw(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        cpu.do_rmw_word(bus, &mode, |cpu, operand| {
+            let res = operand.wrapping_add(1);
+            cpu.status.set_negative(res >> 15 != 0);
+            cpu.status.set_zero(res == 0);
+            res
+        })
+    }
+
+    pub fn inc_x(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        cpu.index_x = cpu.index_x.wrapping_add(1);
+        cpu.status.set_negative(cpu.index_x >> 7 != 0);
+        cpu.status.set_zero(cpu.index_x == 0);
+
+        // Dummy read
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+    }
+
     pub fn jmp(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let value = cpu.decode_addressing_mode(bus, mode).offset;
         if let AddressingMode::Absolute = mode {
@@ -184,6 +202,17 @@ impl<B: Bus> Spc700<B> {
 
             res
         });
+    }
+
+    pub fn rol_a(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        let carry_bit = u8::from(cpu.status.carry());
+        cpu.status.set_carry(cpu.accumulator >> 7 != 0);
+        cpu.accumulator = (cpu.accumulator << 1) | carry_bit;
+        cpu.status.set_negative(cpu.accumulator >> 7 != 0);
+        cpu.status.set_zero(cpu.accumulator == 0);
+
+        // Dummy read
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
     }
 
     pub fn set1<const BIT: u8>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {

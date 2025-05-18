@@ -40,7 +40,7 @@ impl<B: Bus> OpCode<B> {
 
 pub struct Spc700<B: Bus> {
     pub cpu: cpu::Cpu,
-    instruction_set: [OpCode<B>; 52],
+    instruction_set: [OpCode<B>; 63],
 }
 
 impl<B: Bus> Spc700<B> {
@@ -61,7 +61,7 @@ impl<B: Bus> Spc700<B> {
 }
 
 #[rustfmt::skip]
-const fn opcode_table<B: Bus>() -> [OpCode<B>; 52] {
+const fn opcode_table<B: Bus>() -> [OpCode<B>; 63] {
     use addressing::{AddressingMode::*, Source::*};
     [
         OpCode::new(Meta::new(0x00, "NOP", Implied), Spc700::nop),
@@ -116,5 +116,16 @@ const fn opcode_table<B: Bus>() -> [OpCode<B>; 52] {
         OpCode::new(Meta::new(0x31, "TCALL", Implied), Spc700::tcall::<3>),
         OpCode::new(Meta::new(0x32, "CLR1", DirectPage), Spc700::clr1::<1>),
         OpCode::new(Meta::new(0x33, "BBC", DirectPage), Spc700::bbc::<1>),
+        OpCode::new(Meta::new(0x34, "AND", DirectX), Spc700::and_a),
+        OpCode::new(Meta::new(0x35, "AND", AbsoluteX), Spc700::and_a),
+        OpCode::new(Meta::new(0x36, "AND", AbsoluteY), Spc700::and_a),
+        OpCode::new(Meta::new(0x37, "AND", DirectPageIndirectY), Spc700::and_a),
+        OpCode::new(Meta::new(0x38, "AND", Immediate), Spc700::and_a),
+        OpCode::new(Meta::new(0x39, "AND", DirectPage), Spc700::and_a),
+        OpCode::new(Meta::new(0x3A, "INCW", DirectPage), Spc700::incw),
+        OpCode::new(Meta::new(0x3B, "ROL", DirectX), Spc700::rol),
+        OpCode::new(Meta::new(0x3C, "ROL", Implied), Spc700::rol_a),
+        OpCode::new(Meta::new(0x3D, "INC", Implied), Spc700::inc_x),
+        OpCode::new(Meta::new(0x3E, "CMP", DirectPage), Spc700::cmp_reg::<{ X }>),
     ]
 }
