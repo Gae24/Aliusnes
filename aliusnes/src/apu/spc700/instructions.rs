@@ -76,6 +76,15 @@ impl<B: Bus> Spc700<B> {
         bus.add_io_cycles(1);
     }
 
+    pub fn call(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        bus.add_io_cycles(3);
+        let new_pc = cpu.decode_addressing_mode(bus, mode).offset;
+
+        cpu.do_push(bus, cpu.program_counter.high_byte());
+        cpu.do_push(bus, cpu.program_counter.low_byte());
+        cpu.program_counter = new_pc;
+    }
+
     pub fn cbne(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let operand = cpu.operand(bus, mode);
         bus.add_io_cycles(1);
@@ -123,6 +132,13 @@ impl<B: Bus> Spc700<B> {
 
         // Dummy read
         let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+    }
+
+    pub fn eor_a(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        let operand = cpu.operand(bus, mode);
+        cpu.accumulator ^= operand;
+        cpu.status.set_negative(cpu.accumulator >> 7 != 0);
+        cpu.status.set_zero(cpu.accumulator == 0);
     }
 
     pub fn incw(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
@@ -220,6 +236,12 @@ impl<B: Bus> Spc700<B> {
             let mask = 1 << BIT;
             operand | mask
         });
+    }
+
+    pub fn setp(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        // Dummy read
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        cpu.status.set_direct_page(true);
     }
 
     pub fn tcall<const INDEX: u8>(_cpu: &mut Cpu, _bus: &mut B, _mode: AddressingMode) {}
