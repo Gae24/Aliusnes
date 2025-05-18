@@ -11,6 +11,11 @@ use crate::{
 };
 
 impl<B: Bus> Spc700<B> {
+    pub fn and1<const INVERSE: bool>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        let operand = (cpu.operand(bus, mode) != 0) ^ INVERSE;
+        cpu.status.set_carry(cpu.status.carry() & operand);
+    }
+
     pub fn and_a(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let operand = cpu.operand(bus, mode);
         cpu.accumulator &= operand;
@@ -168,6 +173,27 @@ impl<B: Bus> Spc700<B> {
         }
     }
 
+    pub fn lsr(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        cpu.do_rmw(bus, &mode, |cpu, operand| {
+            let res = operand >> 1;
+            cpu.status.set_carry(operand & 1 != 0);
+            cpu.status.set_negative(res >> 7 != 0);
+            cpu.status.set_zero(res == 0);
+
+            res
+        });
+    }
+
+    pub fn lsr_a(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        cpu.status.set_carry(cpu.accumulator & 1 != 0);
+        cpu.accumulator = cpu.accumulator >> 1;
+        cpu.status.set_negative(cpu.accumulator >> 7 != 0);
+        cpu.status.set_zero(cpu.accumulator == 0);
+
+        // Dummy read
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+    }
+
     pub fn nop(_cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         bus.add_io_cycles(1);
     }
@@ -193,6 +219,15 @@ impl<B: Bus> Spc700<B> {
         let operand = (cpu.operand(bus, mode) != 0) ^ INVERSE;
         cpu.status.set_carry(cpu.status.carry() | operand);
         bus.add_io_cycles(1);
+    }
+
+    pub fn pcall(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        bus.add_io_cycles(2);
+        let new_pc = u16::from_le_bytes([cpu.get_imm(bus), 0xFF]);
+
+        cpu.do_push(bus, cpu.program_counter.high_byte());
+        cpu.do_push(bus, cpu.program_counter.low_byte());
+        cpu.program_counter = new_pc;
     }
 
     pub fn push<const REG: Source>(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
@@ -245,6 +280,18 @@ impl<B: Bus> Spc700<B> {
     }
 
     pub fn tcall<const INDEX: u8>(_cpu: &mut Cpu, _bus: &mut B, _mode: AddressingMode) {}
+
+    pub fn tclr1(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        let addr = cpu.decode_addressing_mode(bus, mode);
+        let operand = bus.read_and_tick(addr);
+        let nz_value = cpu.accumulator.wrapping_sub(operand);
+        cpu.status.set_negative(nz_value >> 7 != 0);
+        cpu.status.set_zero(nz_value == 0);
+
+        // Dummy read
+        let _ = bus.read_and_tick(addr);
+        bus.write_and_tick(addr, !cpu.accumulator & operand);
+    }
 
     pub fn tset1(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let addr = cpu.decode_addressing_mode(bus, mode);
