@@ -40,7 +40,7 @@ impl<B: Bus> OpCode<B> {
 
 pub struct Spc700<B: Bus> {
     pub cpu: cpu::Cpu,
-    instruction_set: [OpCode<B>; 63],
+    instruction_set: [OpCode<B>; 74],
 }
 
 impl<B: Bus> Spc700<B> {
@@ -61,7 +61,7 @@ impl<B: Bus> Spc700<B> {
 }
 
 #[rustfmt::skip]
-const fn opcode_table<B: Bus>() -> [OpCode<B>; 63] {
+const fn opcode_table<B: Bus>() -> [OpCode<B>; 74] {
     use addressing::{AddressingMode::*, Source::*};
     [
         OpCode::new(Meta::new(0x00, "NOP", Implied), Spc700::nop),
@@ -127,5 +127,16 @@ const fn opcode_table<B: Bus>() -> [OpCode<B>; 63] {
         OpCode::new(Meta::new(0x3C, "ROL", Implied), Spc700::rol_a),
         OpCode::new(Meta::new(0x3D, "INC", Implied), Spc700::inc_x),
         OpCode::new(Meta::new(0x3E, "CMP", DirectPage), Spc700::cmp_reg::<{ X }>),
+        OpCode::new(Meta::new(0x3F, "CALL", Absolute), Spc700::call),
+        OpCode::new(Meta::new(0x40, "SETP", Implied), Spc700::setp),
+        OpCode::new(Meta::new(0x41, "TCALL", Implied), Spc700::tcall::<4>),
+        OpCode::new(Meta::new(0x42, "SET1", DirectPage), Spc700::set1::<2>),
+        OpCode::new(Meta::new(0x43, "BBS", DirectPage), Spc700::bbs::<2>),
+        OpCode::new(Meta::new(0x44, "EOR", DirectPage), Spc700::eor_a),
+        OpCode::new(Meta::new(0x45, "EOR", Absolute), Spc700::eor_a),
+        OpCode::new(Meta::new(0x46, "EOR", XIndirect), Spc700::eor_a),
+        OpCode::new(Meta::new(0x47, "EOR", DirectX), Spc700::eor_a),
+        OpCode::new(Meta::new(0x48, "EOR", Immediate), Spc700::eor_a),
+        OpCode::new(Meta::new(0x49, "EOR", DirectPage), Spc700::eor_a),
     ]
 }
