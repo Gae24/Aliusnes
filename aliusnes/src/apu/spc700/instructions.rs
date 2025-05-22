@@ -81,6 +81,10 @@ impl<B: Bus> Spc700<B> {
         bus.add_io_cycles(1);
     }
 
+    pub fn bvc(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        do_branch(cpu, bus, !cpu.status.overflow());
+    }
+
     pub fn call(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         bus.add_io_cycles(3);
         let new_pc = cpu.decode_addressing_mode(bus, mode).offset;
@@ -107,6 +111,26 @@ impl<B: Bus> Spc700<B> {
         // Dummy read
         let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
         cpu.status.set_direct_page(false);
+    }
+
+    pub fn cmpw(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        let mut page = cpu.decode_addressing_mode(bus, mode).offset;
+        let offset = page.low_byte().wrapping_add(1);
+
+        let low_byte_addr = Address::new(page, 0);
+        page.set_low_byte(offset);
+        let high_byte_addr = Address::new(page, 0);
+
+        let low_byte = bus.read_and_tick(low_byte_addr);
+        let high_byte = bus.read_and_tick(high_byte_addr);
+
+        let a = u16::from_le_bytes([cpu.accumulator, cpu.index_y]);
+        let b = u16::from_le_bytes([low_byte, high_byte]);
+
+        let result = a.wrapping_sub(b);
+        cpu.status.set_carry(a >= b);
+        cpu.status.set_negative(result >> 15 != 0);
+        cpu.status.set_zero(result == 0);
     }
 
     pub fn cmp_reg<const REG: Source>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
