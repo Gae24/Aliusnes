@@ -107,6 +107,12 @@ impl<B: Bus> Spc700<B> {
         });
     }
 
+    pub fn clrc(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        // Dummy read
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        cpu.status.set_carry(false);
+    }
+
     pub fn clrp(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         // Dummy read
         let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
@@ -217,6 +223,8 @@ impl<B: Bus> Spc700<B> {
         // Dummy read
         let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
     }
+
+    pub fn mov(_cpu: &mut Cpu, _bus: &mut B, _mode: AddressingMode) {}
 
     pub fn nop(_cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         bus.add_io_cycles(1);
