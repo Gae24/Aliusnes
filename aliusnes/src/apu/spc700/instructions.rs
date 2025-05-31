@@ -151,6 +151,21 @@ impl<B: Bus> Spc700<B> {
         do_compare(cpu, a, b);
     }
 
+    pub fn dbnz<const REG: bool>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        if REG {
+            cpu.index_y = cpu.index_y.wrapping_sub(1);
+            do_branch(cpu, bus, cpu.index_y != 0);
+        } else {
+            let addr = cpu.decode_addressing_mode(bus, mode);
+            let operand = bus.read_and_tick(addr);
+
+            let res = operand.wrapping_sub(1);
+
+            bus.write_and_tick(addr, res);
+            do_branch(cpu, bus, res != 0);
+        }
+    }
+
     pub fn decw(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         cpu.do_rmw_word(bus, &mode, |cpu, operand| {
             let res = operand.wrapping_sub(1);
@@ -276,6 +291,15 @@ impl<B: Bus> Spc700<B> {
         bus.add_io_cycles(1);
     }
 
+    pub fn ret(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        // Dummy read
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        bus.add_io_cycles(1);
+
+        let new_pc = u16::from_le_bytes([cpu.do_pop(bus), cpu.do_pop(bus)]);
+        cpu.program_counter = new_pc;
+    }
+
     pub fn rol(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         cpu.do_rmw(bus, &mode, |cpu, operand| {
             let res = (operand << 1) | u8::from(cpu.status.carry());
@@ -296,6 +320,17 @@ impl<B: Bus> Spc700<B> {
 
         // Dummy read
         let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+    }
+
+    pub fn ror(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        cpu.do_rmw(bus, &mode, |cpu, operand| {
+            let res = (operand >> 1) | (u8::from(cpu.status.carry()) << 7);
+            cpu.status.set_carry(operand & 1 != 0);
+            cpu.status.set_negative(res >> 7 != 0);
+            cpu.status.set_zero(res == 0);
+
+            res
+        });
     }
 
     pub fn set1<const BIT: u8>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
