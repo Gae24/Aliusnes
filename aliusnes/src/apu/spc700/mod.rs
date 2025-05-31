@@ -40,7 +40,7 @@ impl<B: Bus> OpCode<B> {
 
 pub struct Spc700<B: Bus> {
     pub cpu: cpu::Cpu,
-    instruction_set: [OpCode<B>; 107],
+    instruction_set: [OpCode<B>; 112],
 }
 
 impl<B: Bus> Spc700<B> {
@@ -61,7 +61,7 @@ impl<B: Bus> Spc700<B> {
 }
 
 #[rustfmt::skip]
-const fn opcode_table<B: Bus>() -> [OpCode<B>; 107] {
+const fn opcode_table<B: Bus>() -> [OpCode<B>; 112] {
     use addressing::{AddressingMode::*, Source::*};
     [
         OpCode::new(Meta::new(0x00, "NOP", Implied), Spc700::nop),
@@ -171,5 +171,10 @@ const fn opcode_table<B: Bus>() -> [OpCode<B>; 107] {
         OpCode::new(Meta::new(0x68, "CMP", Immediate), Spc700::cmp_reg::<{ A }>),
         OpCode::new(Meta::new(0x69, "CMP", Implied), Spc700::cmp_reg::<{ A }>),
         OpCode::new(Meta::new(0x6A, "AND1", AbsoluteBooleanBit), Spc700::and1::<true>),
+        OpCode::new(Meta::new(0x6B, "ROR", DirectPage), Spc700::ror),
+        OpCode::new(Meta::new(0x6C, "ROR", Absolute), Spc700::ror),
+        OpCode::new(Meta::new(0x6D, "PUSH", Implied), Spc700::push::<{ Y }>),
+        OpCode::new(Meta::new(0x6E, "DBNZ", DirectPage), Spc700::dbnz::<false>),
+        OpCode::new(Meta::new(0x6F, "RET", Implied), Spc700::ret),
     ]
 }

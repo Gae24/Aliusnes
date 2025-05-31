@@ -44,6 +44,12 @@ impl Cpu {
         ])
     }
 
+    pub fn do_pop<B: Bus>(&mut self, bus: &mut B) -> u8 {
+        self.stack_pointer = self.stack_pointer.wrapping_add(1);
+        let stack_addr = u16::from_le_bytes([self.stack_pointer, 0x01]);
+        bus.read_and_tick(Address::new(stack_addr, 0))
+    }
+
     pub fn do_push<B: Bus>(&mut self, bus: &mut B, data: u8) {
         let stack_addr = u16::from_le_bytes([self.stack_pointer, 0x01]);
         bus.write_and_tick(Address::new(stack_addr, 0), data);
