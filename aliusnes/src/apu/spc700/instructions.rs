@@ -274,8 +274,9 @@ impl<B: Bus> Spc700<B> {
 
     pub fn mov(_cpu: &mut Cpu, _bus: &mut B, _mode: AddressingMode) {}
 
-    pub fn nop(_cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
-        bus.add_io_cycles(1);
+    pub fn nop(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        // Dummy read
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
     }
 
     pub fn or<const DEST: AddressingMode>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
@@ -400,7 +401,17 @@ impl<B: Bus> Spc700<B> {
         cpu.status.set_direct_page(true);
     }
 
-    pub fn tcall<const INDEX: u8>(_cpu: &mut Cpu, _bus: &mut B, _mode: AddressingMode) {}
+    pub fn tcall<const INDEX: u8>(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        // Dummy read
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        bus.add_io_cycles(2);
+
+        cpu.do_push(bus, cpu.program_counter.high_byte());
+        cpu.do_push(bus, cpu.program_counter.low_byte());
+
+        let vector_addr = 0xFFDE - 2 * INDEX as u16;
+        cpu.program_counter = cpu.read_16(bus, vector_addr);
+    }
 
     pub fn tclr1(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let addr = cpu.decode_addressing_mode(bus, mode);
