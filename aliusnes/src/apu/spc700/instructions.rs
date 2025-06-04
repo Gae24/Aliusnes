@@ -1,7 +1,7 @@
 use crate::{
     apu::spc700::{
         addressing::{AddressingMode, Source},
-        cpu::Cpu,
+        cpu::{Cpu, Status},
         functions::{do_branch, do_compare},
         Spc700,
     },
@@ -11,6 +11,35 @@ use crate::{
 };
 
 impl<B: Bus> Spc700<B> {
+    pub fn addw(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        let mut page = cpu.decode_addressing_mode(bus, mode).offset;
+        let offset = page.low_byte().wrapping_add(1);
+
+        let low_byte_addr = Address::new(page, 0);
+        page.set_low_byte(offset);
+        let high_byte_addr = Address::new(page, 0);
+
+        let low_byte = bus.read_and_tick(low_byte_addr);
+        let high_byte = bus.read_and_tick(high_byte_addr);
+
+        let a = u32::from(cpu.ya());
+        let b = u32::from_le_bytes([low_byte, high_byte, 0, 0]);
+        let result = a + b;
+
+        let is_overflow = !(a ^ b) & (a ^ result) & 0x8000 != 0;
+        let is_half_carry = ((a & 0xFFF) + (b & 0xFFF)) >> 12 != 0;
+        cpu.status.set_carry(result >> 16 != 0);
+        cpu.status.set_overflow(is_overflow);
+        cpu.status.set_half_carry(is_half_carry);
+
+        let result = result as u16;
+        cpu.status.set_negative(result >> 15 != 0);
+        cpu.status.set_zero(result == 0);
+        cpu.set_ya(result);
+
+        bus.add_io_cycles(1);
+    }
+
     pub fn and1<const INVERSE: bool>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let operand = (cpu.operand(bus, mode) != 0) ^ INVERSE;
         cpu.status.set_carry(cpu.status.carry() & operand);
@@ -85,6 +114,10 @@ impl<B: Bus> Spc700<B> {
         do_branch(cpu, bus, !cpu.status.overflow());
     }
 
+    pub fn bvs(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        do_branch(cpu, bus, cpu.status.overflow());
+    }
+
     pub fn call(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         bus.add_io_cycles(3);
         let new_pc = cpu.decode_addressing_mode(bus, mode).offset;
@@ -130,7 +163,7 @@ impl<B: Bus> Spc700<B> {
         let low_byte = bus.read_and_tick(low_byte_addr);
         let high_byte = bus.read_and_tick(high_byte_addr);
 
-        let a = u16::from_le_bytes([cpu.accumulator, cpu.index_y]);
+        let a = cpu.ya();
         let b = u16::from_le_bytes([low_byte, high_byte]);
 
         let result = a.wrapping_sub(b);
@@ -300,6 +333,16 @@ impl<B: Bus> Spc700<B> {
         cpu.program_counter = new_pc;
     }
 
+    pub fn reti(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        // Dummy read
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        bus.add_io_cycles(1);
+
+        cpu.status = Status(cpu.do_pop(bus));
+        let new_pc = u16::from_le_bytes([cpu.do_pop(bus), cpu.do_pop(bus)]);
+        cpu.program_counter = new_pc;
+    }
+
     pub fn rol(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         cpu.do_rmw(bus, &mode, |cpu, operand| {
             let res = (operand << 1) | u8::from(cpu.status.carry());
@@ -331,6 +374,17 @@ impl<B: Bus> Spc700<B> {
 
             res
         });
+    }
+
+    pub fn ror_a(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        let carry_bit = u8::from(cpu.status.carry()) << 7;
+        cpu.status.set_carry(cpu.accumulator & 1 != 0);
+        cpu.accumulator = (cpu.accumulator >> 1) | carry_bit;
+        cpu.status.set_negative(cpu.accumulator >> 7 != 0);
+        cpu.status.set_zero(cpu.accumulator == 0);
+
+        // Dummy read
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
     }
 
     pub fn set1<const BIT: u8>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {

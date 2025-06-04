@@ -40,7 +40,7 @@ impl<B: Bus> OpCode<B> {
 
 pub struct Spc700<B: Bus> {
     pub cpu: cpu::Cpu,
-    instruction_set: [OpCode<B>; 112],
+    instruction_set: [OpCode<B>; 128],
 }
 
 impl<B: Bus> Spc700<B> {
@@ -61,7 +61,7 @@ impl<B: Bus> Spc700<B> {
 }
 
 #[rustfmt::skip]
-const fn opcode_table<B: Bus>() -> [OpCode<B>; 112] {
+const fn opcode_table<B: Bus>() -> [OpCode<B>; 128] {
     use addressing::{AddressingMode::*, Source::*};
     [
         OpCode::new(Meta::new(0x00, "NOP", Implied), Spc700::nop),
@@ -176,5 +176,21 @@ const fn opcode_table<B: Bus>() -> [OpCode<B>; 112] {
         OpCode::new(Meta::new(0x6D, "PUSH", Implied), Spc700::push::<{ Y }>),
         OpCode::new(Meta::new(0x6E, "DBNZ", DirectPage), Spc700::dbnz::<false>),
         OpCode::new(Meta::new(0x6F, "RET", Implied), Spc700::ret),
+        OpCode::new(Meta::new(0x70, "BVS", Implied), Spc700::bvs),
+        OpCode::new(Meta::new(0x71, "TCALL", Implied), Spc700::tcall::<6>),
+        OpCode::new(Meta::new(0x72, "CLR1", DirectPage), Spc700::clr1::<3>),
+        OpCode::new(Meta::new(0x73, "BBC", DirectPage), Spc700::bbc::<3>),
+        OpCode::new(Meta::new(0x74, "CMP", DirectX), Spc700::cmp_reg::<{ A }>),
+        OpCode::new(Meta::new(0x75, "CMP", AbsoluteX), Spc700::cmp_reg::<{ A }>),
+        OpCode::new(Meta::new(0x76, "CMP", AbsoluteY), Spc700::cmp_reg::<{ A }>),
+        OpCode::new(Meta::new(0x77, "CMP", DirectPageIndirectY), Spc700::cmp_reg::<{ A }>),
+        OpCode::new(Meta::new(0x78, "CMP", Implied), Spc700::cmp_reg::<{ A }>),
+        OpCode::new(Meta::new(0x79, "CMP", Implied), Spc700::cmp_reg::<{ A }>),
+        OpCode::new(Meta::new(0x7A, "ADDW", DirectPage), Spc700::addw),
+        OpCode::new(Meta::new(0x7B, "ROR", DirectX), Spc700::ror),
+        OpCode::new(Meta::new(0x7C, "ROR", Implied), Spc700::ror_a),
+        OpCode::new(Meta::new(0x7D, "MOV", Implied), Spc700::mov),
+        OpCode::new(Meta::new(0x7E, "CMP", DirectPage), Spc700::cmp_reg::<{ Y }>),
+        OpCode::new(Meta::new(0x7F, "RETI", Implied), Spc700::reti),
     ]
 }

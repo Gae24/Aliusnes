@@ -36,6 +36,15 @@ impl Cpu {
         }
     }
 
+    pub fn ya(&self) -> u16 {
+        u16::from_le_bytes([self.accumulator, self.index_y])
+    }
+
+    pub fn set_ya(&mut self, value: u16) {
+        self.accumulator = value.low_byte();
+        self.index_y = value.high_byte();
+    }
+
     pub fn read_16<B: Bus>(&mut self, bus: &mut B, addr: u16) -> u16 {
         let addr = Address::new(addr, 0);
         u16::from_le_bytes([
