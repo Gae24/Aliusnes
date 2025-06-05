@@ -11,19 +11,11 @@ use crate::{
 };
 
 impl<B: Bus> Spc700<B> {
-    pub fn addw(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        let mut page = cpu.decode_addressing_mode(bus, mode).offset;
-        let offset = page.low_byte().wrapping_add(1);
-
-        let low_byte_addr = Address::new(page, 0);
-        page.set_low_byte(offset);
-        let high_byte_addr = Address::new(page, 0);
-
-        let low_byte = bus.read_and_tick(low_byte_addr);
-        let high_byte = bus.read_and_tick(high_byte_addr);
-
+    pub fn addw(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         let a = u32::from(cpu.ya());
-        let b = u32::from_le_bytes([low_byte, high_byte, 0, 0]);
+
+        let offset = cpu.get_imm(bus);
+        let b = u32::from(cpu.word_from_direct_page(bus, offset));
         let result = a + b;
 
         let is_overflow = !(a ^ b) & (a ^ result) & 0x8000 != 0;
@@ -152,19 +144,10 @@ impl<B: Bus> Spc700<B> {
         cpu.status.set_direct_page(false);
     }
 
-    pub fn cmpw(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        let mut page = cpu.decode_addressing_mode(bus, mode).offset;
-        let offset = page.low_byte().wrapping_add(1);
-
-        let low_byte_addr = Address::new(page, 0);
-        page.set_low_byte(offset);
-        let high_byte_addr = Address::new(page, 0);
-
-        let low_byte = bus.read_and_tick(low_byte_addr);
-        let high_byte = bus.read_and_tick(high_byte_addr);
-
+    pub fn cmpw(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         let a = cpu.ya();
-        let b = u16::from_le_bytes([low_byte, high_byte]);
+        let offset = cpu.get_imm(bus);
+        let b = cpu.word_from_direct_page(bus, offset);
 
         let result = a.wrapping_sub(b);
         cpu.status.set_carry(a >= b);
@@ -199,8 +182,8 @@ impl<B: Bus> Spc700<B> {
         }
     }
 
-    pub fn decw(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        cpu.do_rmw_word(bus, &mode, |cpu, operand| {
+    pub fn decw(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        cpu.do_rmw_word(bus, |cpu, operand| {
             let res = operand.wrapping_sub(1);
             cpu.status.set_negative(res >> 15 != 0);
             cpu.status.set_zero(res == 0);
@@ -224,8 +207,8 @@ impl<B: Bus> Spc700<B> {
         cpu.status.set_zero(cpu.accumulator == 0);
     }
 
-    pub fn incw(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        cpu.do_rmw_word(bus, &mode, |cpu, operand| {
+    pub fn incw(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        cpu.do_rmw_word(bus, |cpu, operand| {
             let res = operand.wrapping_add(1);
             cpu.status.set_negative(res >> 15 != 0);
             cpu.status.set_zero(res == 0);
