@@ -67,6 +67,24 @@ impl Cpu {
         ])
     }
 
+    pub fn do_test_bit<B: Bus>(&mut self, bus: &mut B, mode: AddressingMode, clear: bool) {
+        let addr = self.decode_addressing_mode(bus, mode);
+        let operand = bus.read_and_tick(addr);
+        let nz_value = self.accumulator.wrapping_sub(operand);
+        self.status.set_negative(nz_value >> 7 != 0);
+        self.status.set_zero(nz_value == 0);
+
+        let value = if clear {
+            !self.accumulator & operand
+        } else {
+            self.accumulator | operand
+        };
+
+        // Dummy read
+        let _ = bus.read_and_tick(addr);
+        bus.write_and_tick(addr, value);
+    }
+
     pub fn do_pop<B: Bus>(&mut self, bus: &mut B) -> u8 {
         self.stack_pointer = self.stack_pointer.wrapping_add(1);
         let stack_addr = u16::from_le_bytes([self.stack_pointer, 0x01]);
