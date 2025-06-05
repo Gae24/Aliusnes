@@ -49,6 +49,11 @@ impl Cpu {
         self.index_y = value.high_byte();
     }
 
+    pub fn set_nz(&mut self, value: u8) {
+        self.status.set_negative(value >> 7 != 0);
+        self.status.set_zero(value == 0);
+    }
+
     pub fn read_16<B: Bus>(&mut self, bus: &mut B, addr: u16) -> u16 {
         let addr = Address::new(addr, 0);
         u16::from_le_bytes([
@@ -68,11 +73,9 @@ impl Cpu {
     }
 
     pub fn do_test_bit<B: Bus>(&mut self, bus: &mut B, mode: AddressingMode, clear: bool) {
-        let addr = self.decode_addressing_mode(bus, mode);
+        let addr = Address::new(self.decode_addressing_mode(bus, mode), 0);
         let operand = bus.read_and_tick(addr);
-        let nz_value = self.accumulator.wrapping_sub(operand);
-        self.status.set_negative(nz_value >> 7 != 0);
-        self.status.set_zero(nz_value == 0);
+        self.set_nz(self.accumulator.wrapping_sub(operand));
 
         let value = if clear {
             !self.accumulator & operand
@@ -100,10 +103,10 @@ impl Cpu {
     pub fn do_rmw<B: Bus>(
         &mut self,
         bus: &mut B,
-        mode: &AddressingMode,
+        mode: AddressingMode,
         f: impl FnOnce(&mut Cpu, u8) -> u8,
     ) {
-        let addr = self.decode_addressing_mode(bus, *mode);
+        let addr = Address::new(self.decode_addressing_mode(bus, mode), 0);
         let data = bus.read_and_tick(addr);
         let result = f(self, data);
         bus.write_and_tick(addr, result);
