@@ -36,6 +36,10 @@ impl Cpu {
         }
     }
 
+    pub fn direct_page(&self) -> u8 {
+        self.status.direct_page().into()
+    }
+
     pub fn ya(&self) -> u16 {
         u16::from_le_bytes([self.accumulator, self.index_y])
     }
@@ -50,6 +54,16 @@ impl Cpu {
         u16::from_le_bytes([
             bus.read_and_tick(addr),
             bus.read_and_tick(addr.wrapping_add(1)),
+        ])
+    }
+
+    pub fn word_from_direct_page<B: Bus>(&mut self, bus: &mut B, offset: u8) -> u16 {
+        let low_byte_addr = u16::from_le_bytes([offset, self.direct_page()]);
+        let high_byte_addr = u16::from_le_bytes([offset.wrapping_add(1), self.direct_page()]);
+
+        u16::from_le_bytes([
+            bus.read_and_tick(Address::new(low_byte_addr, 0)),
+            bus.read_and_tick(Address::new(high_byte_addr, 0)),
         ])
     }
 
@@ -77,18 +91,13 @@ impl Cpu {
         bus.write_and_tick(addr, result);
     }
 
-    pub fn do_rmw_word<B: Bus>(
-        &mut self,
-        bus: &mut B,
-        mode: &AddressingMode,
-        f: impl FnOnce(&mut Cpu, u16) -> u16,
-    ) {
-        let mut page = self.decode_addressing_mode(bus, *mode).offset;
-        let offset = page.low_byte().wrapping_add(1);
+    pub fn do_rmw_word<B: Bus>(&mut self, bus: &mut B, f: impl FnOnce(&mut Cpu, u16) -> u16) {
+        let offset = self.get_imm(bus);
+        let low_byte_page = u16::from_le_bytes([offset, self.direct_page()]);
+        let high_byte_page = u16::from_le_bytes([offset.wrapping_add(1), self.direct_page()]);
 
-        let low_byte_addr = Address::new(page, 0);
-        page.set_low_byte(offset);
-        let high_byte_addr = Address::new(page, 0);
+        let low_byte_addr = Address::new(low_byte_page, 0);
+        let high_byte_addr = Address::new(high_byte_page, 0);
 
         let low_byte = bus.read_and_tick(low_byte_addr);
         let high_byte = bus.read_and_tick(high_byte_addr);

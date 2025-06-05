@@ -1,26 +1,34 @@
-use crate::{
-    apu::spc700::Cpu, bus::Bus, utils::int_traits::ManipulateU16, w65c816::addressing::Address,
-};
+use crate::{apu::spc700::Cpu, bus::Bus, w65c816::addressing::Address};
 use std::marker::ConstParamTy;
 
 #[derive(ConstParamTy, PartialEq, Eq, Clone, Copy)]
 pub enum AddressingMode {
     Implied,
+    /// #imm
     Immediate,
+    /// dp
     DirectPage,
+    /// !abs
     Absolute,
+    /// !abs+X
     AbsoluteX,
+    /// !abs+Y
     AbsoluteY,
+    /// mem.bit
     AbsoluteBooleanBit,
+    /// dp+X
     DirectX,
+    /// dp+Y
     DirectY,
     DirectXPostIncrement,
-    DirectYPostIncrement,
+    /// (X)
     IndirectX,
+    /// (Y)
     IndirectY,
+    /// [dp]+Y
     DirectPageIndirectY,
+    /// [dp+X]
     XIndirect,
-    YIndirect,
 }
 
 #[derive(ConstParamTy, PartialEq, Eq)]
@@ -38,19 +46,12 @@ impl Cpu {
         bus.read_and_tick(addr)
     }
 
-    fn direct_page<B: Bus>(&mut self, bus: &mut B) -> u16 {
-        let base_addr: u16 = if self.status.direct_page() {
-            0x0100
-        } else {
-            0x0000
-        };
-
-        base_addr.wrapping_add(u16::from(self.get_imm(bus)))
-    }
-
     pub fn decode_addressing_mode<B: Bus>(&mut self, bus: &mut B, mode: AddressingMode) -> Address {
         match mode {
-            AddressingMode::DirectPage => Address::new(self.direct_page(bus), 0),
+            AddressingMode::DirectPage => Address::new(
+                u16::from_le_bytes([self.get_imm(bus), self.direct_page()]),
+                0,
+            ),
             AddressingMode::Absolute => Address::new(
                 u16::from_le_bytes([self.get_imm(bus), self.get_imm(bus)]),
                 0,
@@ -59,31 +60,21 @@ impl Cpu {
                 // An extra discarded read is performed in indirect addressing
                 let _ = bus.read_and_tick(Address::new(self.program_counter, 0));
 
-                Address::new(
-                    u16::from_le_bytes([self.index_x, self.status.direct_page().into()]),
-                    0,
-                )
+                Address::new(u16::from_le_bytes([self.index_x, self.direct_page()]), 0)
             }
-            AddressingMode::IndirectY => Address::new(
-                u16::from_le_bytes([self.index_y, self.status.direct_page().into()]),
-                0,
-            ),
+            AddressingMode::IndirectY => {
+                Address::new(u16::from_le_bytes([self.index_y, self.direct_page()]), 0)
+            }
             AddressingMode::XIndirect => {
                 bus.add_io_cycles(1);
-                let mut page = self.direct_page(bus);
-                let offset = page.low_byte().wrapping_add(self.index_x);
-                page.set_low_byte(offset);
-
-                let high_byte = bus.read_and_tick(Address::new(page, 0));
-                page.set_low_byte(offset.wrapping_add(1));
-                let low_byte = bus.read_and_tick(Address::new(page, 0));
-                Address::new(u16::from_le_bytes([high_byte, low_byte]), 0)
+                let offset = self.get_imm(bus).wrapping_add(self.index_x);
+                let page = self.word_from_direct_page(bus, offset);
+                Address::new(page, 0)
             }
             AddressingMode::DirectX => {
                 bus.add_io_cycles(1);
-                let mut page = self.direct_page(bus);
-                let offset = page.low_byte().wrapping_add(self.index_x);
-                page.set_low_byte(offset);
+                let offset = self.get_imm(bus).wrapping_add(self.index_x);
+                let page = u16::from_le_bytes([offset, self.direct_page()]);
 
                 Address::new(page, 0)
             }
@@ -99,16 +90,16 @@ impl Cpu {
             }
             AddressingMode::DirectPageIndirectY => {
                 bus.add_io_cycles(1);
-                let mut indirect_addr = self.direct_page(bus);
 
-                let high_byte = bus.read_and_tick(Address::new(indirect_addr, 0));
-                indirect_addr.set_low_byte(indirect_addr.low_byte().wrapping_add(1));
-                let low_byte = bus.read_and_tick(Address::new(indirect_addr, 0));
-
-                let addr = u16::from_le_bytes([high_byte, low_byte]);
-                Address::new(addr.wrapping_add(self.index_y.into()), 0)
+                let offset = self.get_imm(bus);
+                let page = self.word_from_direct_page(bus, offset);
+                Address::new(page.wrapping_add(self.index_y.into()), 0)
             }
-            _ => todo!(),
+            AddressingMode::Implied => todo!(),
+            AddressingMode::Immediate => todo!(),
+            AddressingMode::AbsoluteBooleanBit => todo!(),
+            AddressingMode::DirectY => todo!(),
+            AddressingMode::DirectXPostIncrement => todo!(),
         }
     }
 
