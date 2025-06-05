@@ -57,7 +57,7 @@ impl<B: Bus> Spc700<B> {
 
     pub fn asl_a(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         cpu.status.set_carry(cpu.accumulator >> 7 != 0);
-        cpu.accumulator = cpu.accumulator << 1;
+        cpu.accumulator <<= 1;
         cpu.status.set_negative(cpu.accumulator >> 7 != 0);
         cpu.status.set_zero(cpu.accumulator == 0);
 
@@ -82,7 +82,7 @@ impl<B: Bus> Spc700<B> {
     }
 
     pub fn bpl(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
-        do_branch(cpu, bus, cpu.status.negative() == false);
+        do_branch(cpu, bus, !cpu.status.negative());
     }
 
     pub fn bra(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
@@ -247,7 +247,7 @@ impl<B: Bus> Spc700<B> {
 
     pub fn lsr_a(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         cpu.status.set_carry(cpu.accumulator & 1 != 0);
-        cpu.accumulator = cpu.accumulator >> 1;
+        cpu.accumulator >>= 1;
         cpu.status.set_negative(cpu.accumulator >> 7 != 0);
         cpu.status.set_zero(cpu.accumulator == 0);
 
@@ -397,26 +397,10 @@ impl<B: Bus> Spc700<B> {
     }
 
     pub fn tclr1(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        let addr = cpu.decode_addressing_mode(bus, mode);
-        let operand = bus.read_and_tick(addr);
-        let nz_value = cpu.accumulator.wrapping_sub(operand);
-        cpu.status.set_negative(nz_value >> 7 != 0);
-        cpu.status.set_zero(nz_value == 0);
-
-        // Dummy read
-        let _ = bus.read_and_tick(addr);
-        bus.write_and_tick(addr, !cpu.accumulator & operand);
+        cpu.do_test_bit(bus, mode, true);
     }
 
     pub fn tset1(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        let addr = cpu.decode_addressing_mode(bus, mode);
-        let operand = bus.read_and_tick(addr);
-        let nz_value = cpu.accumulator.wrapping_sub(operand);
-        cpu.status.set_negative(nz_value >> 7 != 0);
-        cpu.status.set_zero(nz_value == 0);
-
-        // Dummy read
-        let _ = bus.read_and_tick(addr);
-        bus.write_and_tick(addr, cpu.accumulator | operand);
+        cpu.do_test_bit(bus, mode, false);
     }
 }
