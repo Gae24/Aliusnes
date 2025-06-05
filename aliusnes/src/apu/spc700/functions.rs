@@ -11,6 +11,5 @@ pub(super) fn do_branch<B: Bus>(cpu: &mut Cpu, bus: &mut B, cond: bool) {
 pub(super) fn do_compare(cpu: &mut Cpu, a: u8, b: u8) {
     let result = a.wrapping_sub(b);
     cpu.status.set_carry(a >= b);
-    cpu.status.set_negative(result >> 7 != 0);
-    cpu.status.set_zero(result == 0);
+    cpu.set_nz(result);
 }

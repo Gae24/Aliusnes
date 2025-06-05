@@ -46,58 +46,51 @@ impl Cpu {
         bus.read_and_tick(addr)
     }
 
-    pub fn decode_addressing_mode<B: Bus>(&mut self, bus: &mut B, mode: AddressingMode) -> Address {
+    pub fn abs<B: Bus>(&mut self, bus: &mut B) -> u16 {
+        u16::from_le_bytes([self.get_imm(bus), self.get_imm(bus)])
+    }
+
+    pub fn decode_addressing_mode<B: Bus>(&mut self, bus: &mut B, mode: AddressingMode) -> u16 {
         match mode {
-            AddressingMode::DirectPage => Address::new(
-                u16::from_le_bytes([self.get_imm(bus), self.direct_page()]),
-                0,
-            ),
-            AddressingMode::Absolute => Address::new(
-                u16::from_le_bytes([self.get_imm(bus), self.get_imm(bus)]),
-                0,
-            ),
+            AddressingMode::DirectPage => {
+                u16::from_le_bytes([self.get_imm(bus), self.direct_page()])
+            }
+            AddressingMode::Absolute => self.abs(bus),
             AddressingMode::IndirectX => {
                 // An extra discarded read is performed in indirect addressing
                 let _ = bus.read_and_tick(Address::new(self.program_counter, 0));
 
-                Address::new(u16::from_le_bytes([self.index_x, self.direct_page()]), 0)
+                u16::from_le_bytes([self.index_x, self.direct_page()])
             }
-            AddressingMode::IndirectY => {
-                Address::new(u16::from_le_bytes([self.index_y, self.direct_page()]), 0)
-            }
+            AddressingMode::IndirectY => u16::from_le_bytes([self.index_y, self.direct_page()]),
             AddressingMode::XIndirect => {
                 bus.add_io_cycles(1);
                 let offset = self.get_imm(bus).wrapping_add(self.index_x);
-                let page = self.word_from_direct_page(bus, offset);
-                Address::new(page, 0)
+                self.word_from_direct_page(bus, offset)
             }
             AddressingMode::DirectX => {
                 bus.add_io_cycles(1);
                 let offset = self.get_imm(bus).wrapping_add(self.index_x);
-                let page = u16::from_le_bytes([offset, self.direct_page()]);
-
-                Address::new(page, 0)
+                u16::from_le_bytes([offset, self.direct_page()])
             }
             AddressingMode::AbsoluteX => {
-                let absolute = u16::from_le_bytes([self.get_imm(bus), self.get_imm(bus)]);
                 bus.add_io_cycles(1);
-                Address::new(absolute.wrapping_add(self.index_x.into()), 0)
+                self.abs(bus).wrapping_add(self.index_x.into())
             }
             AddressingMode::AbsoluteY => {
-                let absolute = u16::from_le_bytes([self.get_imm(bus), self.get_imm(bus)]);
                 bus.add_io_cycles(1);
-                Address::new(absolute.wrapping_add(self.index_y.into()), 0)
+                self.abs(bus).wrapping_add(self.index_y.into())
             }
             AddressingMode::DirectPageIndirectY => {
                 bus.add_io_cycles(1);
 
                 let offset = self.get_imm(bus);
                 let page = self.word_from_direct_page(bus, offset);
-                Address::new(page.wrapping_add(self.index_y.into()), 0)
+                page.wrapping_add(self.index_y.into())
             }
-            AddressingMode::Implied => todo!(),
-            AddressingMode::Immediate => todo!(),
-            AddressingMode::AbsoluteBooleanBit => todo!(),
+            AddressingMode::Implied => unreachable!(),
+            AddressingMode::Immediate => unreachable!(),
+            AddressingMode::AbsoluteBooleanBit => unreachable!(),
             AddressingMode::DirectY => todo!(),
             AddressingMode::DirectXPostIncrement => todo!(),
         }
@@ -113,8 +106,8 @@ impl Cpu {
                 val & 1 << (addr_bit >> 13)
             }
             _ => {
-                let addr = self.decode_addressing_mode(bus, mode);
-                bus.read_and_tick(addr)
+                let page = self.decode_addressing_mode(bus, mode);
+                bus.read_and_tick(Address::new(page, 0))
             }
         }
     }
