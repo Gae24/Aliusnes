@@ -67,6 +67,7 @@ impl Cpu {
             AddressingMode::Accumulator => self.accumulator = data,
             AddressingMode::X => self.index_x = data,
             AddressingMode::Y => self.index_y = data,
+            AddressingMode::Sp => self.stack_pointer = data,
             AddressingMode::Psw => self.status = Status(data),
             _ => {
                 let page = self.decode_addressing_mode(bus, mode);
@@ -86,15 +87,13 @@ impl Cpu {
     }
 
     pub fn do_adc(&mut self, a: u8, b: u8) -> u8 {
-        let src = a as u16;
-        let operand = b as u16;
-        let result = src + operand + u16::from(self.status.carry());
-        let is_overflow = !(src ^ operand) & (src ^ result) & 0x80 != 0;
+        let result = u16::from(a) + u16::from(b) + u16::from(self.status.carry());
         self.status.set_carry(result >> 8 != 0);
-        self.status.set_overflow(is_overflow);
 
         let result = result as u8;
         self.status.set_half_carry((a ^ b ^ result) & 0x10 != 0);
+        self.status
+            .set_overflow(!(a ^ b) & (a ^ result) & 0x80 != 0);
         self.set_nz(result);
 
         result

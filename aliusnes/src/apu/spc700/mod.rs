@@ -39,7 +39,7 @@ impl<B: Bus> OpCode<B> {
 
 pub struct Spc700<B: Bus> {
     pub cpu: cpu::Cpu,
-    instruction_set: [OpCode<B>; 154],
+    instruction_set: [OpCode<B>; 160],
 }
 
 impl<B: Bus> Spc700<B> {
@@ -60,7 +60,7 @@ impl<B: Bus> Spc700<B> {
 }
 
 #[rustfmt::skip]
-const fn opcode_table<B: Bus>() -> [OpCode<B>; 154] {
+const fn opcode_table<B: Bus>() -> [OpCode<B>; 160] {
     use addressing::AddressingMode::*;
     [
         OpCode::new(Meta::new(0x00, "NOP", Implied), Spc700::nop),
@@ -217,5 +217,11 @@ const fn opcode_table<B: Bus>() -> [OpCode<B>; 154] {
         OpCode::new(Meta::new(0x97, "ADC", DirectPageIndirectY), Spc700::adc::<{ Accumulator }>),
         OpCode::new(Meta::new(0x98, "ADC", Immediate), Spc700::adc::<{ DirectPage }>),
         OpCode::new(Meta::new(0x99, "ADC", IndirectY), Spc700::adc::<{ IndirectX }>),
+        OpCode::new(Meta::new(0x9A, "SUBW", DirectPage), Spc700::subw),
+        OpCode::new(Meta::new(0x9B, "DEC", DirectX), Spc700::dec),
+        OpCode::new(Meta::new(0x9C, "DEC", Accumulator), Spc700::dec),
+        OpCode::new(Meta::new(0x9D, "MOV", Sp), Spc700::mov::<{ X }>),
+        OpCode::new(Meta::new(0x9E, "DIV", Implied), Spc700::div),
+        OpCode::new(Meta::new(0x9F, "XCN", Implied), Spc700::xcn),
     ]
 }
