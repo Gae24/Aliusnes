@@ -10,6 +10,11 @@ use crate::{
 };
 
 impl<B: Bus> Spc700<B> {
+    pub fn adc<const DEST: AddressingMode>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        let b = cpu.operand(bus, mode);
+        cpu.do_rmw::<_, false>(bus, DEST, |cpu, a| cpu.do_adc(a, b));
+    }
+
     pub fn addw(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         let a = u32::from(cpu.ya());
 
@@ -188,6 +193,12 @@ impl<B: Bus> Spc700<B> {
         let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
     }
 
+    pub fn eor1(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        let operand = cpu.operand(bus, mode) != 0;
+        cpu.status.set_carry(cpu.status.carry() ^ operand);
+        bus.add_io_cycles(1);
+    }
+
     pub fn eor<const DEST: AddressingMode>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let b = cpu.operand(bus, mode);
         cpu.do_rmw::<_, false>(bus, DEST, |cpu, a| {
@@ -326,6 +337,12 @@ impl<B: Bus> Spc700<B> {
             let mask = 1 << BIT;
             operand | mask
         });
+    }
+
+    pub fn setc(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        // Dummy read
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        cpu.status.set_carry(true);
     }
 
     pub fn setp(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {

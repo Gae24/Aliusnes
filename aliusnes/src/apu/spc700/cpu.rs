@@ -84,6 +84,21 @@ impl Cpu {
         ])
     }
 
+    pub fn do_adc(&mut self, a: u8, b: u8) -> u8 {
+        let src = a as u16;
+        let operand = b as u16;
+        let result = src + operand + u16::from(self.status.carry());
+        let is_overflow = !(src ^ operand) & (src ^ result) & 0x80 != 0;
+        self.status.set_carry(result >> 8 != 0);
+        self.status.set_overflow(is_overflow);
+
+        let result = result as u8;
+        self.status.set_half_carry((a ^ b ^ result) & 0x10 != 0);
+        self.set_nz(result);
+
+        result
+    }
+
     pub fn do_test_bit<B: Bus>(&mut self, bus: &mut B, mode: AddressingMode, clear: bool) {
         let addr = Address::new(self.decode_addressing_mode(bus, mode), 0);
         let operand = bus.read_and_tick(addr);
