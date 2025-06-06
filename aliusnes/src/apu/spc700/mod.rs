@@ -156,7 +156,7 @@ const fn opcode_table<B: Bus>() -> [OpCode<B>; 128] {
         OpCode::new(Meta::new(0x5A, "CMPW", DirectPage), Spc700::cmpw),
         OpCode::new(Meta::new(0x5B, "LSR", DirectX), Spc700::lsr),
         OpCode::new(Meta::new(0x5C, "LSR", Accumulator), Spc700::lsr),
-        OpCode::new(Meta::new(0x5D, "MOV", Implied), Spc700::mov),
+        OpCode::new(Meta::new(0x5D, "MOV", Accumulator), Spc700::mov::<{ X }>),
         OpCode::new(Meta::new(0x5E, "CMP", Absolute), Spc700::cmp::<{ Y }>),
         OpCode::new(Meta::new(0x5F, "JMP", Absolute), Spc700::jmp),
         OpCode::new(Meta::new(0x60, "CLRC", Implied), Spc700::clrc),
@@ -188,7 +188,7 @@ const fn opcode_table<B: Bus>() -> [OpCode<B>; 128] {
         OpCode::new(Meta::new(0x7A, "ADDW", DirectPage), Spc700::addw),
         OpCode::new(Meta::new(0x7B, "ROR", DirectX), Spc700::ror),
         OpCode::new(Meta::new(0x7C, "ROR", Accumulator), Spc700::ror),
-        OpCode::new(Meta::new(0x7D, "MOV", Implied), Spc700::mov),
+        OpCode::new(Meta::new(0x7D, "MOV", X), Spc700::mov::<{ Accumulator }>),
         OpCode::new(Meta::new(0x7E, "CMP", DirectPage), Spc700::cmp::<{ Y }>),
         OpCode::new(Meta::new(0x7F, "RETI", Implied), Spc700::reti),
     ]
