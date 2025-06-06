@@ -39,7 +39,7 @@ impl<B: Bus> OpCode<B> {
 
 pub struct Spc700<B: Bus> {
     pub cpu: cpu::Cpu,
-    instruction_set: [OpCode<B>; 128],
+    instruction_set: [OpCode<B>; 139],
 }
 
 impl<B: Bus> Spc700<B> {
@@ -60,7 +60,7 @@ impl<B: Bus> Spc700<B> {
 }
 
 #[rustfmt::skip]
-const fn opcode_table<B: Bus>() -> [OpCode<B>; 128] {
+const fn opcode_table<B: Bus>() -> [OpCode<B>; 139] {
     use addressing::AddressingMode::*;
     [
         OpCode::new(Meta::new(0x00, "NOP", Implied), Spc700::nop),
@@ -191,5 +191,16 @@ const fn opcode_table<B: Bus>() -> [OpCode<B>; 128] {
         OpCode::new(Meta::new(0x7D, "MOV", X), Spc700::mov::<{ Accumulator }>),
         OpCode::new(Meta::new(0x7E, "CMP", DirectPage), Spc700::cmp::<{ Y }>),
         OpCode::new(Meta::new(0x7F, "RETI", Implied), Spc700::reti),
+        OpCode::new(Meta::new(0x80, "SETC", Implied), Spc700::setc),
+        OpCode::new(Meta::new(0x81, "TCALL", Implied), Spc700::tcall::<8>),
+        OpCode::new(Meta::new(0x82, "SET1", DirectPage), Spc700::set1::<4>),
+        OpCode::new(Meta::new(0x83, "BBS", DirectPage), Spc700::bbs::<4>),
+        OpCode::new(Meta::new(0x84, "ADC", DirectPage), Spc700::adc::<{ Accumulator }>),
+        OpCode::new(Meta::new(0x85, "ADC", Absolute), Spc700::adc::<{ Accumulator }>),
+        OpCode::new(Meta::new(0x86, "ADC", IndirectX), Spc700::adc::<{ Accumulator }>),
+        OpCode::new(Meta::new(0x87, "ADC", XIndirect), Spc700::adc::<{ Accumulator }>),
+        OpCode::new(Meta::new(0x88, "ADC", Immediate), Spc700::adc::<{ Accumulator }>),
+        OpCode::new(Meta::new(0x89, "ADC", DirectPage), Spc700::adc::<{ DirectPage }>),
+        OpCode::new(Meta::new(0x8A, "EOR1", AbsoluteBooleanBit), Spc700::eor1),
     ]
 }
