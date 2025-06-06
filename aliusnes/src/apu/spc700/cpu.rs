@@ -62,6 +62,18 @@ impl Cpu {
         ])
     }
 
+    pub fn write<B: Bus>(&mut self, bus: &mut B, mode: AddressingMode, data: u8) {
+        match mode {
+            AddressingMode::Accumulator => self.accumulator = data,
+            AddressingMode::X => self.index_x = data,
+            AddressingMode::Y => self.index_y = data,
+            _ => {
+                let page = self.decode_addressing_mode(bus, mode);
+                bus.write_and_tick(Address::new(page, 0), data);
+            }
+        }
+    }
+
     pub fn word_from_direct_page<B: Bus>(&mut self, bus: &mut B, offset: u8) -> u16 {
         let low_byte_addr = u16::from_le_bytes([offset, self.direct_page()]);
         let high_byte_addr = u16::from_le_bytes([offset.wrapping_add(1), self.direct_page()]);

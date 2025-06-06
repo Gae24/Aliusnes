@@ -233,7 +233,16 @@ impl<B: Bus> Spc700<B> {
         });
     }
 
-    pub fn mov(_cpu: &mut Cpu, _bus: &mut B, _mode: AddressingMode) {}
+    pub fn mov<const DEST: AddressingMode>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        let operand = cpu.operand(bus, mode);
+        cpu.write(bus, DEST, operand);
+
+        if DEST.is_register_access() {
+            cpu.set_nz(operand);
+            // Dummy read
+            let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        }
+    }
 
     pub fn nop(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         // Dummy read
