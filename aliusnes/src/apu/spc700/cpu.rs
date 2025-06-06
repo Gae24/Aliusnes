@@ -108,12 +108,15 @@ impl Cpu {
         self.stack_pointer = self.stack_pointer.wrapping_sub(1);
     }
 
-    pub fn do_rmw<B: Bus>(
+    pub fn do_rmw<B: Bus, const VOID_READ: bool>(
         &mut self,
         bus: &mut B,
         mode: AddressingMode,
         f: impl FnOnce(&mut Cpu, u8) -> u8,
     ) {
+        if mode.is_register_access() && VOID_READ {
+            let _ = bus.read_and_tick(Address::new(self.program_counter, 0));
+        }
         match mode {
             AddressingMode::Accumulator => self.accumulator = f(self, self.accumulator),
             AddressingMode::X => self.index_x = f(self, self.index_x),

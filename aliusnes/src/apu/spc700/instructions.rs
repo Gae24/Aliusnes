@@ -38,7 +38,7 @@ impl<B: Bus> Spc700<B> {
 
     pub fn and<const DEST: AddressingMode>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let b = cpu.operand(bus, mode);
-        cpu.do_rmw(bus, DEST, |cpu, a| {
+        cpu.do_rmw::<_, false>(bus, DEST, |cpu, a| {
             let res = a & b;
             cpu.set_nz(res);
             res
@@ -46,22 +46,13 @@ impl<B: Bus> Spc700<B> {
     }
 
     pub fn asl(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        cpu.do_rmw(bus, mode, |cpu, operand| {
+        cpu.do_rmw::<_, true>(bus, mode, |cpu, operand| {
             let res = operand << 1;
             cpu.status.set_carry(operand >> 7 != 0);
             cpu.set_nz(res);
 
             res
         });
-    }
-
-    pub fn asl_a(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
-        cpu.status.set_carry(cpu.accumulator >> 7 != 0);
-        cpu.accumulator <<= 1;
-        cpu.set_nz(cpu.accumulator);
-
-        // Dummy read
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
     }
 
     pub fn bbs<const BIT: u8>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
@@ -125,7 +116,7 @@ impl<B: Bus> Spc700<B> {
     }
 
     pub fn clr1<const BIT: u8>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        cpu.do_rmw(bus, mode, |_, operand| {
+        cpu.do_rmw::<_, false>(bus, mode, |_, operand| {
             let mask = 1 << BIT;
             operand & !mask
         });
@@ -171,7 +162,7 @@ impl<B: Bus> Spc700<B> {
             cpu.index_y = cpu.index_y.wrapping_sub(1);
             branch = cpu.index_y != 0;
         } else {
-            cpu.do_rmw(bus, mode, |_, operand| {
+            cpu.do_rmw::<_, false>(bus, mode, |_, operand| {
                 let res = operand.wrapping_sub(1);
                 branch = res != 0;
                 res
@@ -199,7 +190,7 @@ impl<B: Bus> Spc700<B> {
 
     pub fn eor<const DEST: AddressingMode>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let b = cpu.operand(bus, mode);
-        cpu.do_rmw(bus, DEST, |cpu, a| {
+        cpu.do_rmw::<_, false>(bus, DEST, |cpu, a| {
             let res = a ^ b;
             cpu.set_nz(res);
             res
@@ -233,22 +224,13 @@ impl<B: Bus> Spc700<B> {
     }
 
     pub fn lsr(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        cpu.do_rmw(bus, mode, |cpu, operand| {
+        cpu.do_rmw::<_, true>(bus, mode, |cpu, operand| {
             let res = operand >> 1;
             cpu.status.set_carry(operand & 1 != 0);
             cpu.set_nz(res);
 
             res
         });
-    }
-
-    pub fn lsr_a(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
-        cpu.status.set_carry(cpu.accumulator & 1 != 0);
-        cpu.accumulator >>= 1;
-        cpu.set_nz(cpu.accumulator);
-
-        // Dummy read
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
     }
 
     pub fn mov(_cpu: &mut Cpu, _bus: &mut B, _mode: AddressingMode) {}
@@ -260,7 +242,7 @@ impl<B: Bus> Spc700<B> {
 
     pub fn or<const DEST: AddressingMode>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let b = cpu.operand(bus, mode);
-        cpu.do_rmw(bus, DEST, |cpu, a| {
+        cpu.do_rmw::<_, false>(bus, DEST, |cpu, a| {
             let res = a | b;
             cpu.set_nz(res);
             res
@@ -311,7 +293,7 @@ impl<B: Bus> Spc700<B> {
     }
 
     pub fn rol(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        cpu.do_rmw(bus, mode, |cpu, operand| {
+        cpu.do_rmw::<_, true>(bus, mode, |cpu, operand| {
             let res = (operand << 1) | u8::from(cpu.status.carry());
             cpu.status.set_carry(operand >> 7 != 0);
             cpu.set_nz(res);
@@ -320,18 +302,8 @@ impl<B: Bus> Spc700<B> {
         });
     }
 
-    pub fn rol_a(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
-        let carry_bit = u8::from(cpu.status.carry());
-        cpu.status.set_carry(cpu.accumulator >> 7 != 0);
-        cpu.accumulator = (cpu.accumulator << 1) | carry_bit;
-        cpu.set_nz(cpu.accumulator);
-
-        // Dummy read
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
-    }
-
     pub fn ror(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        cpu.do_rmw(bus, mode, |cpu, operand| {
+        cpu.do_rmw::<_, true>(bus, mode, |cpu, operand| {
             let res = (operand >> 1) | (u8::from(cpu.status.carry()) << 7);
             cpu.status.set_carry(operand & 1 != 0);
             cpu.set_nz(res);
@@ -340,18 +312,8 @@ impl<B: Bus> Spc700<B> {
         });
     }
 
-    pub fn ror_a(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
-        let carry_bit = u8::from(cpu.status.carry()) << 7;
-        cpu.status.set_carry(cpu.accumulator & 1 != 0);
-        cpu.accumulator = (cpu.accumulator >> 1) | carry_bit;
-        cpu.set_nz(cpu.accumulator);
-
-        // Dummy read
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
-    }
-
     pub fn set1<const BIT: u8>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        cpu.do_rmw(bus, mode, |_, operand| {
+        cpu.do_rmw::<_, false>(bus, mode, |_, operand| {
             let mask = 1 << BIT;
             operand | mask
         });
