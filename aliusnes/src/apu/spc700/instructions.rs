@@ -45,12 +45,6 @@ impl<B: Bus> Spc700<B> {
         })
     }
 
-    pub fn and_a(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        let operand = cpu.operand(bus, mode);
-        cpu.accumulator &= operand;
-        cpu.set_nz(cpu.accumulator);
-    }
-
     pub fn asl(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         cpu.do_rmw(bus, mode, |cpu, operand| {
             let res = operand << 1;
@@ -212,12 +206,6 @@ impl<B: Bus> Spc700<B> {
         })
     }
 
-    pub fn eor_a(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        let operand = cpu.operand(bus, mode);
-        cpu.accumulator ^= operand;
-        cpu.set_nz(cpu.accumulator);
-    }
-
     pub fn incw(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         cpu.do_rmw_word(bus, |cpu, operand| {
             let res = operand.wrapping_add(1);
@@ -277,12 +265,6 @@ impl<B: Bus> Spc700<B> {
             cpu.set_nz(res);
             res
         })
-    }
-
-    pub fn or_a(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        let operand = cpu.operand(bus, mode);
-        cpu.accumulator |= operand;
-        cpu.set_nz(cpu.accumulator);
     }
 
     pub fn or1<const INVERSE: bool>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {

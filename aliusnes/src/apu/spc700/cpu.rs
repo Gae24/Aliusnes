@@ -114,10 +114,17 @@ impl Cpu {
         mode: AddressingMode,
         f: impl FnOnce(&mut Cpu, u8) -> u8,
     ) {
-        let addr = Address::new(self.decode_addressing_mode(bus, mode), 0);
-        let data = bus.read_and_tick(addr);
-        let result = f(self, data);
-        bus.write_and_tick(addr, result);
+        match mode {
+            AddressingMode::Accumulator => self.accumulator = f(self, self.accumulator),
+            AddressingMode::X => self.index_x = f(self, self.index_x),
+            AddressingMode::Y => self.index_y = f(self, self.index_y),
+            _ => {
+                let addr = Address::new(self.decode_addressing_mode(bus, mode), 0);
+                let data = bus.read_and_tick(addr);
+                let result = f(self, data);
+                bus.write_and_tick(addr, result);
+            }
+        }
     }
 
     pub fn do_rmw_word<B: Bus>(&mut self, bus: &mut B, f: impl FnOnce(&mut Cpu, u16) -> u16) {
