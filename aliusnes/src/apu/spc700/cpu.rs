@@ -67,6 +67,7 @@ impl Cpu {
             AddressingMode::Accumulator => self.accumulator = data,
             AddressingMode::X => self.index_x = data,
             AddressingMode::Y => self.index_y = data,
+            AddressingMode::Psw => self.status = Status(data),
             _ => {
                 let page = self.decode_addressing_mode(bus, mode);
                 bus.write_and_tick(Address::new(page, 0), data);
