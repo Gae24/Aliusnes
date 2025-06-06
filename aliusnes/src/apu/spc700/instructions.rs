@@ -72,6 +72,10 @@ impl<B: Bus> Spc700<B> {
         cpu.do_branch(bus, (operand & (1 << BIT)) == 0);
     }
 
+    pub fn bcc(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        cpu.do_branch(bus, !cpu.status.carry());
+    }
+
     pub fn bmi(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         cpu.do_branch(bus, cpu.status.negative());
     }
@@ -185,12 +189,12 @@ impl<B: Bus> Spc700<B> {
         })
     }
 
-    pub fn dec_x(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
-        cpu.index_x = cpu.index_x.wrapping_sub(1);
-        cpu.set_nz(cpu.index_x);
-
-        // Dummy read
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+    pub fn dec(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        cpu.do_rmw::<_, true>(bus, mode, |cpu, operand| {
+            let res = operand.wrapping_sub(1);
+            cpu.set_nz(res);
+            res
+        });
     }
 
     pub fn eor1(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
@@ -250,8 +254,11 @@ impl<B: Bus> Spc700<B> {
 
         if DEST.is_register_access() {
             cpu.set_nz(operand);
-            // Dummy read
-            let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+
+            if mode.is_register_access() {
+                // Dummy read
+                let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+            }
         }
     }
 
@@ -282,6 +289,15 @@ impl<B: Bus> Spc700<B> {
         cpu.do_push(bus, cpu.program_counter.high_byte());
         cpu.do_push(bus, cpu.program_counter.low_byte());
         cpu.program_counter = new_pc;
+    }
+
+    pub fn pop(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        let operand = cpu.do_pop(bus);
+        cpu.write(bus, mode, operand);
+
+        // Dummy read
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        bus.add_io_cycles(1);
     }
 
     pub fn push(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {

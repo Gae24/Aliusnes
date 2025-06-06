@@ -39,7 +39,7 @@ impl<B: Bus> OpCode<B> {
 
 pub struct Spc700<B: Bus> {
     pub cpu: cpu::Cpu,
-    instruction_set: [OpCode<B>; 139],
+    instruction_set: [OpCode<B>; 154],
 }
 
 impl<B: Bus> Spc700<B> {
@@ -60,7 +60,7 @@ impl<B: Bus> Spc700<B> {
 }
 
 #[rustfmt::skip]
-const fn opcode_table<B: Bus>() -> [OpCode<B>; 139] {
+const fn opcode_table<B: Bus>() -> [OpCode<B>; 154] {
     use addressing::AddressingMode::*;
     [
         OpCode::new(Meta::new(0x00, "NOP", Implied), Spc700::nop),
@@ -92,7 +92,7 @@ const fn opcode_table<B: Bus>() -> [OpCode<B>; 139] {
         OpCode::new(Meta::new(0x1A, "DECW", DirectPage), Spc700::decw),
         OpCode::new(Meta::new(0x1B, "ASL", DirectX), Spc700::asl),
         OpCode::new(Meta::new(0x1C, "ASL", Accumulator), Spc700::asl),
-        OpCode::new(Meta::new(0x1D, "DEC", Implied), Spc700::dec_x),
+        OpCode::new(Meta::new(0x1D, "DEC", X), Spc700::dec),
         OpCode::new(Meta::new(0x1E, "CMP", Absolute), Spc700::cmp::<{ X }>),
         OpCode::new(Meta::new(0x1F, "JMP", AbsoluteX), Spc700::jmp),
         OpCode::new(Meta::new(0x20, "CLRP", Implied), Spc700::clrp),
@@ -202,5 +202,20 @@ const fn opcode_table<B: Bus>() -> [OpCode<B>; 139] {
         OpCode::new(Meta::new(0x88, "ADC", Immediate), Spc700::adc::<{ Accumulator }>),
         OpCode::new(Meta::new(0x89, "ADC", DirectPage), Spc700::adc::<{ DirectPage }>),
         OpCode::new(Meta::new(0x8A, "EOR1", AbsoluteBooleanBit), Spc700::eor1),
+        OpCode::new(Meta::new(0x8B, "DEC", DirectPage), Spc700::dec),
+        OpCode::new(Meta::new(0x8C, "DEC", Absolute), Spc700::dec),
+        OpCode::new(Meta::new(0x8D, "MOV", Immediate), Spc700::mov::<{ Y }>),
+        OpCode::new(Meta::new(0x8E, "POP", Psw), Spc700::pop),
+        OpCode::new(Meta::new(0x8F, "MOV", Immediate), Spc700::mov::<{ DirectPage }>),
+        OpCode::new(Meta::new(0x90, "BCC", Implied), Spc700::bcc),
+        OpCode::new(Meta::new(0x91, "TCALL", Implied), Spc700::tcall::<9>),
+        OpCode::new(Meta::new(0x92, "CLR1", DirectPage), Spc700::clr1::<4>),
+        OpCode::new(Meta::new(0x93, "BBC", DirectPage), Spc700::bbc::<4>),
+        OpCode::new(Meta::new(0x94, "ADC", DirectX), Spc700::adc::<{ Accumulator }>),
+        OpCode::new(Meta::new(0x95, "ADC", AbsoluteX), Spc700::adc::<{ Accumulator }>),
+        OpCode::new(Meta::new(0x96, "ADC", AbsoluteY), Spc700::adc::<{ Accumulator }>),
+        OpCode::new(Meta::new(0x97, "ADC", DirectPageIndirectY), Spc700::adc::<{ Accumulator }>),
+        OpCode::new(Meta::new(0x98, "ADC", Immediate), Spc700::adc::<{ DirectPage }>),
+        OpCode::new(Meta::new(0x99, "ADC", IndirectY), Spc700::adc::<{ IndirectX }>),
     ]
 }
