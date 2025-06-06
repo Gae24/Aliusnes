@@ -1,8 +1,7 @@
 use crate::{
     apu::spc700::{
-        addressing::{AddressingMode, Source},
+        addressing::AddressingMode,
         cpu::{Cpu, Status},
-        functions::{do_branch, do_compare},
         Spc700,
     },
     bus::Bus,
@@ -74,25 +73,25 @@ impl<B: Bus> Spc700<B> {
     pub fn bbs<const BIT: u8>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let operand = cpu.operand(bus, mode);
         bus.add_io_cycles(1);
-        do_branch(cpu, bus, (operand & (1 << BIT)) != 0);
+        cpu.do_branch(bus, (operand & (1 << BIT)) != 0);
     }
 
     pub fn bbc<const BIT: u8>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let operand = cpu.operand(bus, mode);
         bus.add_io_cycles(1);
-        do_branch(cpu, bus, (operand & (1 << BIT)) == 0);
+        cpu.do_branch(bus, (operand & (1 << BIT)) == 0);
     }
 
     pub fn bmi(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
-        do_branch(cpu, bus, cpu.status.negative());
+        cpu.do_branch(bus, cpu.status.negative());
     }
 
     pub fn bpl(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
-        do_branch(cpu, bus, !cpu.status.negative());
+        cpu.do_branch(bus, !cpu.status.negative());
     }
 
     pub fn bra(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
-        do_branch(cpu, bus, true);
+        cpu.do_branch(bus, true);
     }
 
     pub fn brk(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
@@ -109,11 +108,11 @@ impl<B: Bus> Spc700<B> {
     }
 
     pub fn bvc(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
-        do_branch(cpu, bus, !cpu.status.overflow());
+        cpu.do_branch(bus, !cpu.status.overflow());
     }
 
     pub fn bvs(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
-        do_branch(cpu, bus, cpu.status.overflow());
+        cpu.do_branch(bus, cpu.status.overflow());
     }
 
     pub fn call(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
@@ -128,7 +127,7 @@ impl<B: Bus> Spc700<B> {
     pub fn cbne(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let operand = cpu.operand(bus, mode);
         bus.add_io_cycles(1);
-        do_branch(cpu, bus, cpu.accumulator != operand);
+        cpu.do_branch(bus, cpu.accumulator != operand);
     }
 
     pub fn clr1<const BIT: u8>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
@@ -150,6 +149,17 @@ impl<B: Bus> Spc700<B> {
         cpu.status.set_direct_page(false);
     }
 
+    pub fn cmp<const OPERAND_A: AddressingMode>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        if !OPERAND_A.is_register_access() {
+            bus.add_io_cycles(1);
+        }
+        let b = cpu.operand(bus, mode);
+        let a = cpu.operand(bus, OPERAND_A);
+
+        cpu.status.set_carry(a >= b);
+        cpu.set_nz(a.wrapping_sub(b));
+    }
+
     pub fn cmpw(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         let a = cpu.ya();
         let offset = cpu.get_imm(bus);
@@ -159,26 +169,6 @@ impl<B: Bus> Spc700<B> {
         cpu.status.set_carry(a >= b);
         cpu.status.set_negative(result >> 15 != 0);
         cpu.status.set_zero(result == 0);
-    }
-
-    pub fn cmp<const DEST: AddressingMode>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        let b = cpu.operand(bus, mode);
-        let a = cpu.operand(bus, DEST);
-
-        do_compare(cpu, a, b);
-        bus.add_io_cycles(1);
-    }
-
-    pub fn cmp_reg<const REG: Source>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        let a = match REG {
-            Source::A => cpu.accumulator,
-            Source::X => cpu.index_x,
-            Source::Y => cpu.index_y,
-            Source::PSW => cpu.status.0,
-        };
-        let b = cpu.operand(bus, mode);
-
-        do_compare(cpu, a, b);
     }
 
     pub fn dbnz<const REG: bool>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
@@ -193,7 +183,7 @@ impl<B: Bus> Spc700<B> {
                 res
             });
         }
-        do_branch(cpu, bus, branch);
+        cpu.do_branch(bus, branch);
     }
 
     pub fn decw(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
@@ -310,14 +300,9 @@ impl<B: Bus> Spc700<B> {
         cpu.program_counter = new_pc;
     }
 
-    pub fn push<const REG: Source>(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
-        let value = match REG {
-            Source::A => cpu.accumulator,
-            Source::X => cpu.index_x,
-            Source::Y => cpu.index_y,
-            Source::PSW => cpu.status.0,
-        };
-        cpu.do_push(bus, value);
+    pub fn push(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        let operand = cpu.operand(bus, mode);
+        cpu.do_push(bus, operand);
 
         // Dummy read
         let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));

@@ -4,6 +4,14 @@ use std::marker::ConstParamTy;
 #[derive(ConstParamTy, PartialEq, Eq, Clone, Copy)]
 pub enum AddressingMode {
     Implied,
+    /// A
+    Accumulator,
+    /// X
+    X,
+    /// Y
+    Y,
+    /// PSW
+    Psw,
     /// #imm
     Immediate,
     /// dp
@@ -31,12 +39,10 @@ pub enum AddressingMode {
     XIndirect,
 }
 
-#[derive(ConstParamTy, PartialEq, Eq)]
-pub enum Source {
-    A,
-    X,
-    Y,
-    PSW,
+impl AddressingMode {
+    pub fn is_register_access(&self) -> bool {
+        matches!(self, Self::Accumulator | Self::X | Self::Y | Self::Psw)
+    }
 }
 
 impl Cpu {
@@ -88,16 +94,24 @@ impl Cpu {
                 let page = self.word_from_direct_page(bus, offset);
                 page.wrapping_add(self.index_y.into())
             }
+            AddressingMode::DirectY => todo!(),
+            AddressingMode::DirectXPostIncrement => todo!(),
             AddressingMode::Implied => unreachable!(),
             AddressingMode::Immediate => unreachable!(),
             AddressingMode::AbsoluteBooleanBit => unreachable!(),
-            AddressingMode::DirectY => todo!(),
-            AddressingMode::DirectXPostIncrement => todo!(),
+            AddressingMode::Accumulator => unreachable!(),
+            AddressingMode::X => unreachable!(),
+            AddressingMode::Y => unreachable!(),
+            AddressingMode::Psw => unreachable!(),
         }
     }
 
     pub fn operand<B: Bus>(&mut self, bus: &mut B, mode: AddressingMode) -> u8 {
         match mode {
+            AddressingMode::Accumulator => self.accumulator,
+            AddressingMode::X => self.index_x,
+            AddressingMode::Y => self.index_y,
+            AddressingMode::Psw => self.status.0,
             AddressingMode::Immediate => self.get_imm(bus),
             AddressingMode::AbsoluteBooleanBit => {
                 let addr_bit = u16::from_le_bytes([self.get_imm(bus), self.get_imm(bus)]);

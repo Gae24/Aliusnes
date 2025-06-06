@@ -88,6 +88,14 @@ impl Cpu {
         bus.write_and_tick(addr, value);
     }
 
+    pub fn do_branch<B: Bus>(&mut self, bus: &mut B, cond: bool) {
+        let offset = self.get_imm(bus) as i8;
+        if cond {
+            bus.add_io_cycles(2);
+            self.program_counter = self.program_counter.wrapping_add(offset as u16);
+        }
+    }
+
     pub fn do_pop<B: Bus>(&mut self, bus: &mut B) -> u8 {
         self.stack_pointer = self.stack_pointer.wrapping_add(1);
         let stack_addr = u16::from_le_bytes([self.stack_pointer, 0x01]);
