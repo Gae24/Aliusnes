@@ -16,22 +16,15 @@ impl<B: Bus> Spc700<B> {
     }
 
     pub fn addw(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
-        let a = u32::from(cpu.ya());
-
         let offset = cpu.get_imm(bus);
-        let b = u32::from(cpu.word_from_direct_page(bus, offset));
-        let result = a + b;
+        let b = cpu.word_from_direct_page(bus, offset);
 
-        let is_overflow = !(a ^ b) & (a ^ result) & 0x8000 != 0;
-        let is_half_carry = ((a & 0xFFF) + (b & 0xFFF)) >> 12 != 0;
-        cpu.status.set_carry(result >> 16 != 0);
-        cpu.status.set_overflow(is_overflow);
-        cpu.status.set_half_carry(is_half_carry);
+        cpu.status.set_carry(false);
 
-        let result = result as u16;
-        cpu.status.set_negative(result >> 15 != 0);
-        cpu.status.set_zero(result == 0);
-        cpu.set_ya(result);
+        cpu.accumulator = cpu.do_adc(cpu.accumulator, b.low_byte());
+        cpu.index_y = cpu.do_adc(cpu.index_y, b.high_byte());
+        cpu.status
+            .set_zero(cpu.index_y == 0 && cpu.accumulator == 0);
 
         bus.add_io_cycles(1);
     }
@@ -195,6 +188,25 @@ impl<B: Bus> Spc700<B> {
             cpu.set_nz(res);
             res
         });
+    }
+
+    pub fn div(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        // Based on ares's implementation:
+        cpu.status
+            .set_half_carry(cpu.index_y & 0xF >= cpu.index_x & 0xF);
+        cpu.status.set_overflow(cpu.index_y >= cpu.index_x);
+        let ya = cpu.ya();
+        let x = cpu.index_x as u16;
+        if (cpu.index_y as u16) < x << 1 {
+            cpu.accumulator = (ya / x) as u8;
+            cpu.index_y = (ya % x) as u8;
+        } else {
+            cpu.accumulator = (255 - (ya - (x << 9)) / (256 - x)) as u8;
+            cpu.index_y = (x + (ya - (x << 9)) % (256 - x)) as u8;
+        };
+        cpu.set_nz(cpu.accumulator);
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        bus.add_io_cycles(10);
     }
 
     pub fn eor1(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
@@ -367,6 +379,20 @@ impl<B: Bus> Spc700<B> {
         cpu.status.set_direct_page(true);
     }
 
+    pub fn subw(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        let offset = cpu.get_imm(bus);
+        let b = cpu.word_from_direct_page(bus, offset);
+
+        cpu.status.set_carry(true);
+
+        cpu.accumulator = cpu.do_adc(cpu.accumulator, !b.low_byte());
+        cpu.index_y = cpu.do_adc(cpu.index_y, !b.high_byte());
+        cpu.status
+            .set_zero(cpu.index_y == 0 && cpu.accumulator == 0);
+
+        bus.add_io_cycles(1);
+    }
+
     pub fn tcall<const INDEX: u8>(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         // Dummy read
         let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
@@ -385,5 +411,12 @@ impl<B: Bus> Spc700<B> {
 
     pub fn tset1(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         cpu.do_test_bit(bus, mode, false);
+    }
+
+    pub fn xcn(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        cpu.accumulator = cpu.accumulator.rotate_right(4);
+        cpu.set_nz(cpu.accumulator);
+        bus.add_io_cycles(3);
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
     }
 }

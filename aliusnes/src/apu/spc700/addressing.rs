@@ -10,6 +10,8 @@ pub enum AddressingMode {
     X,
     /// Y
     Y,
+    /// SP
+    Sp,
     /// PSW
     Psw,
     /// #imm
@@ -41,7 +43,10 @@ pub enum AddressingMode {
 
 impl AddressingMode {
     pub const fn is_register_access(&self) -> bool {
-        matches!(self, Self::Accumulator | Self::X | Self::Y | Self::Psw)
+        matches!(
+            self,
+            Self::Accumulator | Self::X | Self::Y | Self::Psw | Self::Sp
+        )
     }
 }
 
@@ -102,6 +107,7 @@ impl Cpu {
             AddressingMode::Accumulator => unreachable!(),
             AddressingMode::X => unreachable!(),
             AddressingMode::Y => unreachable!(),
+            AddressingMode::Sp => unreachable!(),
             AddressingMode::Psw => unreachable!(),
         }
     }
@@ -111,6 +117,7 @@ impl Cpu {
             AddressingMode::Accumulator => self.accumulator,
             AddressingMode::X => self.index_x,
             AddressingMode::Y => self.index_y,
+            AddressingMode::Sp => self.stack_pointer,
             AddressingMode::Psw => self.status.0,
             AddressingMode::Immediate => self.get_imm(bus),
             AddressingMode::AbsoluteBooleanBit => {
