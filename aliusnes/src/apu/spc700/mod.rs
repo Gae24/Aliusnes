@@ -4,7 +4,6 @@ use crate::bus::Bus;
 
 mod addressing;
 pub mod cpu;
-mod functions;
 mod instructions;
 
 #[derive(Clone, Copy)]
@@ -62,7 +61,7 @@ impl<B: Bus> Spc700<B> {
 
 #[rustfmt::skip]
 const fn opcode_table<B: Bus>() -> [OpCode<B>; 128] {
-    use addressing::{AddressingMode::*, Source::*};
+    use addressing::AddressingMode::*;
     [
         OpCode::new(Meta::new(0x00, "NOP", Implied), Spc700::nop),
         OpCode::new(Meta::new(0x01, "TCALL", Implied), Spc700::tcall::<0>),
@@ -77,7 +76,7 @@ const fn opcode_table<B: Bus>() -> [OpCode<B>; 128] {
         OpCode::new(Meta::new(0x0A, "OR1", AbsoluteBooleanBit), Spc700::or1::<false>),
         OpCode::new(Meta::new(0x0B, "ASL", DirectPage), Spc700::asl),
         OpCode::new(Meta::new(0x0C, "ASL", Absolute), Spc700::asl),
-        OpCode::new(Meta::new(0x0D, "PUSH", Implied), Spc700::push::<{ PSW }>),
+        OpCode::new(Meta::new(0x0D, "PUSH", Psw), Spc700::push),
         OpCode::new(Meta::new(0x0E, "TSET1", Absolute), Spc700::tset1),
         OpCode::new(Meta::new(0x0F, "BRK", Implied), Spc700::brk),
         OpCode::new(Meta::new(0x10, "BPL", Implied), Spc700::bpl),
@@ -94,7 +93,7 @@ const fn opcode_table<B: Bus>() -> [OpCode<B>; 128] {
         OpCode::new(Meta::new(0x1B, "ASL", DirectX), Spc700::asl),
         OpCode::new(Meta::new(0x1C, "ASL", Implied), Spc700::asl_a),
         OpCode::new(Meta::new(0x1D, "DEC", Implied), Spc700::dec_x),
-        OpCode::new(Meta::new(0x1E, "CMP", Absolute), Spc700::cmp_reg::<{ X }>),
+        OpCode::new(Meta::new(0x1E, "CMP", Absolute), Spc700::cmp::<{ X }>),
         OpCode::new(Meta::new(0x1F, "JMP", AbsoluteX), Spc700::jmp),
         OpCode::new(Meta::new(0x20, "CLRP", Implied), Spc700::clrp),
         OpCode::new(Meta::new(0x21, "TCALL", Implied), Spc700::tcall::<2>),
@@ -109,7 +108,7 @@ const fn opcode_table<B: Bus>() -> [OpCode<B>; 128] {
         OpCode::new(Meta::new(0x2A, "OR1", AbsoluteBooleanBit), Spc700::or1::<true>),
         OpCode::new(Meta::new(0x2B, "ROL", DirectPage), Spc700::rol),
         OpCode::new(Meta::new(0x2C, "ROL", Absolute), Spc700::rol),
-        OpCode::new(Meta::new(0x2D, "PUSH", Implied), Spc700::push::<{ A }>),
+        OpCode::new(Meta::new(0x2D, "PUSH", Accumulator), Spc700::push),
         OpCode::new(Meta::new(0x2E, "CBNE", DirectPage), Spc700::cbne),
         OpCode::new(Meta::new(0x2F, "BRA", Implied), Spc700::bra),
         OpCode::new(Meta::new(0x30, "BMI", Implied), Spc700::bmi),
@@ -126,7 +125,7 @@ const fn opcode_table<B: Bus>() -> [OpCode<B>; 128] {
         OpCode::new(Meta::new(0x3B, "ROL", DirectX), Spc700::rol),
         OpCode::new(Meta::new(0x3C, "ROL", Implied), Spc700::rol_a),
         OpCode::new(Meta::new(0x3D, "INC", Implied), Spc700::inc_x),
-        OpCode::new(Meta::new(0x3E, "CMP", DirectPage), Spc700::cmp_reg::<{ X }>),
+        OpCode::new(Meta::new(0x3E, "CMP", DirectPage), Spc700::cmp::<{ X }>),
         OpCode::new(Meta::new(0x3F, "CALL", Absolute), Spc700::call),
         OpCode::new(Meta::new(0x40, "SETP", Implied), Spc700::setp),
         OpCode::new(Meta::new(0x41, "TCALL", Implied), Spc700::tcall::<4>),
@@ -141,7 +140,7 @@ const fn opcode_table<B: Bus>() -> [OpCode<B>; 128] {
         OpCode::new(Meta::new(0x4A, "AND1", AbsoluteBooleanBit), Spc700::and1::<false>),
         OpCode::new(Meta::new(0x4B, "LSR", DirectPage), Spc700::lsr),
         OpCode::new(Meta::new(0x4C, "LSR", Absolute), Spc700::lsr),
-        OpCode::new(Meta::new(0x4D, "PUSH", Implied), Spc700::push::<{ X }>),
+        OpCode::new(Meta::new(0x4D, "PUSH", X), Spc700::push),
         OpCode::new(Meta::new(0x4E, "TCLR1", Absolute), Spc700::tclr1),
         OpCode::new(Meta::new(0x4F, "PCALL", Implied), Spc700::pcall),
         OpCode::new(Meta::new(0x50, "BVC", Implied), Spc700::bvc),
@@ -158,39 +157,39 @@ const fn opcode_table<B: Bus>() -> [OpCode<B>; 128] {
         OpCode::new(Meta::new(0x5B, "LSR", DirectX), Spc700::lsr),
         OpCode::new(Meta::new(0x5C, "LSR", Implied), Spc700::lsr_a),
         OpCode::new(Meta::new(0x5D, "MOV", Implied), Spc700::mov),
-        OpCode::new(Meta::new(0x5E, "CMP", Absolute), Spc700::cmp_reg::<{ Y }>),
+        OpCode::new(Meta::new(0x5E, "CMP", Absolute), Spc700::cmp::<{ Y }>),
         OpCode::new(Meta::new(0x5F, "JMP", Absolute), Spc700::jmp),
         OpCode::new(Meta::new(0x60, "CLRC", Implied), Spc700::clrc),
         OpCode::new(Meta::new(0x61, "TCALL", Implied), Spc700::tcall::<6>),
         OpCode::new(Meta::new(0x62, "SET1", DirectPage), Spc700::set1::<3>),
         OpCode::new(Meta::new(0x63, "BBS", DirectPage), Spc700::bbs::<3>),
-        OpCode::new(Meta::new(0x64, "CMP", DirectPage), Spc700::cmp_reg::<{ A }>),
-        OpCode::new(Meta::new(0x65, "CMP", Absolute), Spc700::cmp_reg::<{ A }>),
-        OpCode::new(Meta::new(0x66, "CMP", IndirectX), Spc700::cmp_reg::<{ A }>),
-        OpCode::new(Meta::new(0x67, "CMP", XIndirect), Spc700::cmp_reg::<{ A }>),
-        OpCode::new(Meta::new(0x68, "CMP", Immediate), Spc700::cmp_reg::<{ A }>),
+        OpCode::new(Meta::new(0x64, "CMP", DirectPage), Spc700::cmp::<{ Accumulator }>),
+        OpCode::new(Meta::new(0x65, "CMP", Absolute), Spc700::cmp::<{ Accumulator }>),
+        OpCode::new(Meta::new(0x66, "CMP", IndirectX), Spc700::cmp::<{ Accumulator }>),
+        OpCode::new(Meta::new(0x67, "CMP", XIndirect), Spc700::cmp::<{ Accumulator }>),
+        OpCode::new(Meta::new(0x68, "CMP", Immediate), Spc700::cmp::<{ Accumulator }>),
         OpCode::new(Meta::new(0x69, "CMP", DirectPage), Spc700::cmp::<{ DirectPage }>),
         OpCode::new(Meta::new(0x6A, "AND1", AbsoluteBooleanBit), Spc700::and1::<true>),
         OpCode::new(Meta::new(0x6B, "ROR", DirectPage), Spc700::ror),
         OpCode::new(Meta::new(0x6C, "ROR", Absolute), Spc700::ror),
-        OpCode::new(Meta::new(0x6D, "PUSH", Implied), Spc700::push::<{ Y }>),
+        OpCode::new(Meta::new(0x6D, "PUSH", Y), Spc700::push),
         OpCode::new(Meta::new(0x6E, "DBNZ", DirectPage), Spc700::dbnz::<false>),
         OpCode::new(Meta::new(0x6F, "RET", Implied), Spc700::ret),
         OpCode::new(Meta::new(0x70, "BVS", Implied), Spc700::bvs),
         OpCode::new(Meta::new(0x71, "TCALL", Implied), Spc700::tcall::<7>),
         OpCode::new(Meta::new(0x72, "CLR1", DirectPage), Spc700::clr1::<3>),
         OpCode::new(Meta::new(0x73, "BBC", DirectPage), Spc700::bbc::<3>),
-        OpCode::new(Meta::new(0x74, "CMP", DirectX), Spc700::cmp_reg::<{ A }>),
-        OpCode::new(Meta::new(0x75, "CMP", AbsoluteX), Spc700::cmp_reg::<{ A }>),
-        OpCode::new(Meta::new(0x76, "CMP", AbsoluteY), Spc700::cmp_reg::<{ A }>),
-        OpCode::new(Meta::new(0x77, "CMP", DirectPageIndirectY), Spc700::cmp_reg::<{ A }>),
+        OpCode::new(Meta::new(0x74, "CMP", DirectX), Spc700::cmp::<{ Accumulator }>),
+        OpCode::new(Meta::new(0x75, "CMP", AbsoluteX), Spc700::cmp::<{ Accumulator }>),
+        OpCode::new(Meta::new(0x76, "CMP", AbsoluteY), Spc700::cmp::<{ Accumulator }>),
+        OpCode::new(Meta::new(0x77, "CMP", DirectPageIndirectY), Spc700::cmp::<{ Accumulator }>),
         OpCode::new(Meta::new(0x78, "CMP", Immediate), Spc700::cmp::<{ DirectPage }>),
         OpCode::new(Meta::new(0x79, "CMP", IndirectY), Spc700::cmp::<{ IndirectX }>),
         OpCode::new(Meta::new(0x7A, "ADDW", DirectPage), Spc700::addw),
         OpCode::new(Meta::new(0x7B, "ROR", DirectX), Spc700::ror),
         OpCode::new(Meta::new(0x7C, "ROR", Implied), Spc700::ror_a),
         OpCode::new(Meta::new(0x7D, "MOV", Implied), Spc700::mov),
-        OpCode::new(Meta::new(0x7E, "CMP", DirectPage), Spc700::cmp_reg::<{ Y }>),
+        OpCode::new(Meta::new(0x7E, "CMP", DirectPage), Spc700::cmp::<{ Y }>),
         OpCode::new(Meta::new(0x7F, "RETI", Implied), Spc700::reti),
     ]
 }
