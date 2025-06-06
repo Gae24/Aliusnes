@@ -9,7 +9,6 @@ pub(super) fn do_branch<B: Bus>(cpu: &mut Cpu, bus: &mut B, cond: bool) {
 }
 
 pub(super) fn do_compare(cpu: &mut Cpu, a: u8, b: u8) {
-    let result = a.wrapping_sub(b);
     cpu.status.set_carry(a >= b);
-    cpu.set_nz(result);
+    cpu.set_nz(a.wrapping_sub(b));
 }

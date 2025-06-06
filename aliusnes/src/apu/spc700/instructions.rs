@@ -37,6 +37,15 @@ impl<B: Bus> Spc700<B> {
         cpu.status.set_carry(cpu.status.carry() & operand);
     }
 
+    pub fn and<const DEST: AddressingMode>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        let b = cpu.operand(bus, mode);
+        cpu.do_rmw(bus, DEST, |cpu, a| {
+            let res = a & b;
+            cpu.set_nz(res);
+            res
+        })
+    }
+
     pub fn and_a(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let operand = cpu.operand(bus, mode);
         cpu.accumulator &= operand;
@@ -152,6 +161,14 @@ impl<B: Bus> Spc700<B> {
         cpu.status.set_zero(result == 0);
     }
 
+    pub fn cmp<const DEST: AddressingMode>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        let b = cpu.operand(bus, mode);
+        let a = cpu.operand(bus, DEST);
+
+        do_compare(cpu, a, b);
+        bus.add_io_cycles(1);
+    }
+
     pub fn cmp_reg<const REG: Source>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let a = match REG {
             Source::A => cpu.accumulator,
@@ -194,6 +211,15 @@ impl<B: Bus> Spc700<B> {
 
         // Dummy read
         let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+    }
+
+    pub fn eor<const DEST: AddressingMode>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        let b = cpu.operand(bus, mode);
+        cpu.do_rmw(bus, DEST, |cpu, a| {
+            let res = a ^ b;
+            cpu.set_nz(res);
+            res
+        })
     }
 
     pub fn eor_a(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
