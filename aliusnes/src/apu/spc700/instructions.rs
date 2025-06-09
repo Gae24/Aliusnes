@@ -69,6 +69,10 @@ impl<B: Bus> Spc700<B> {
         cpu.do_branch(bus, !cpu.status.carry());
     }
 
+    pub fn bcs(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        cpu.do_branch(bus, cpu.status.carry());
+    }
+
     pub fn bmi(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         cpu.do_branch(bus, cpu.status.negative());
     }
@@ -156,6 +160,21 @@ impl<B: Bus> Spc700<B> {
         cpu.status.set_carry(a >= b);
         cpu.status.set_negative(result >> 15 != 0);
         cpu.status.set_zero(result == 0);
+    }
+
+    pub fn das(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        if !cpu.status.carry() || cpu.accumulator > 0x99 {
+            cpu.accumulator = cpu.accumulator.wrapping_sub(0x60);
+            cpu.status.set_carry(false);
+        }
+        if !cpu.status.half_carry() || cpu.accumulator & 0xF > 0x09 {
+            cpu.accumulator = cpu.accumulator.wrapping_sub(0x06);
+        }
+        cpu.set_nz(cpu.accumulator);
+
+        // Dummy read
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        bus.add_io_cycles(1);
     }
 
     pub fn dbnz<const REG: bool>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
@@ -282,10 +301,31 @@ impl<B: Bus> Spc700<B> {
         }
     }
 
+    pub fn movw<const REG: bool>(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        let offset = cpu.get_imm(bus);
+        if REG {
+            let value = cpu.word_from_direct_page(bus, offset);
+            cpu.accumulator = value.low_byte();
+            cpu.index_y = value.high_byte();
+            cpu.status.set_negative(value >> 15 != 0);
+            cpu.status.set_zero(value == 0);
+        } else {
+            bus.write_and_tick(
+                u16::from_le_bytes([offset, cpu.direct_page()]).into(),
+                cpu.accumulator,
+            );
+            bus.write_and_tick(
+                u16::from_le_bytes([offset.wrapping_add(1), cpu.direct_page()]).into(),
+                cpu.index_y,
+            );
+        }
+        bus.add_io_cycles(1);
+    }
+
     pub fn mov1<const CARRY: bool>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         if CARRY {
-            let operand = cpu.operand(bus, mode) != 0;
-            cpu.status.set_carry(operand);
+            let operand = cpu.operand(bus, mode);
+            cpu.status.set_carry(operand != 0);
         } else {
             cpu.do_rmw::<_, false>(bus, mode, |cpu, _| u8::from(cpu.status.carry()));
         }

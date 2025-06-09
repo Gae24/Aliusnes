@@ -44,11 +44,6 @@ impl Cpu {
         u16::from_le_bytes([self.accumulator, self.index_y])
     }
 
-    pub fn set_ya(&mut self, value: u16) {
-        self.accumulator = value.low_byte();
-        self.index_y = value.high_byte();
-    }
-
     pub fn set_nz(&mut self, value: u8) {
         self.status.set_negative(value >> 7 != 0);
         self.status.set_zero(value == 0);
