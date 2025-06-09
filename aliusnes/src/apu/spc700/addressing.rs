@@ -99,7 +99,11 @@ impl Cpu {
                 let page = self.word_from_direct_page(bus, offset);
                 page.wrapping_add(self.index_y.into())
             }
-            AddressingMode::DirectY => todo!(),
+            AddressingMode::DirectY => {
+                bus.add_io_cycles(1);
+                let offset = self.get_imm(bus).wrapping_add(self.index_y);
+                u16::from_le_bytes([offset, self.direct_page()])
+            }
             AddressingMode::DirectXPostIncrement => {
                 let _ = bus.read_and_tick(Address::new(self.program_counter, 0));
                 bus.add_io_cycles(1);

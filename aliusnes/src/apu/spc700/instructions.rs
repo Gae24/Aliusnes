@@ -77,6 +77,10 @@ impl<B: Bus> Spc700<B> {
         cpu.do_branch(bus, cpu.status.negative());
     }
 
+    pub fn bne(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        cpu.do_branch(bus, !cpu.status.zero());
+    }
+
     pub fn bpl(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         cpu.do_branch(bus, !cpu.status.negative());
     }
@@ -160,6 +164,21 @@ impl<B: Bus> Spc700<B> {
         cpu.status.set_carry(a >= b);
         cpu.status.set_negative(result >> 15 != 0);
         cpu.status.set_zero(result == 0);
+    }
+
+    pub fn daa(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        if cpu.status.carry() || cpu.accumulator > 0x99 {
+            cpu.accumulator = cpu.accumulator.wrapping_add(0x60);
+            cpu.status.set_carry(true);
+        }
+        if cpu.status.half_carry() || cpu.accumulator & 0xF > 0x09 {
+            cpu.accumulator = cpu.accumulator.wrapping_add(0x06);
+        }
+        cpu.set_nz(cpu.accumulator);
+
+        // Dummy read
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        bus.add_io_cycles(1);
     }
 
     pub fn das(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
@@ -317,7 +336,9 @@ impl<B: Bus> Spc700<B> {
             cpu.index_y = value.high_byte();
             cpu.status.set_negative(value >> 15 != 0);
             cpu.status.set_zero(value == 0);
+            bus.add_io_cycles(1);
         } else {
+            let _ = bus.read_and_tick(u16::from_le_bytes([offset, cpu.direct_page()]).into());
             bus.write_and_tick(
                 u16::from_le_bytes([offset, cpu.direct_page()]).into(),
                 cpu.accumulator,
@@ -327,7 +348,6 @@ impl<B: Bus> Spc700<B> {
                 cpu.index_y,
             );
         }
-        bus.add_io_cycles(1);
     }
 
     pub fn mov1<const CARRY: bool>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
