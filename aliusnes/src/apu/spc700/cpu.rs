@@ -57,7 +57,7 @@ impl Cpu {
         ])
     }
 
-    pub fn write<B: Bus>(&mut self, bus: &mut B, mode: AddressingMode, data: u8) {
+    pub fn write<B: Bus>(&mut self, bus: &mut B, mode: AddressingMode, data: u8, dummy_read: bool) {
         match mode {
             AddressingMode::Accumulator => self.accumulator = data,
             AddressingMode::X => self.index_x = data,
@@ -66,6 +66,9 @@ impl Cpu {
             AddressingMode::Psw => self.status = Status(data),
             _ => {
                 let page = self.decode_addressing_mode(bus, mode);
+                if dummy_read {
+                    let _ = bus.read_and_tick(Address::new(page, 0));
+                }
                 bus.write_and_tick(Address::new(page, 0), data);
             }
         }

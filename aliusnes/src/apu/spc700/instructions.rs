@@ -209,6 +209,14 @@ impl<B: Bus> Spc700<B> {
         });
     }
 
+    pub fn di(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        cpu.status.set_irq_enabled(false);
+
+        // Dummy read
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        bus.add_io_cycles(1);
+    }
+
     pub fn div(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         // Based on ares's implementation:
         cpu.status
@@ -289,7 +297,7 @@ impl<B: Bus> Spc700<B> {
 
     pub fn mov<const DEST: AddressingMode>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let operand = cpu.operand(bus, mode);
-        cpu.write(bus, DEST, operand);
+        cpu.write(bus, DEST, operand, mode.is_register_access());
 
         if DEST.is_register_access() {
             cpu.set_nz(operand);
@@ -328,7 +336,19 @@ impl<B: Bus> Spc700<B> {
             cpu.status.set_carry(operand != 0);
         } else {
             cpu.do_rmw::<_, false>(bus, mode, |cpu, _| u8::from(cpu.status.carry()));
+            bus.add_io_cycles(1);
         }
+    }
+
+    pub fn mul(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        let result = cpu.index_y as u16 * cpu.accumulator as u16;
+        cpu.accumulator = result.low_byte();
+        cpu.index_y = result.high_byte();
+        cpu.set_nz(cpu.index_y);
+
+        // Dummy read
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        bus.add_io_cycles(7);
     }
 
     pub fn nop(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
@@ -362,7 +382,7 @@ impl<B: Bus> Spc700<B> {
 
     pub fn pop(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let operand = cpu.do_pop(bus);
-        cpu.write(bus, mode, operand);
+        cpu.write(bus, mode, operand, false);
 
         // Dummy read
         let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
