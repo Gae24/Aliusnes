@@ -209,6 +209,14 @@ impl<B: Bus> Spc700<B> {
         bus.add_io_cycles(10);
     }
 
+    pub fn ei(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        cpu.status.set_irq_enabled(true);
+
+        // Dummy read
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        bus.add_io_cycles(1);
+    }
+
     pub fn eor1(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let operand = cpu.operand(bus, mode) != 0;
         cpu.status.set_carry(cpu.status.carry() ^ operand);
@@ -224,6 +232,14 @@ impl<B: Bus> Spc700<B> {
         })
     }
 
+    pub fn inc(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        cpu.do_rmw::<_, true>(bus, mode, |cpu, operand| {
+            let res = operand.wrapping_add(1);
+            cpu.set_nz(res);
+            res
+        });
+    }
+
     pub fn incw(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         cpu.do_rmw_word(bus, |cpu, operand| {
             let res = operand.wrapping_add(1);
@@ -231,14 +247,6 @@ impl<B: Bus> Spc700<B> {
             cpu.status.set_zero(res == 0);
             res
         })
-    }
-
-    pub fn inc_x(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
-        cpu.index_x = cpu.index_x.wrapping_add(1);
-        cpu.set_nz(cpu.index_x);
-
-        // Dummy read
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
     }
 
     pub fn jmp(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
@@ -271,6 +279,15 @@ impl<B: Bus> Spc700<B> {
                 // Dummy read
                 let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
             }
+        }
+    }
+
+    pub fn mov1<const CARRY: bool>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        if CARRY {
+            let operand = cpu.operand(bus, mode) != 0;
+            cpu.status.set_carry(operand);
+        } else {
+            cpu.do_rmw::<_, false>(bus, mode, |cpu, _| u8::from(cpu.status.carry()));
         }
     }
 
@@ -358,6 +375,11 @@ impl<B: Bus> Spc700<B> {
 
             res
         });
+    }
+
+    pub fn sbc<const DEST: AddressingMode>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        let b = cpu.operand(bus, mode);
+        cpu.do_rmw::<_, false>(bus, DEST, |cpu, a| cpu.do_adc(a, !b));
     }
 
     pub fn set1<const BIT: u8>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {

@@ -100,7 +100,13 @@ impl Cpu {
                 page.wrapping_add(self.index_y.into())
             }
             AddressingMode::DirectY => todo!(),
-            AddressingMode::DirectXPostIncrement => todo!(),
+            AddressingMode::DirectXPostIncrement => {
+                let _ = bus.read_and_tick(Address::new(self.program_counter, 0));
+                bus.add_io_cycles(1);
+                let page = u16::from_le_bytes([self.index_x, self.direct_page()]);
+                self.index_x = self.index_x.wrapping_add(1);
+                page
+            }
             AddressingMode::Implied => unreachable!(),
             AddressingMode::Immediate => unreachable!(),
             AddressingMode::AbsoluteBooleanBit => unreachable!(),

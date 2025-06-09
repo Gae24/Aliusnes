@@ -148,6 +148,14 @@ impl Cpu {
             AddressingMode::Accumulator => self.accumulator = f(self, self.accumulator),
             AddressingMode::X => self.index_x = f(self, self.index_x),
             AddressingMode::Y => self.index_y = f(self, self.index_y),
+            AddressingMode::AbsoluteBooleanBit => {
+                let addr_bit = u16::from_le_bytes([self.get_imm(bus), self.get_imm(bus)]);
+                let addr = Address::new(addr_bit & 0x1FFF, 0);
+                let bit = addr_bit >> 13;
+                let data = bus.read_and_tick(addr);
+                let result = (data & !(1 << bit)) | f(self, data) << bit;
+                bus.write_and_tick(addr, result);
+            }
             _ => {
                 let addr = Address::new(self.decode_addressing_mode(bus, mode), 0);
                 let data = bus.read_and_tick(addr);
