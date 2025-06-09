@@ -39,7 +39,7 @@ impl<B: Bus> OpCode<B> {
 
 pub struct Spc700<B: Bus> {
     pub cpu: cpu::Cpu,
-    instruction_set: [OpCode<B>; 208],
+    instruction_set: [OpCode<B>; 224],
 }
 
 impl<B: Bus> Spc700<B> {
@@ -60,7 +60,7 @@ impl<B: Bus> Spc700<B> {
 }
 
 #[rustfmt::skip]
-const fn opcode_table<B: Bus>() -> [OpCode<B>; 208] {
+const fn opcode_table<B: Bus>() -> [OpCode<B>; 224] {
     use addressing::AddressingMode::*;
     [
         OpCode::new(Meta::new(0x00, "NOP", Implied), Spc700::nop),
@@ -271,5 +271,21 @@ const fn opcode_table<B: Bus>() -> [OpCode<B>; 208] {
         OpCode::new(Meta::new(0xCD, "MOV", Immediate), Spc700::mov::<{ X }>),
         OpCode::new(Meta::new(0xCE, "POP", X), Spc700::pop),
         OpCode::new(Meta::new(0xCF, "MUL", Implied), Spc700::mul),
+        OpCode::new(Meta::new(0xD0, "BNE", Implied), Spc700::bne),
+        OpCode::new(Meta::new(0xD1, "TCALL", Implied), Spc700::tcall::<13>),
+        OpCode::new(Meta::new(0xD2, "CLR1", DirectPage), Spc700::clr1::<6>),
+        OpCode::new(Meta::new(0xD3, "BBC", DirectPage), Spc700::bbc::<6>),
+        OpCode::new(Meta::new(0xD4, "MOV", Accumulator), Spc700::mov::<{ DirectX }>),
+        OpCode::new(Meta::new(0xD5, "MOV", Accumulator), Spc700::mov::<{ AbsoluteX }>),
+        OpCode::new(Meta::new(0xD6, "MOV", Accumulator), Spc700::mov::<{ AbsoluteY }>),
+        OpCode::new(Meta::new(0xD7, "MOV", Accumulator), Spc700::mov::<{ DirectPageIndirectY }>),
+        OpCode::new(Meta::new(0xD8, "MOV", X), Spc700::mov::<{ DirectPage }>),
+        OpCode::new(Meta::new(0xD9, "MOV", X), Spc700::mov::<{ DirectY }>),
+        OpCode::new(Meta::new(0xDA, "MOVW", DirectPage), Spc700::movw::<false>),
+        OpCode::new(Meta::new(0xDB, "MOV", Y), Spc700::mov::<{ DirectX }>),
+        OpCode::new(Meta::new(0xDC, "DEC", Y), Spc700::dec),
+        OpCode::new(Meta::new(0xDD, "MOV", Y), Spc700::mov::<{ Accumulator }>),
+        OpCode::new(Meta::new(0xDE, "CBNE", DirectX), Spc700::cbne),
+        OpCode::new(Meta::new(0xDF, "DAA", Implied), Spc700::daa),
     ]
 }
