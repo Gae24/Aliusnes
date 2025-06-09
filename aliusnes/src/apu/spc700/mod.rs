@@ -39,7 +39,7 @@ impl<B: Bus> OpCode<B> {
 
 pub struct Spc700<B: Bus> {
     pub cpu: cpu::Cpu,
-    instruction_set: [OpCode<B>; 176],
+    instruction_set: [OpCode<B>; 192],
 }
 
 impl<B: Bus> Spc700<B> {
@@ -60,7 +60,7 @@ impl<B: Bus> Spc700<B> {
 }
 
 #[rustfmt::skip]
-const fn opcode_table<B: Bus>() -> [OpCode<B>; 176] {
+const fn opcode_table<B: Bus>() -> [OpCode<B>; 192] {
     use addressing::AddressingMode::*;
     [
         OpCode::new(Meta::new(0x00, "NOP", Implied), Spc700::nop),
@@ -239,5 +239,21 @@ const fn opcode_table<B: Bus>() -> [OpCode<B>; 176] {
         OpCode::new(Meta::new(0xAD, "CMP", Immediate), Spc700::cmp::<{ Y }>),
         OpCode::new(Meta::new(0xAE, "POP", Accumulator), Spc700::pop),
         OpCode::new(Meta::new(0xAF, "MOV", Accumulator), Spc700::mov::<{ DirectXPostIncrement }>),
+        OpCode::new(Meta::new(0xB0, "BCS", Implied), Spc700::bcs),
+        OpCode::new(Meta::new(0xB1, "TCALL", Implied), Spc700::tcall::<11>),
+        OpCode::new(Meta::new(0xB2, "CLR1", DirectPage), Spc700::clr1::<5>),
+        OpCode::new(Meta::new(0xB3, "BBC", DirectPage), Spc700::bbc::<5>),
+        OpCode::new(Meta::new(0xB4, "SBC", DirectX), Spc700::sbc::<{ Accumulator }>),
+        OpCode::new(Meta::new(0xB5, "SBC", AbsoluteX), Spc700::sbc::<{ Accumulator }>),
+        OpCode::new(Meta::new(0xB6, "SBC", AbsoluteY), Spc700::sbc::<{ Accumulator }>),
+        OpCode::new(Meta::new(0xB7, "SBC", DirectPageIndirectY), Spc700::sbc::<{ Accumulator }>),
+        OpCode::new(Meta::new(0xB8, "SBC", Immediate), Spc700::sbc::<{ DirectPage }>),
+        OpCode::new(Meta::new(0xB9, "SBC", IndirectY), Spc700::sbc::<{ IndirectX }>),
+        OpCode::new(Meta::new(0xBA, "MOVW", DirectPage), Spc700::movw::<true>),
+        OpCode::new(Meta::new(0xBB, "INC", DirectX), Spc700::inc),
+        OpCode::new(Meta::new(0xBC, "INC", Accumulator), Spc700::inc),
+        OpCode::new(Meta::new(0xBD, "MOV", X), Spc700::mov::<{ Sp }>),
+        OpCode::new(Meta::new(0xBE, "DAS", Implied), Spc700::das),
+        OpCode::new(Meta::new(0xBF, "MOV", DirectXPostIncrement), Spc700::mov::<{ Accumulator }>),
     ]
 }
