@@ -39,7 +39,7 @@ impl<B: Bus> OpCode<B> {
 
 pub struct Spc700<B: Bus> {
     pub cpu: cpu::Cpu,
-    instruction_set: [OpCode<B>; 192],
+    instruction_set: [OpCode<B>; 208],
 }
 
 impl<B: Bus> Spc700<B> {
@@ -60,7 +60,7 @@ impl<B: Bus> Spc700<B> {
 }
 
 #[rustfmt::skip]
-const fn opcode_table<B: Bus>() -> [OpCode<B>; 192] {
+const fn opcode_table<B: Bus>() -> [OpCode<B>; 208] {
     use addressing::AddressingMode::*;
     [
         OpCode::new(Meta::new(0x00, "NOP", Implied), Spc700::nop),
@@ -255,5 +255,21 @@ const fn opcode_table<B: Bus>() -> [OpCode<B>; 192] {
         OpCode::new(Meta::new(0xBD, "MOV", X), Spc700::mov::<{ Sp }>),
         OpCode::new(Meta::new(0xBE, "DAS", Implied), Spc700::das),
         OpCode::new(Meta::new(0xBF, "MOV", DirectXPostIncrement), Spc700::mov::<{ Accumulator }>),
+        OpCode::new(Meta::new(0xC0, "DI", Implied), Spc700::di),
+        OpCode::new(Meta::new(0xC1, "TCALL", Implied), Spc700::tcall::<12>),
+        OpCode::new(Meta::new(0xC2, "SET1", DirectPage), Spc700::set1::<6>),
+        OpCode::new(Meta::new(0xC3, "BBS", DirectPage), Spc700::bbs::<6>),
+        OpCode::new(Meta::new(0xC4, "MOV", Accumulator), Spc700::mov::<{ DirectPage }>),
+        OpCode::new(Meta::new(0xC5, "MOV", Accumulator), Spc700::mov::<{ Absolute }>),
+        OpCode::new(Meta::new(0xC6, "MOV", Accumulator), Spc700::mov::<{ IndirectX }>),
+        OpCode::new(Meta::new(0xC7, "MOV", Accumulator), Spc700::mov::<{ XIndirect }>),
+        OpCode::new(Meta::new(0xC8, "CMP", Immediate), Spc700::cmp::<{ X }>),
+        OpCode::new(Meta::new(0xC9, "MOV", X), Spc700::mov::<{ Absolute }>),
+        OpCode::new(Meta::new(0xCA, "MOV1", AbsoluteBooleanBit), Spc700::mov1::<false>),
+        OpCode::new(Meta::new(0xCB, "MOV", Y), Spc700::mov::<{ DirectPage }>),
+        OpCode::new(Meta::new(0xCC, "MOV", Y), Spc700::mov::<{ Absolute }>),
+        OpCode::new(Meta::new(0xCD, "MOV", Immediate), Spc700::mov::<{ X }>),
+        OpCode::new(Meta::new(0xCE, "POP", X), Spc700::pop),
+        OpCode::new(Meta::new(0xCF, "MUL", Implied), Spc700::mul),
     ]
 }
