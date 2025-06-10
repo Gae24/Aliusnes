@@ -73,6 +73,10 @@ impl<B: Bus> Spc700<B> {
         cpu.do_branch(bus, cpu.status.carry());
     }
 
+    pub fn beq(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        cpu.do_branch(bus, cpu.status.zero());
+    }
+
     pub fn bmi(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         cpu.do_branch(bus, cpu.status.negative());
     }
@@ -203,19 +207,14 @@ impl<B: Bus> Spc700<B> {
         bus.add_io_cycles(1);
     }
 
-    pub fn dbnz<const REG: bool>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        let mut branch = false;
-        if REG {
-            cpu.index_y = cpu.index_y.wrapping_sub(1);
-            branch = cpu.index_y != 0;
-        } else {
-            cpu.do_rmw::<_, false>(bus, mode, |_, operand| {
-                let res = operand.wrapping_sub(1);
-                branch = res != 0;
-                res
-            });
-        }
-        cpu.do_branch(bus, branch);
+    pub fn dbnz(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        let mut is_non_zero = false;
+        cpu.do_rmw::<_, true>(bus, mode, |_, operand| {
+            let res = operand.wrapping_sub(1);
+            is_non_zero = res != 0;
+            res
+        });
+        cpu.do_branch(bus, is_non_zero);
     }
 
     pub fn decw(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
@@ -323,7 +322,30 @@ impl<B: Bus> Spc700<B> {
 
     pub fn mov<const DEST: AddressingMode>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let operand = cpu.operand(bus, mode);
-        cpu.write(bus, DEST, operand, mode.is_register_access());
+        match DEST {
+            AddressingMode::Accumulator => cpu.accumulator = operand,
+            AddressingMode::X => cpu.index_x = operand,
+            AddressingMode::Y => cpu.index_y = operand,
+            AddressingMode::Sp => {
+                let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+                cpu.stack_pointer = operand;
+            }
+            AddressingMode::Psw => cpu.status = Status(operand),
+            _ => {
+                let page = cpu.decode_addressing_mode(bus, DEST);
+                if !matches!(DEST, AddressingMode::DirectXPostIncrement)
+                    && !matches!(mode, AddressingMode::DirectPage)
+                {
+                    let _ = bus.read_and_tick(Address::new(page, 0));
+                }
+                bus.write_and_tick(Address::new(page, 0), operand);
+            }
+        }
+
+        if matches!(mode, AddressingMode::Sp) {
+            // Dummy read
+            let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        }
 
         if DEST.is_register_access() {
             cpu.set_nz(operand);
@@ -421,7 +443,13 @@ impl<B: Bus> Spc700<B> {
 
     pub fn pop(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let operand = cpu.do_pop(bus);
-        cpu.write(bus, mode, operand, false);
+        match mode {
+            AddressingMode::Accumulator => cpu.accumulator = operand,
+            AddressingMode::X => cpu.index_x = operand,
+            AddressingMode::Y => cpu.index_y = operand,
+            AddressingMode::Psw => cpu.status = Status(operand),
+            _ => unreachable!(),
+        }
 
         // Dummy read
         let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
@@ -501,7 +529,17 @@ impl<B: Bus> Spc700<B> {
     }
 
     pub fn sleep(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
-        cpu.sleep = true;
+        cpu.paused = true;
+
+        // Dummy read
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        bus.add_io_cycles(3);
+    }
+
+    pub fn stop(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        cpu.paused = true;
 
         // Dummy read
         let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));

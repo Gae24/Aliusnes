@@ -43,10 +43,7 @@ pub enum AddressingMode {
 
 impl AddressingMode {
     pub const fn is_register_access(&self) -> bool {
-        matches!(
-            self,
-            Self::Accumulator | Self::X | Self::Y | Self::Psw | Self::Sp
-        )
+        matches!(self, Self::Accumulator | Self::X | Self::Y | Self::Psw)
     }
 }
 
