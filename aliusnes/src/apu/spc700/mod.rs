@@ -39,7 +39,7 @@ impl<B: Bus> OpCode<B> {
 
 pub struct Spc700<B: Bus> {
     pub cpu: cpu::Cpu,
-    instruction_set: [OpCode<B>; 224],
+    instruction_set: [OpCode<B>; 240],
 }
 
 impl<B: Bus> Spc700<B> {
@@ -60,7 +60,7 @@ impl<B: Bus> Spc700<B> {
 }
 
 #[rustfmt::skip]
-const fn opcode_table<B: Bus>() -> [OpCode<B>; 224] {
+const fn opcode_table<B: Bus>() -> [OpCode<B>; 240] {
     use addressing::AddressingMode::*;
     [
         OpCode::new(Meta::new(0x00, "NOP", Implied), Spc700::nop),
@@ -287,5 +287,21 @@ const fn opcode_table<B: Bus>() -> [OpCode<B>; 224] {
         OpCode::new(Meta::new(0xDD, "MOV", Y), Spc700::mov::<{ Accumulator }>),
         OpCode::new(Meta::new(0xDE, "CBNE", DirectX), Spc700::cbne),
         OpCode::new(Meta::new(0xDF, "DAA", Implied), Spc700::daa),
+        OpCode::new(Meta::new(0xE0, "CLRV", Implied), Spc700::clrv),
+        OpCode::new(Meta::new(0xE1, "TCALL", Implied), Spc700::tcall::<14>),
+        OpCode::new(Meta::new(0xE2, "SET1", DirectPage), Spc700::set1::<7>),
+        OpCode::new(Meta::new(0xE3, "BBS", DirectPage), Spc700::bbs::<7>),
+        OpCode::new(Meta::new(0xE4, "MOV", DirectPage), Spc700::mov::<{ Accumulator }>),
+        OpCode::new(Meta::new(0xE5, "MOV", Absolute), Spc700::mov::<{ Accumulator }>),
+        OpCode::new(Meta::new(0xE6, "MOV", IndirectX), Spc700::mov::<{ Accumulator }>),
+        OpCode::new(Meta::new(0xE7, "MOV", XIndirect), Spc700::mov::<{ Accumulator }>),
+        OpCode::new(Meta::new(0xE8, "MOV", Immediate), Spc700::mov::<{ Accumulator }>),
+        OpCode::new(Meta::new(0xE9, "MOV", Absolute), Spc700::mov::<{ X }>),
+        OpCode::new(Meta::new(0xEA, "NOT1", AbsoluteBooleanBit), Spc700::not1),
+        OpCode::new(Meta::new(0xEB, "MOV", DirectPage), Spc700::mov::<{ Y }>),
+        OpCode::new(Meta::new(0xEC, "MOV", Absolute), Spc700::mov::<{ Y }>),
+        OpCode::new(Meta::new(0xED, "NOTC", Implied), Spc700::notc),
+        OpCode::new(Meta::new(0xEE, "POP", Y), Spc700::pop),
+        OpCode::new(Meta::new(0xEF, "SLEEP", Implied), Spc700::sleep),
     ]
 }

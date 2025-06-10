@@ -22,6 +22,7 @@ pub struct Cpu {
     pub program_counter: u16,
     pub stack_pointer: u8,
     pub status: Status,
+    pub sleep: bool,
 }
 
 impl Cpu {
@@ -33,6 +34,7 @@ impl Cpu {
             program_counter: 0x00,
             stack_pointer: 0x00,
             status: Status(0),
+            sleep: false,
         }
     }
 
@@ -148,10 +150,15 @@ impl Cpu {
             AddressingMode::Y => self.index_y = f(self, self.index_y),
             AddressingMode::AbsoluteBooleanBit => {
                 let addr_bit = u16::from_le_bytes([self.get_imm(bus), self.get_imm(bus)]);
+
                 let addr = Address::new(addr_bit & 0x1FFF, 0);
-                let bit = addr_bit >> 13;
+                let bit_pos = addr_bit >> 13;
                 let data = bus.read_and_tick(addr);
-                let result = (data & !(1 << bit)) | f(self, data) << bit;
+
+                let bit_value = (data >> bit_pos) & 1;
+                let modified_bit = f(self, bit_value) & 1;
+
+                let result = (data & !(1 << bit_pos)) | (modified_bit << bit_pos);
                 bus.write_and_tick(addr, result);
             }
             _ => {
