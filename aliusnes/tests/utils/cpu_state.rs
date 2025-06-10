@@ -215,7 +215,8 @@ impl OpcodeTest for Spc700State {
 
     fn do_step(&mut self, _other: &Self, _cycles_len: usize) -> (Self::Proc, TomHarteBus, bool) {
         let (mut spc700, mut bus) = self.convert_state();
-        let skip_cycles = false;
+        let opcode = spc700.peek_opcode(&bus);
+        let skip_cycles = opcode.code == 0xFE;
 
         spc700.step(&mut bus);
 

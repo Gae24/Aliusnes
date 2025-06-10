@@ -39,7 +39,7 @@ impl<B: Bus> OpCode<B> {
 
 pub struct Spc700<B: Bus> {
     pub cpu: cpu::Cpu,
-    instruction_set: [OpCode<B>; 240],
+    instruction_set: [OpCode<B>; 256],
 }
 
 impl<B: Bus> Spc700<B> {
@@ -57,10 +57,17 @@ impl<B: Bus> Spc700<B> {
         let instr = opcode.function;
         instr(&mut self.cpu, bus, opcode.meta.mode);
     }
+
+    pub fn peek_opcode(&self, bus: &B) -> Meta {
+        let op = bus
+            .peek_at(self.cpu.program_counter.into())
+            .unwrap_or_default();
+        self.instruction_set[op as usize].meta
+    }
 }
 
 #[rustfmt::skip]
-const fn opcode_table<B: Bus>() -> [OpCode<B>; 240] {
+const fn opcode_table<B: Bus>() -> [OpCode<B>; 256] {
     use addressing::AddressingMode::*;
     [
         OpCode::new(Meta::new(0x00, "NOP", Implied), Spc700::nop),
@@ -173,7 +180,7 @@ const fn opcode_table<B: Bus>() -> [OpCode<B>; 240] {
         OpCode::new(Meta::new(0x6B, "ROR", DirectPage), Spc700::ror),
         OpCode::new(Meta::new(0x6C, "ROR", Absolute), Spc700::ror),
         OpCode::new(Meta::new(0x6D, "PUSH", Y), Spc700::push),
-        OpCode::new(Meta::new(0x6E, "DBNZ", DirectPage), Spc700::dbnz::<false>),
+        OpCode::new(Meta::new(0x6E, "DBNZ", DirectPage), Spc700::dbnz),
         OpCode::new(Meta::new(0x6F, "RET", Implied), Spc700::ret),
         OpCode::new(Meta::new(0x70, "BVS", Implied), Spc700::bvs),
         OpCode::new(Meta::new(0x71, "TCALL", Implied), Spc700::tcall::<7>),
@@ -303,5 +310,21 @@ const fn opcode_table<B: Bus>() -> [OpCode<B>; 240] {
         OpCode::new(Meta::new(0xED, "NOTC", Implied), Spc700::notc),
         OpCode::new(Meta::new(0xEE, "POP", Y), Spc700::pop),
         OpCode::new(Meta::new(0xEF, "SLEEP", Implied), Spc700::sleep),
+        OpCode::new(Meta::new(0xF0, "BEQ", Implied), Spc700::beq),
+        OpCode::new(Meta::new(0xF1, "TCALL", Implied), Spc700::tcall::<15>),
+        OpCode::new(Meta::new(0xF2, "CLR1", DirectPage), Spc700::clr1::<7>),
+        OpCode::new(Meta::new(0xF3, "BBC", DirectPage), Spc700::bbc::<7>),
+        OpCode::new(Meta::new(0xF4, "MOV", DirectX), Spc700::mov::<{ Accumulator }>),
+        OpCode::new(Meta::new(0xF5, "MOV", AbsoluteX), Spc700::mov::<{ Accumulator }>),
+        OpCode::new(Meta::new(0xF6, "MOV", AbsoluteY), Spc700::mov::<{ Accumulator }>),
+        OpCode::new(Meta::new(0xF7, "MOV", DirectPageIndirectY), Spc700::mov::<{ Accumulator }>),
+        OpCode::new(Meta::new(0xF8, "MOV", DirectPage), Spc700::mov::<{ X }>),
+        OpCode::new(Meta::new(0xF9, "MOV", DirectY), Spc700::mov::<{ X }>),
+        OpCode::new(Meta::new(0xFA, "MOV", DirectPage), Spc700::mov::<{ DirectPage }>),
+        OpCode::new(Meta::new(0xFB, "MOV", DirectX), Spc700::mov::<{ Y }>),
+        OpCode::new(Meta::new(0xFC, "INC", Y), Spc700::inc),
+        OpCode::new(Meta::new(0xFD, "MOV", Accumulator), Spc700::mov::<{ Y }>),
+        OpCode::new(Meta::new(0xFE, "DBNZ", Y), Spc700::dbnz),
+        OpCode::new(Meta::new(0xFF, "STOP", Implied), Spc700::stop),
     ]
 }

@@ -22,7 +22,7 @@ pub struct Cpu {
     pub program_counter: u16,
     pub stack_pointer: u8,
     pub status: Status,
-    pub sleep: bool,
+    pub paused: bool,
 }
 
 impl Cpu {
@@ -34,7 +34,7 @@ impl Cpu {
             program_counter: 0x00,
             stack_pointer: 0x00,
             status: Status(0),
-            sleep: false,
+            paused: false,
         }
     }
 
@@ -57,23 +57,6 @@ impl Cpu {
             bus.read_and_tick(addr),
             bus.read_and_tick(addr.wrapping_add(1)),
         ])
-    }
-
-    pub fn write<B: Bus>(&mut self, bus: &mut B, mode: AddressingMode, data: u8, dummy_read: bool) {
-        match mode {
-            AddressingMode::Accumulator => self.accumulator = data,
-            AddressingMode::X => self.index_x = data,
-            AddressingMode::Y => self.index_y = data,
-            AddressingMode::Sp => self.stack_pointer = data,
-            AddressingMode::Psw => self.status = Status(data),
-            _ => {
-                let page = self.decode_addressing_mode(bus, mode);
-                if dummy_read {
-                    let _ = bus.read_and_tick(Address::new(page, 0));
-                }
-                bus.write_and_tick(Address::new(page, 0), data);
-            }
-        }
     }
 
     pub fn word_from_direct_page<B: Bus>(&mut self, bus: &mut B, offset: u8) -> u16 {
