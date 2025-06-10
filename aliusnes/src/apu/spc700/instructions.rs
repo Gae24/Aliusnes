@@ -144,6 +144,13 @@ impl<B: Bus> Spc700<B> {
         cpu.status.set_direct_page(false);
     }
 
+    pub fn clrv(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        // Dummy read
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        cpu.status.set_overflow(false);
+        cpu.status.set_half_carry(false);
+    }
+
     pub fn cmp<const OPERAND_A: AddressingMode>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         if !OPERAND_A.is_register_access() {
             bus.add_io_cycles(1);
@@ -376,6 +383,18 @@ impl<B: Bus> Spc700<B> {
         let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
     }
 
+    pub fn not1(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
+        cpu.do_rmw::<_, false>(bus, mode, |_, operand| !operand);
+    }
+
+    pub fn notc(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        cpu.status.set_carry(!cpu.status.carry());
+
+        // Dummy read
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        bus.add_io_cycles(1);
+    }
+
     pub fn or<const DEST: AddressingMode>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let b = cpu.operand(bus, mode);
         cpu.do_rmw::<_, false>(bus, DEST, |cpu, a| {
@@ -479,6 +498,16 @@ impl<B: Bus> Spc700<B> {
         // Dummy read
         let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
         cpu.status.set_direct_page(true);
+    }
+
+    pub fn sleep(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
+        cpu.sleep = true;
+
+        // Dummy read
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        bus.add_io_cycles(3);
     }
 
     pub fn subw(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
