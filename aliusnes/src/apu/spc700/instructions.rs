@@ -6,7 +6,6 @@ use crate::{
     },
     bus::Bus,
     utils::int_traits::ManipulateU16,
-    w65c816::addressing::Address,
 };
 
 impl<B: Bus> Spc700<B> {
@@ -94,8 +93,7 @@ impl<B: Bus> Spc700<B> {
     }
 
     pub fn brk(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
-        // Dummy read
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        cpu.idle(bus);
         cpu.do_push(bus, cpu.program_counter.high_byte());
         cpu.do_push(bus, cpu.program_counter.low_byte());
         cpu.do_push(bus, cpu.status.0);
@@ -103,7 +101,6 @@ impl<B: Bus> Spc700<B> {
         cpu.program_counter = cpu.read_16(bus, 0xFFDE);
         cpu.status.set_irq_enabled(false);
         cpu.status.set_break_(true);
-        bus.add_io_cycles(1);
     }
 
     pub fn bvc(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
@@ -138,19 +135,19 @@ impl<B: Bus> Spc700<B> {
 
     pub fn clrc(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         // Dummy read
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        let _ = bus.read_and_tick(cpu.program_counter.into());
         cpu.status.set_carry(false);
     }
 
     pub fn clrp(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         // Dummy read
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        let _ = bus.read_and_tick(cpu.program_counter.into());
         cpu.status.set_direct_page(false);
     }
 
     pub fn clrv(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         // Dummy read
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        let _ = bus.read_and_tick(cpu.program_counter.into());
         cpu.status.set_overflow(false);
         cpu.status.set_half_carry(false);
     }
@@ -186,10 +183,7 @@ impl<B: Bus> Spc700<B> {
             cpu.accumulator = cpu.accumulator.wrapping_add(0x06);
         }
         cpu.set_nz(cpu.accumulator);
-
-        // Dummy read
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
-        bus.add_io_cycles(1);
+        cpu.idle(bus);
     }
 
     pub fn das(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
@@ -201,10 +195,7 @@ impl<B: Bus> Spc700<B> {
             cpu.accumulator = cpu.accumulator.wrapping_sub(0x06);
         }
         cpu.set_nz(cpu.accumulator);
-
-        // Dummy read
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
-        bus.add_io_cycles(1);
+        cpu.idle(bus);
     }
 
     pub fn dbnz(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
@@ -236,10 +227,7 @@ impl<B: Bus> Spc700<B> {
 
     pub fn di(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         cpu.status.set_irq_enabled(false);
-
-        // Dummy read
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
-        bus.add_io_cycles(1);
+        cpu.idle(bus);
     }
 
     pub fn div(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
@@ -257,16 +245,13 @@ impl<B: Bus> Spc700<B> {
             cpu.index_y = (x + (ya - (x << 9)) % (256 - x)) as u8;
         };
         cpu.set_nz(cpu.accumulator);
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
-        bus.add_io_cycles(10);
+        cpu.idle(bus);
+        bus.add_io_cycles(9);
     }
 
     pub fn ei(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         cpu.status.set_irq_enabled(true);
-
-        // Dummy read
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
-        bus.add_io_cycles(1);
+        cpu.idle(bus);
     }
 
     pub fn eor1(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
@@ -327,7 +312,7 @@ impl<B: Bus> Spc700<B> {
             AddressingMode::X => cpu.index_x = operand,
             AddressingMode::Y => cpu.index_y = operand,
             AddressingMode::Sp => {
-                let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+                let _ = bus.read_and_tick(cpu.program_counter.into());
                 cpu.stack_pointer = operand;
             }
             AddressingMode::Psw => cpu.status = Status(operand),
@@ -336,15 +321,15 @@ impl<B: Bus> Spc700<B> {
                 if !matches!(DEST, AddressingMode::DirectXPostIncrement)
                     && !matches!(mode, AddressingMode::DirectPage)
                 {
-                    let _ = bus.read_and_tick(Address::new(page, 0));
+                    let _ = bus.read_and_tick(page.into());
                 }
-                bus.write_and_tick(Address::new(page, 0), operand);
+                bus.write_and_tick(page.into(), operand);
             }
         }
 
         if matches!(mode, AddressingMode::Sp) {
             // Dummy read
-            let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+            let _ = bus.read_and_tick(cpu.program_counter.into());
         }
 
         if DEST.is_register_access() {
@@ -352,7 +337,7 @@ impl<B: Bus> Spc700<B> {
 
             if mode.is_register_access() {
                 // Dummy read
-                let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+                let _ = bus.read_and_tick(cpu.program_counter.into());
             }
         }
     }
@@ -394,15 +379,13 @@ impl<B: Bus> Spc700<B> {
         cpu.accumulator = result.low_byte();
         cpu.index_y = result.high_byte();
         cpu.set_nz(cpu.index_y);
-
-        // Dummy read
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
-        bus.add_io_cycles(7);
+        cpu.idle(bus);
+        bus.add_io_cycles(6);
     }
 
     pub fn nop(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         // Dummy read
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        let _ = bus.read_and_tick(cpu.program_counter.into());
     }
 
     pub fn not1(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
@@ -411,10 +394,7 @@ impl<B: Bus> Spc700<B> {
 
     pub fn notc(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         cpu.status.set_carry(!cpu.status.carry());
-
-        // Dummy read
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
-        bus.add_io_cycles(1);
+        cpu.idle(bus);
     }
 
     pub fn or<const DEST: AddressingMode>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
@@ -451,33 +431,24 @@ impl<B: Bus> Spc700<B> {
             _ => unreachable!(),
         }
 
-        // Dummy read
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
-        bus.add_io_cycles(1);
+        cpu.idle(bus);
     }
 
     pub fn push(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         let operand = cpu.operand(bus, mode);
         cpu.do_push(bus, operand);
-
-        // Dummy read
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
-        bus.add_io_cycles(1);
+        cpu.idle(bus);
     }
 
     pub fn ret(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
-        // Dummy read
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
-        bus.add_io_cycles(1);
+        cpu.idle(bus);
 
         let new_pc = u16::from_le_bytes([cpu.do_pop(bus), cpu.do_pop(bus)]);
         cpu.program_counter = new_pc;
     }
 
     pub fn reti(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
-        // Dummy read
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
-        bus.add_io_cycles(1);
+        cpu.idle(bus);
 
         cpu.status = Status(cpu.do_pop(bus));
         let new_pc = u16::from_le_bytes([cpu.do_pop(bus), cpu.do_pop(bus)]);
@@ -518,13 +489,13 @@ impl<B: Bus> Spc700<B> {
 
     pub fn setc(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         // Dummy read
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        let _ = bus.read_and_tick(cpu.program_counter.into());
         cpu.status.set_carry(true);
     }
 
     pub fn setp(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         // Dummy read
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        let _ = bus.read_and_tick(cpu.program_counter.into());
         cpu.status.set_direct_page(true);
     }
 
@@ -532,9 +503,9 @@ impl<B: Bus> Spc700<B> {
         cpu.paused = true;
 
         // Dummy read
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        let _ = bus.read_and_tick(cpu.program_counter.into());
+        let _ = bus.read_and_tick(cpu.program_counter.into());
+        let _ = bus.read_and_tick(cpu.program_counter.into());
         bus.add_io_cycles(3);
     }
 
@@ -542,9 +513,9 @@ impl<B: Bus> Spc700<B> {
         cpu.paused = true;
 
         // Dummy read
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+        let _ = bus.read_and_tick(cpu.program_counter.into());
+        let _ = bus.read_and_tick(cpu.program_counter.into());
+        let _ = bus.read_and_tick(cpu.program_counter.into());
         bus.add_io_cycles(3);
     }
 
@@ -563,9 +534,8 @@ impl<B: Bus> Spc700<B> {
     }
 
     pub fn tcall<const INDEX: u8>(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
-        // Dummy read
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
-        bus.add_io_cycles(2);
+        cpu.idle(bus);
+        bus.add_io_cycles(1);
 
         cpu.do_push(bus, cpu.program_counter.high_byte());
         cpu.do_push(bus, cpu.program_counter.low_byte());
@@ -585,7 +555,8 @@ impl<B: Bus> Spc700<B> {
     pub fn xcn(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
         cpu.accumulator = cpu.accumulator.rotate_right(4);
         cpu.set_nz(cpu.accumulator);
-        bus.add_io_cycles(3);
-        let _ = bus.read_and_tick(Address::new(cpu.program_counter, 0));
+
+        cpu.idle(bus);
+        bus.add_io_cycles(2);
     }
 }

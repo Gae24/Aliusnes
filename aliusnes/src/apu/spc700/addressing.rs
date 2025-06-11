@@ -1,4 +1,4 @@
-use crate::{apu::spc700::Cpu, bus::Bus, w65c816::addressing::Address};
+use crate::{apu::spc700::Cpu, bus::Bus};
 use std::marker::ConstParamTy;
 
 #[derive(ConstParamTy, PartialEq, Eq, Clone, Copy)]
@@ -49,7 +49,7 @@ impl AddressingMode {
 
 impl Cpu {
     pub fn get_imm<B: Bus>(&mut self, bus: &mut B) -> u8 {
-        let addr = Address::new(self.program_counter, 0);
+        let addr = self.program_counter.into();
         self.program_counter = self.program_counter.wrapping_add(1);
         bus.read_and_tick(addr)
     }
@@ -66,7 +66,7 @@ impl Cpu {
             AddressingMode::Absolute => self.abs(bus),
             AddressingMode::IndirectX => {
                 // An extra discarded read is performed in indirect addressing
-                let _ = bus.read_and_tick(Address::new(self.program_counter, 0));
+                let _ = bus.read_and_tick(self.program_counter.into());
 
                 u16::from_le_bytes([self.index_x, self.direct_page()])
             }
@@ -102,7 +102,7 @@ impl Cpu {
                 u16::from_le_bytes([offset, self.direct_page()])
             }
             AddressingMode::DirectXPostIncrement => {
-                let _ = bus.read_and_tick(Address::new(self.program_counter, 0));
+                let _ = bus.read_and_tick(self.program_counter.into());
                 bus.add_io_cycles(1);
                 let page = u16::from_le_bytes([self.index_x, self.direct_page()]);
                 self.index_x = self.index_x.wrapping_add(1);
@@ -129,13 +129,13 @@ impl Cpu {
             AddressingMode::Immediate => self.get_imm(bus),
             AddressingMode::AbsoluteBooleanBit => {
                 let addr_bit = u16::from_le_bytes([self.get_imm(bus), self.get_imm(bus)]);
-                let val = bus.read_and_tick(Address::new(addr_bit & 0x1FFF, 0));
+                let val = bus.read_and_tick((addr_bit & 0x1FFF).into());
 
                 val & 1 << (addr_bit >> 13)
             }
             _ => {
                 let page = self.decode_addressing_mode(bus, mode);
-                bus.read_and_tick(Address::new(page, 0))
+                bus.read_and_tick(page.into())
             }
         }
     }
