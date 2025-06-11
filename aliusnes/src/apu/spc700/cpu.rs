@@ -1,6 +1,6 @@
 use crate::apu::spc700::addressing::AddressingMode;
+use crate::bus::Bus;
 use crate::utils::int_traits::ManipulateU16;
-use crate::{bus::Bus, w65c816::addressing::Address};
 
 bitfield!(
     pub struct Status(pub u8) {
@@ -52,10 +52,9 @@ impl Cpu {
     }
 
     pub fn read_16<B: Bus>(&mut self, bus: &mut B, addr: u16) -> u16 {
-        let addr = Address::new(addr, 0);
         u16::from_le_bytes([
-            bus.read_and_tick(addr),
-            bus.read_and_tick(addr.wrapping_add(1)),
+            bus.read_and_tick(addr.into()),
+            bus.read_and_tick(addr.wrapping_add(1).into()),
         ])
     }
 
@@ -64,8 +63,8 @@ impl Cpu {
         let high_byte_addr = u16::from_le_bytes([offset.wrapping_add(1), self.direct_page()]);
 
         u16::from_le_bytes([
-            bus.read_and_tick(Address::new(low_byte_addr, 0)),
-            bus.read_and_tick(Address::new(high_byte_addr, 0)),
+            bus.read_and_tick(low_byte_addr.into()),
+            bus.read_and_tick(high_byte_addr.into()),
         ])
     }
 
@@ -83,8 +82,8 @@ impl Cpu {
     }
 
     pub fn do_test_bit<B: Bus>(&mut self, bus: &mut B, mode: AddressingMode, clear: bool) {
-        let addr = Address::new(self.decode_addressing_mode(bus, mode), 0);
-        let operand = bus.read_and_tick(addr);
+        let page = self.decode_addressing_mode(bus, mode);
+        let operand = bus.read_and_tick(page.into());
         self.set_nz(self.accumulator.wrapping_sub(operand));
 
         let value = if clear {
@@ -94,8 +93,8 @@ impl Cpu {
         };
 
         // Dummy read
-        let _ = bus.read_and_tick(addr);
-        bus.write_and_tick(addr, value);
+        let _ = bus.read_and_tick(page.into());
+        bus.write_and_tick(page.into(), value);
     }
 
     pub fn do_branch<B: Bus>(&mut self, bus: &mut B, cond: bool) {
@@ -109,12 +108,12 @@ impl Cpu {
     pub fn do_pop<B: Bus>(&mut self, bus: &mut B) -> u8 {
         self.stack_pointer = self.stack_pointer.wrapping_add(1);
         let stack_addr = u16::from_le_bytes([self.stack_pointer, 0x01]);
-        bus.read_and_tick(Address::new(stack_addr, 0))
+        bus.read_and_tick(stack_addr.into())
     }
 
     pub fn do_push<B: Bus>(&mut self, bus: &mut B, data: u8) {
         let stack_addr = u16::from_le_bytes([self.stack_pointer, 0x01]);
-        bus.write_and_tick(Address::new(stack_addr, 0), data);
+        bus.write_and_tick(stack_addr.into(), data);
         self.stack_pointer = self.stack_pointer.wrapping_sub(1);
     }
 
@@ -125,7 +124,7 @@ impl Cpu {
         f: impl FnOnce(&mut Cpu, u8) -> u8,
     ) {
         if mode.is_register_access() && VOID_READ {
-            let _ = bus.read_and_tick(Address::new(self.program_counter, 0));
+            let _ = bus.read_and_tick(self.program_counter.into());
         }
         match mode {
             AddressingMode::Accumulator => self.accumulator = f(self, self.accumulator),
@@ -134,21 +133,21 @@ impl Cpu {
             AddressingMode::AbsoluteBooleanBit => {
                 let addr_bit = u16::from_le_bytes([self.get_imm(bus), self.get_imm(bus)]);
 
-                let addr = Address::new(addr_bit & 0x1FFF, 0);
+                let page = addr_bit & 0x1FFF;
                 let bit_pos = addr_bit >> 13;
-                let data = bus.read_and_tick(addr);
+                let data = bus.read_and_tick(page.into());
 
                 let bit_value = (data >> bit_pos) & 1;
                 let modified_bit = f(self, bit_value) & 1;
 
                 let result = (data & !(1 << bit_pos)) | (modified_bit << bit_pos);
-                bus.write_and_tick(addr, result);
+                bus.write_and_tick(page.into(), result);
             }
             _ => {
-                let addr = Address::new(self.decode_addressing_mode(bus, mode), 0);
-                let data = bus.read_and_tick(addr);
+                let page = self.decode_addressing_mode(bus, mode);
+                let data = bus.read_and_tick(page.into());
                 let result = f(self, data);
-                bus.write_and_tick(addr, result);
+                bus.write_and_tick(page.into(), result);
             }
         }
     }
@@ -158,8 +157,8 @@ impl Cpu {
         let low_byte_page = u16::from_le_bytes([offset, self.direct_page()]);
         let high_byte_page = u16::from_le_bytes([offset.wrapping_add(1), self.direct_page()]);
 
-        let low_byte_addr = Address::new(low_byte_page, 0);
-        let high_byte_addr = Address::new(high_byte_page, 0);
+        let low_byte_addr = low_byte_page.into();
+        let high_byte_addr = high_byte_page.into();
 
         let low_byte = bus.read_and_tick(low_byte_addr);
         let high_byte = bus.read_and_tick(high_byte_addr);
@@ -169,5 +168,11 @@ impl Cpu {
         let result = f(self, data);
         bus.write_and_tick(low_byte_addr, result.low_byte());
         bus.write_and_tick(high_byte_addr, result.high_byte());
+    }
+
+    /// Perform a discarded read and adds a io cycle
+    pub fn idle<B: Bus>(&self, bus: &mut B) {
+        let _ = bus.read_and_tick(self.program_counter.into());
+        bus.add_io_cycles(1);
     }
 }
