@@ -38,10 +38,6 @@ impl Cpu {
         }
     }
 
-    pub fn direct_page(&self) -> u8 {
-        self.status.direct_page().into()
-    }
-
     pub fn ya(&self) -> u16 {
         u16::from_le_bytes([self.accumulator, self.index_y])
     }
@@ -59,12 +55,12 @@ impl Cpu {
     }
 
     pub fn word_from_direct_page<B: Bus>(&mut self, bus: &mut B, offset: u8) -> u16 {
-        let low_byte_addr = u16::from_le_bytes([offset, self.direct_page()]);
-        let high_byte_addr = u16::from_le_bytes([offset.wrapping_add(1), self.direct_page()]);
+        let low_byte_addr = self.direct_page(offset).into();
+        let high_byte_addr = self.direct_page(offset.wrapping_add(1)).into();
 
         u16::from_le_bytes([
-            bus.read_and_tick(low_byte_addr.into()),
-            bus.read_and_tick(high_byte_addr.into()),
+            bus.read_and_tick(low_byte_addr),
+            bus.read_and_tick(high_byte_addr),
         ])
     }
 
@@ -154,11 +150,8 @@ impl Cpu {
 
     pub fn do_rmw_word<B: Bus>(&mut self, bus: &mut B, f: impl FnOnce(&mut Cpu, u16) -> u16) {
         let offset = self.get_imm(bus);
-        let low_byte_page = u16::from_le_bytes([offset, self.direct_page()]);
-        let high_byte_page = u16::from_le_bytes([offset.wrapping_add(1), self.direct_page()]);
-
-        let low_byte_addr = low_byte_page.into();
-        let high_byte_addr = high_byte_page.into();
+        let low_byte_addr = self.direct_page(offset).into();
+        let high_byte_addr = self.direct_page(offset.wrapping_add(1)).into();
 
         let low_byte = bus.read_and_tick(low_byte_addr);
         let high_byte = bus.read_and_tick(high_byte_addr);

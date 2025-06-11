@@ -54,6 +54,10 @@ impl Cpu {
         bus.read_and_tick(addr)
     }
 
+    pub fn direct_page(&self, offset: u8) -> u16 {
+        u16::from_le_bytes([offset, self.status.direct_page().into()])
+    }
+
     pub fn abs<B: Bus>(&mut self, bus: &mut B) -> u16 {
         u16::from_le_bytes([self.get_imm(bus), self.get_imm(bus)])
     }
@@ -61,16 +65,16 @@ impl Cpu {
     pub fn decode_addressing_mode<B: Bus>(&mut self, bus: &mut B, mode: AddressingMode) -> u16 {
         match mode {
             AddressingMode::DirectPage => {
-                u16::from_le_bytes([self.get_imm(bus), self.direct_page()])
+                u16::from_le_bytes([self.get_imm(bus), self.status.direct_page().into()])
             }
             AddressingMode::Absolute => self.abs(bus),
             AddressingMode::IndirectX => {
                 // An extra discarded read is performed in indirect addressing
                 let _ = bus.read_and_tick(self.program_counter.into());
 
-                u16::from_le_bytes([self.index_x, self.direct_page()])
+                self.direct_page(self.index_x)
             }
-            AddressingMode::IndirectY => u16::from_le_bytes([self.index_y, self.direct_page()]),
+            AddressingMode::IndirectY => self.direct_page(self.index_y),
             AddressingMode::XIndirect => {
                 bus.add_io_cycles(1);
                 let offset = self.get_imm(bus).wrapping_add(self.index_x);
@@ -79,7 +83,7 @@ impl Cpu {
             AddressingMode::DirectX => {
                 bus.add_io_cycles(1);
                 let offset = self.get_imm(bus).wrapping_add(self.index_x);
-                u16::from_le_bytes([offset, self.direct_page()])
+                self.direct_page(offset)
             }
             AddressingMode::AbsoluteX => {
                 bus.add_io_cycles(1);
@@ -99,12 +103,12 @@ impl Cpu {
             AddressingMode::DirectY => {
                 bus.add_io_cycles(1);
                 let offset = self.get_imm(bus).wrapping_add(self.index_y);
-                u16::from_le_bytes([offset, self.direct_page()])
+                self.direct_page(offset)
             }
             AddressingMode::DirectXPostIncrement => {
                 let _ = bus.read_and_tick(self.program_counter.into());
                 bus.add_io_cycles(1);
-                let page = u16::from_le_bytes([self.index_x, self.direct_page()]);
+                let page = self.direct_page(self.index_x);
                 self.index_x = self.index_x.wrapping_add(1);
                 page
             }

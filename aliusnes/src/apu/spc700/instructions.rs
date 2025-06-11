@@ -352,15 +352,10 @@ impl<B: Bus> Spc700<B> {
             cpu.status.set_zero(value == 0);
             bus.add_io_cycles(1);
         } else {
-            let _ = bus.read_and_tick(u16::from_le_bytes([offset, cpu.direct_page()]).into());
-            bus.write_and_tick(
-                u16::from_le_bytes([offset, cpu.direct_page()]).into(),
-                cpu.accumulator,
-            );
-            bus.write_and_tick(
-                u16::from_le_bytes([offset.wrapping_add(1), cpu.direct_page()]).into(),
-                cpu.index_y,
-            );
+            let page = cpu.direct_page(offset);
+            let _ = bus.read_and_tick(page.into());
+            bus.write_and_tick(page.into(), cpu.accumulator);
+            bus.write_and_tick(cpu.direct_page(offset.wrapping_add(1)).into(), cpu.index_y);
         }
     }
 
