@@ -1,17 +1,19 @@
-use crate::{cart::Cart, ppu::Ppu, scheduler::Scheduler, utils::int_traits::ManipulateU16};
+use crate::{
+    apu::Apu, cart::Cart, ppu::Ppu, scheduler::Scheduler, utils::int_traits::ManipulateU16,
+};
 
 use super::{dma::Dma, math::Math, wram::Wram, Access, Address, Bus};
 
 pub struct SystemBus {
     mdr: u8,
     fast_rom_enabled: bool,
+    apu: Apu,
     cart: Cart,
     pub dma: Dma,
     math: Math,
     pub ppu: Ppu,
     pub scheduler: Scheduler,
     wram: Wram,
-    dummy_apu: [u8; 4],
 }
 
 impl SystemBus {
@@ -19,13 +21,13 @@ impl SystemBus {
         Self {
             mdr: 0,
             fast_rom_enabled: false,
+            apu: Apu::new(),
             ppu: Ppu::new(cart.model),
             scheduler: Scheduler::new(),
             cart,
             dma: Dma::new(),
             math: Math::new(),
             wram: Wram::new(),
-            dummy_apu: [0xAA, 0, 0, 0],
         }
     }
 
@@ -36,18 +38,7 @@ impl SystemBus {
     pub fn read_b(&mut self, addr: u16) -> u8 {
         if let Some(val) = match addr.low_byte() {
             0x34..=0x3F => self.ppu.read(addr, self.scheduler.cycles),
-            0x40..=0x43 => {
-                let ch = ((addr - 0x2140) % 4) as usize;
-
-                let value = self.dummy_apu[ch];
-                self.dummy_apu[ch] = match ch {
-                    0 => 0xAA,
-                    1 => 0xBB,
-                    _ => 0,
-                };
-
-                Some(value)
-            }
+            0x40..=0x43 => self.apu.read(addr, 0),
             0x80 => self.wram.read(addr, 0),
             _ => None,
         } {
@@ -111,10 +102,7 @@ impl SystemBus {
     pub fn write_b(&mut self, addr: u16, data: u8) {
         match addr.low_byte() {
             0x00..=0x33 => self.ppu.write(addr, data),
-            0x40..=0x43 => {
-                let ch = ((addr - 0x2140) % 4) as usize;
-                self.dummy_apu[ch] = data;
-            }
+            0x40..=0x43 => self.apu.write(addr, data),
             0x80..=0x83 => self.wram.write(addr, data),
             _ => println!("Tried to write at {addr:#0x} val: {data:#04x}"),
         }
