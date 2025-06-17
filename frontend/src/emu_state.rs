@@ -1,17 +1,14 @@
 use std::{
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        mpsc,
-    },
+    sync::mpsc::{channel, Receiver, Sender},
     thread,
 };
 
 use aliusnes::{cart::Cart, emu::Emu};
 
-#[allow(dead_code)]
 pub enum Message {
     Pause,
-    Stop,
+    Play,
+    Step,
 }
 
 pub struct Frame {
@@ -22,14 +19,14 @@ pub struct Frame {
 
 #[allow(dead_code)]
 pub struct EmuState {
-    message_tx: mpsc::Sender<Message>,
+    message_tx: Sender<Message>,
     pub frame_rx: rtrb::Consumer<Frame>,
     emu_thread: thread::JoinHandle<()>,
 }
 
 impl EmuState {
     pub fn new(cart: Cart) -> Self {
-        let (message_tx, message_rx) = mpsc::channel::<Message>();
+        let (message_tx, message_rx) = channel::<Message>();
         let (frame_tx, frame_rx) = rtrb::RingBuffer::<Frame>::new(5);
         Self {
             message_tx,
@@ -38,23 +35,26 @@ impl EmuState {
         }
     }
 
-    #[allow(dead_code)]
     pub fn send_message(&self, msg: Message) {
         self.message_tx.send(msg).expect("Error on sending message");
     }
 
-    fn run(cart: Cart, mut frame_tx: rtrb::Producer<Frame>, message_rx: mpsc::Receiver<Message>) {
-        let paused = AtomicBool::new(false);
+    fn run(cart: Cart, mut frame_tx: rtrb::Producer<Frame>, message_rx: Receiver<Message>) {
+        let mut paused = false;
         let mut emu = Emu::new(cart);
-        'main: loop {
+        loop {
             for msg in message_rx.try_iter() {
                 match msg {
-                    Message::Pause => paused.store(true, Ordering::Relaxed),
-                    Message::Stop => break 'main,
+                    Message::Pause => paused = true,
+                    Message::Play => paused = false,
+                    Message::Step => {
+                        paused = true;
+                        emu.step();
+                    }
                 }
             }
 
-            if !paused.load(Ordering::Relaxed) {
+            if !paused {
                 emu.step();
             }
 

@@ -17,7 +17,7 @@ fn parse_rom(path: &str) -> Option<&Path> {
 }
 
 fn main() {
-    env::set_var("RUST_BACKTRACE", "1");
+    unsafe { env::set_var("RUST_BACKTRACE", "1") };
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 2 || args.len() > 3 {
