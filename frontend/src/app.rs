@@ -1,4 +1,5 @@
 use crate::emu_state::EmuState;
+use crate::emu_state::Message;
 use aliusnes::cart::Cart;
 use eframe::{
     egui::{self, Color32, ColorImage},
@@ -7,6 +8,7 @@ use eframe::{
 
 pub struct App {
     emu_state: EmuState,
+    playing: bool,
     texture: egui::TextureHandle,
 }
 
@@ -15,6 +17,7 @@ impl App {
         cc.egui_ctx.set_visuals(egui::Visuals::dark());
         Self {
             emu_state: EmuState::new(cart),
+            playing: true,
             texture: cc.egui_ctx.load_texture(
                 "Framebuffer",
                 egui::ColorImage::new([512, 478], egui::Color32::TRANSPARENT),
@@ -27,6 +30,22 @@ impl App {
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::SidePanel::left("my_left_panel").show(ctx, |ui| {
+            ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
+                if ui.button("Step").clicked() {
+                    self.emu_state.send_message(Message::Step);
+                }
+                if ui
+                    .button(if self.playing { "Pause" } else { "Resume" })
+                    .clicked()
+                {
+                    if self.playing {
+                        self.emu_state.send_message(Message::Pause);
+                    } else {
+                        self.emu_state.send_message(Message::Play);
+                    }
+                    self.playing = !self.playing;
+                }
+            });
             ui.label("CPU disasm");
         });
         egui::CentralPanel::default().show(ctx, |ui| {
