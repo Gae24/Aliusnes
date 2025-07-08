@@ -301,18 +301,13 @@ impl<B: Bus> super::W65C816<B> {
     }
 
     pub fn jsr(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        let val = if mode == AddressingMode::AbsoluteIndirectX {
-            let addr = cpu.decode_addressing_mode::<false, B>(bus, mode);
-            u16::from_le_bytes([
-                bus.read_and_tick(addr),
-                bus.read_and_tick(addr.wrapping_offset_add(1)),
-            ])
-        } else {
-            bus.add_io_cycles(1);
-            cpu.get_operand(bus, &mode)
-        };
+        let new_pc = cpu.get_operand::<u16, B>(bus, &mode);
         do_push(cpu, bus, cpu.program_counter.wrapping_sub(1));
-        cpu.program_counter = val;
+        cpu.program_counter = new_pc;
+
+        if let AddressingMode::AbsoluteJMP = mode {
+            bus.add_io_cycles(1);
+        }
     }
 
     pub fn lda(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {

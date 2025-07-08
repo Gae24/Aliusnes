@@ -255,7 +255,15 @@ impl Cpu {
             | AddressingMode::StackPEI => self.read_from_direct_page(bus, mode).0,
             _ => {
                 let addr = self.decode_addressing_mode::<false, B>(bus, *mode);
-                self.read(bus, addr)
+
+                if let AddressingMode::AbsoluteIndirectX = mode {
+                    T::from_u16(u16::from_le_bytes([
+                        bus.read_and_tick(addr),
+                        bus.read_and_tick(addr.wrapping_offset_add(1)),
+                    ]))
+                } else {
+                    self.read(bus, addr)
+                }
             }
         }
     }
