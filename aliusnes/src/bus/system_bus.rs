@@ -11,6 +11,7 @@ pub struct SystemBus {
     math: Math,
     pub ppu: Ppu,
     wram: Wram,
+    dummy_apu: [u8; 4],
 }
 
 impl SystemBus {
@@ -24,6 +25,7 @@ impl SystemBus {
             dma: Dma::new(),
             math: Math::new(),
             wram: Wram::new(),
+            dummy_apu: [0xAA, 0, 0, 0],
         }
     }
 
@@ -45,7 +47,18 @@ impl SystemBus {
     pub fn read_b(&mut self, addr: u16) -> u8 {
         if let Some(val) = match addr.low_byte() {
             0x34..=0x3F => self.ppu.read(addr),
-            0x40..=0x43 => todo!("apu area"),
+            0x40..=0x43 => {
+                let ch = ((addr - 0x2140) % 4) as usize;
+
+                let value = self.dummy_apu[ch];
+                self.dummy_apu[ch] = match ch {
+                    0 => 0xAA,
+                    1 => 0xBB,
+                    _ => 0,
+                };
+
+                Some(value)
+            }
             0x80 => self.wram.read(addr),
             _ => None,
         } {
@@ -107,7 +120,10 @@ impl SystemBus {
     pub fn write_b(&mut self, addr: u16, data: u8) {
         match addr.low_byte() {
             0x00..=0x33 => self.ppu.write(addr, data),
-            0x40..=0x43 => todo!("apu area"),
+            0x40..=0x43 => {
+                let ch = ((addr - 0x2140) % 4) as usize;
+                self.dummy_apu[ch] = data;
+            }
             0x80..=0x83 => self.wram.write(addr, data),
             _ => println!("Tried to write at {addr:#0x} val: {data:#04x}"),
         }
