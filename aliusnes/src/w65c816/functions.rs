@@ -289,11 +289,7 @@ pub(super) fn do_store<T: RegSize, B: Bus>(
         }
         _ => {
             let addr = cpu.decode_addressing_mode::<true, B>(bus, mode);
-            if T::IS_U16 {
-                cpu.write_16(bus, addr, val.as_u16());
-            } else {
-                bus.write_and_tick(addr, val.as_u8());
-            }
+            cpu.write(bus, addr, val);
         }
     }
 }

@@ -85,18 +85,16 @@ impl From<Address> for usize {
 }
 
 impl Cpu {
-    pub fn read_bank0<B: Bus>(&mut self, bus: &mut B, offset: u16) -> u16 {
-        let addr = Address::new(offset, 0);
+    pub fn read_bank0<B: Bus>(&mut self, bus: &mut B, page: u16) -> u16 {
         u16::from_le_bytes([
-            bus.read_and_tick(addr),
-            bus.read_and_tick(addr.wrapping_offset_add(1)),
+            bus.read_and_tick(page.into()),
+            bus.read_and_tick(page.wrapping_add(1).into()),
         ])
     }
 
-    pub fn write_bank0<B: Bus>(&mut self, bus: &mut B, offset: u16, data: u16) {
-        let addr = Address::new(offset, 0);
-        bus.write_and_tick(addr, data.low_byte());
-        bus.write_and_tick(addr.wrapping_offset_add(1), data.high_byte());
+    pub fn write_bank0<B: Bus>(&mut self, bus: &mut B, page: u16, data: u16) {
+        bus.write_and_tick(page.into(), data.low_byte());
+        bus.write_and_tick(page.wrapping_add(1).into(), data.high_byte());
     }
 
     pub fn get_imm<T: RegSize, B: Bus>(&mut self, bus: &mut B) -> T {
@@ -257,11 +255,7 @@ impl Cpu {
             | AddressingMode::StackPEI => self.read_from_direct_page(bus, mode).0,
             _ => {
                 let addr = self.decode_addressing_mode::<false, B>(bus, *mode);
-                if T::IS_U16 {
-                    T::from_u16(self.read_16(bus, addr))
-                } else {
-                    T::from_u8(bus.read_and_tick(addr))
-                }
+                self.read(bus, addr)
             }
         }
     }
