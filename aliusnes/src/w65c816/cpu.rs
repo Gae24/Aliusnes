@@ -167,16 +167,25 @@ impl Cpu {
         self.program_counter = self.read_bank0(bus, interrupt.get_addr(self.emulation_mode));
     }
 
-    pub fn read_16<B: Bus>(&mut self, bus: &mut B, addr: Address) -> u16 {
-        u16::from_le_bytes([
-            bus.read_and_tick(addr),
-            bus.read_and_tick(addr.wrapping_add(1)),
-        ])
+    pub fn read<B: Bus, T: RegSize>(&mut self, bus: &mut B, addr: Address) -> T {
+        if T::IS_U16 {
+            let value = u16::from_le_bytes([
+                bus.read_and_tick(addr),
+                bus.read_and_tick(addr.wrapping_add(1)),
+            ]);
+            T::from_u16(value)
+        } else {
+            T::from_u8(bus.read_and_tick(addr))
+        }
     }
 
-    pub fn write_16<B: Bus>(&mut self, bus: &mut B, addr: Address, data: u16) {
-        bus.write_and_tick(addr, data.low_byte());
-        bus.write_and_tick(addr.wrapping_add(1), data.high_byte());
+    pub fn write<B: Bus, T: RegSize>(&mut self, bus: &mut B, addr: Address, data: T) {
+        if T::IS_U16 {
+            bus.write_and_tick(addr, data.as_u16().low_byte());
+            bus.write_and_tick(addr.wrapping_add(1), data.as_u16().high_byte());
+        } else {
+            bus.write_and_tick(addr, data.as_u8());
+        }
     }
 
     pub fn do_rmw<T: RegSize, B: Bus>(
@@ -200,15 +209,9 @@ impl Cpu {
             }
             _ => {
                 let addr = self.decode_addressing_mode::<true, B>(bus, *mode);
-                if T::IS_U16 {
-                    let data = self.read_16(bus, addr);
-                    let result = f(self, T::from_u16(data)).as_u16();
-                    self.write_16(bus, addr, result);
-                } else {
-                    let data = bus.read_and_tick(addr);
-                    let result = f(self, T::from_u8(data)).as_u8();
-                    bus.write_and_tick(addr, result);
-                }
+                let data = self.read(bus, addr);
+                let result = f(self, data);
+                self.write(bus, addr, result);
             }
         }
     }
