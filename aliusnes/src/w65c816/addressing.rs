@@ -3,6 +3,7 @@ use crate::{bus::Bus, utils::int_traits::ManipulateU16};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum AddressingMode {
+    Accumulator,
     Implied,
     Immediate,
     Relative,
