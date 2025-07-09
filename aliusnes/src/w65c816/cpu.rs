@@ -195,6 +195,10 @@ impl Cpu {
         f: fn(&mut Cpu, T) -> T,
     ) {
         match mode {
+            AddressingMode::Accumulator => {
+                let result = f(self, T::from_u16(self.accumulator));
+                self.set_accumulator(result);
+            }
             AddressingMode::Direct
             | AddressingMode::DirectX
             | AddressingMode::DirectY
