@@ -5,6 +5,7 @@ pub mod addressing;
 pub mod cpu;
 mod functions;
 mod instructions;
+mod opcode;
 mod regsize;
 
 #[derive(Clone, Copy)]
@@ -203,7 +204,7 @@ pub const fn opcode_table<B: Bus>() -> [OpCode<B>; 256] {
         OpCode::new(Meta::new(0x5f, "EOR", AbsoluteLongX), W65C816::eor),
         OpCode::new(Meta::new(0x60, "RTS", Implied), W65C816::rts),
         OpCode::new(Meta::new(0x61, "ADC", IndirectX), W65C816::adc),
-        OpCode::new(Meta::new(0x62, "PER", Implied), W65C816::per),
+        OpCode::new(Meta::new(0x62, "PER", RelativeLong), W65C816::per),
         OpCode::new(Meta::new(0x63, "ADC", StackRelative), W65C816::adc),
         OpCode::new(Meta::new(0x64, "STZ", Direct), W65C816::stz),
         OpCode::new(Meta::new(0x65, "ADC", Direct), W65C816::adc),
