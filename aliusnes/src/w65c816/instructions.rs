@@ -86,9 +86,7 @@ impl<B: Bus> super::W65C816<B> {
     }
 
     pub fn brl(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        bus.add_io_cycles(1);
-        let offset = cpu.get_operand::<u16, B>(bus, &mode) as i16;
-        cpu.program_counter = cpu.program_counter.wrapping_add(offset as u16);
+        cpu.program_counter = cpu.get_operand::<u16, B>(bus, &mode);
     }
 
     pub fn bvc(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
@@ -367,9 +365,8 @@ impl<B: Bus> super::W65C816<B> {
     }
 
     pub fn per(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        bus.add_io_cycles(1);
         let value = cpu.get_operand::<u16, B>(bus, &mode);
-        do_push(cpu, bus, cpu.program_counter.wrapping_add(value));
+        do_push(cpu, bus, value);
     }
 
     pub fn pha(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {

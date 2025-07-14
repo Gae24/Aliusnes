@@ -235,19 +235,34 @@ impl Cpu {
                 let offset = self.read_bank0(bus, indirect);
                 Address::new(offset, self.dbr).wrapping_add(u32::from(self.index_y))
             }
-            _ => unreachable!(),
+            AddressingMode::Accumulator
+            | AddressingMode::Implied
+            | AddressingMode::Immediate
+            | AddressingMode::Relative
+            | AddressingMode::RelativeLong
+            | AddressingMode::Direct
+            | AddressingMode::DirectX
+            | AddressingMode::DirectY
+            | AddressingMode::AbsoluteIndirectLong
+            | AddressingMode::AbsoluteJMP
+            | AddressingMode::AbsoluteLongJSL
+            | AddressingMode::StackRelative
+            | AddressingMode::StackPEI
+            | AddressingMode::BlockMove => unreachable!(),
         }
     }
 
     pub fn get_operand<T: RegSize, B: Bus>(&mut self, bus: &mut B, mode: &AddressingMode) -> T {
         match mode {
+            AddressingMode::RelativeLong => {
+                bus.add_io_cycles(1);
+                let offset = self.get_imm::<u16, _>(bus) as i16;
+                T::from_u16(self.program_counter.wrapping_add(offset as u16))
+            }
             AddressingMode::Immediate
-            | AddressingMode::Implied
             | AddressingMode::Relative
-            | AddressingMode::RelativeLong
             | AddressingMode::AbsoluteJMP
             | AddressingMode::AbsoluteLongJSL
-            | AddressingMode::AbsoluteIndirectLong
             | AddressingMode::BlockMove => self.get_imm(bus),
             AddressingMode::Direct
             | AddressingMode::DirectX
