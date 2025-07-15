@@ -479,7 +479,11 @@ impl<B: Bus> super::W65C816<B> {
         bus.add_io_cycles(1);
         let mask = cpu.get_operand::<u8, B>(bus, &mode);
         let src = cpu.status.0;
-        cpu.status = super::cpu::Status(src & !mask);
+        cpu.set_status_register(src & !mask);
+        if cpu.emulation_mode {
+            cpu.status.set_a_reg_size(true);
+            cpu.status.set_index_regs_size(true);
+        }
     }
 
     pub fn rol(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
