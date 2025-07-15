@@ -71,17 +71,17 @@ impl Dma {
                 5 => vec![0, 1, 0, 1],
                 _ => unreachable!(),
             };
-            // log::warn!("Channel {index} will transfer {count} Bytes");
+
             for i in 0..count {
                 let bank = bus.dma.channels[index].a_bank_or_h_table_bank;
                 let offset = bus.dma.channels[index].a_addr_or_h_table_addr;
                 let a_addr = Address::new(offset, bank);
                 let byte = channel.b_addr.wrapping_add(pattern[i % pattern.len()]);
 
-                //WRAM to WRAM is invalid
+                // WRAM to WRAM is invalid
                 if byte == 0x80
-                    && ((u32::from(a_addr) & 0x00FE_0000) == 0x007E_0000
-                        || (u32::from(a_addr) & 0x0040_E000) == 0)
+                    && ((u32::from(a_addr) & 0xFE_0000) == 0x7E_0000
+                        || (u32::from(a_addr) & 0x40_E000) == 0)
                 {
                     continue;
                 }

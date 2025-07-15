@@ -62,42 +62,59 @@ impl SystemBus {
             0x80 => self.wram.read(addr),
             _ => None,
         } {
-            self.mdr = val;
+            val
         } else {
-            self.mdr = 0;
+            self.mdr
         }
-        self.mdr
+    }
+
+    fn peek(&self, addr: Address) -> Option<u8> {
+        let bank = addr.bank;
+        let page = addr.offset;
+
+        match bank {
+            0x00..=0x3F | 0x80..=0xBF => match page.high_byte() {
+                0x00..=0x1F => return Some(self.wram.ram[page as usize & 0x1FFF]),
+                0x21 => {}
+                0x40..=0x43 => {}
+                _ => {}
+            },
+            0x7E..=0x7F => return Some(self.wram.ram[u32::from(addr) as usize & 0x1_FFFF]),
+            _ => {}
+        }
+        self.cart.read(bank, page)
     }
 
     pub fn read<const DMA: bool>(&mut self, addr: Address) -> u8 {
         let bank = addr.bank;
         let page = addr.offset;
 
+        if DMA && (bank & 0x40) == 0 && matches!(page.high_byte(), 0x21 | 0x40 | 0x42 | 0x43) {
+            self.mdr = 0;
+            return self.mdr;
+        }
+
         if let Some(val) = match bank {
             0x00..=0x3F | 0x80..=0xBF => match page.high_byte() {
                 0x00..=0x1F => Some(self.wram.ram[page as usize & 0x1FFF]),
-                0x21 => return self.read_b(page),
+                0x21 => Some(self.read_b(page)),
                 0x40..=0x43 => {
-                    if DMA {
-                        Some(0)
-                    } else {
-                        match page {
-                            0x4210 => Some(self.ppu.read_nmi_flag() | (self.mdr & 0x70)),
-                            0x4211 => Some(self.ppu.read_irq_flag() | (self.mdr & 0x7F)),
-                            0x4212 => {
-                                let joypad_autoread_status = false; // todo
-                                Some(
-                                    self.ppu.read_hv_status()
-                                        | u8::from(joypad_autoread_status)
-                                        | (self.mdr & 0x3E),
-                                )
-                            }
-                            0x4214..=0x4217 => self.math.read(page),
-                            0x4300..=0x437F => self.dma.read(page),
-                            _ => {
-                                println!("Tried to read at {page:#0x}");
-                                None
-                            }
+                    match page {
+                        0x4210 => Some(self.ppu.read_nmi_flag() | (self.mdr & 0x70)),
+                        0x4211 => Some(self.ppu.read_irq_flag() | (self.mdr & 0x7F)),
+                        0x4212 => {
+                            let joypad_autoread_status = false; // todo
+                            Some(
+                                self.ppu.read_hv_status()
+                                    | u8::from(joypad_autoread_status)
+                                    | (self.mdr & 0x3E),
+                            )
+                        }
+                        0x4214..=0x4217 => self.math.read(page),
+                        0x4300..=0x437F => self.dma.read(page),
+                        _ => {
+                            println!("Tried to read at {page:#0x}");
+                            None
                         }
                     }
                 }
@@ -190,8 +207,8 @@ impl SystemBus {
 }
 
 impl Bus for SystemBus {
-    fn peek_at(&self, _addr: Address) -> Option<u8> {
-        todo!()
+    fn peek_at(&self, addr: Address) -> Option<u8> {
+        self.peek(addr)
     }
 
     fn read_and_tick(&mut self, addr: Address) -> u8 {
