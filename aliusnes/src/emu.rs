@@ -80,6 +80,7 @@ fn init_log() {
             log::LevelFilter::Trace,
             ConfigBuilder::new()
                 .set_time_level(log::LevelFilter::Off)
+                .set_location_level(log::LevelFilter::Off)
                 .build(),
             std::fs::File::create("cpu_trace.log").unwrap(),
         ),
