@@ -75,25 +75,33 @@ impl<B: Bus> W65C816<B> {
         }
 
         let op = self.cpu.get_imm::<u8, B>(bus);
+
         let opcode = &self.instruction_set[op as usize];
+        let instr = opcode.function;
+        let address_mode = opcode.meta.mode;
 
         #[cfg(feature = "log")]
-        log::trace!(
-            "{} {:02X} {:02x}:{:04x} A:{:04x} X:{:04x} Y:{:04x}, S:{:04x}, D:{:04x}, DB:{:02x}, P:{:08b}",
-            opcode.meta.mnemonic,
-            opcode.meta.code,
-            self.cpu.dbr,
-            (self.cpu.program_counter - 1),
-            self.cpu.accumulator,
-            self.cpu.index_x,
-            self.cpu.index_y,
-            self.cpu.stack_pointer,
-            self.cpu.dpr,
-            self.cpu.dbr,
-            self.cpu.status.0,
-        );
-        let instr = opcode.function;
-        instr(&mut self.cpu, bus, opcode.meta.mode);
+        {
+            use crate::w65c816::addressing::Address;
+            let disasm = address_mode
+                .disasm_operand(bus, Address::new(self.cpu.program_counter, self.cpu.pbr));
+
+            log::trace!(
+                "{} {:<10} {:02x}:{:04x} A:{:04x} X:{:04x} Y:{:04x}, S:{:04x}, D:{:04x}, DB:{:02x}, P:{:08b}",
+                opcode.meta.mnemonic,
+                disasm,
+                self.cpu.dbr,
+                (self.cpu.program_counter - 1),
+                self.cpu.accumulator,
+                self.cpu.index_x,
+                self.cpu.index_y,
+                self.cpu.stack_pointer,
+                self.cpu.dpr,
+                self.cpu.dbr,
+                self.cpu.status.0,
+            );
+        }
+        instr(&mut self.cpu, bus, address_mode);
     }
 
     pub fn peek_opcode(&self, bus: &B) -> Meta {
