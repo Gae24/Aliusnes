@@ -219,4 +219,24 @@ impl Cpu {
             }
         }
     }
+
+    pub fn do_jmp<B: Bus>(&mut self, bus: &mut B, mode: AddressingMode) {
+        let addr = self.decode_addressing_mode::<false, _>(bus, mode);
+
+        match mode {
+            AddressingMode::Absolute | AddressingMode::AbsoluteIndirect => {
+                self.program_counter = addr.offset;
+            }
+            AddressingMode::AbsoluteLong | AddressingMode::AbsoluteIndirectLong => {
+                self.program_counter = addr.offset;
+                self.pbr = addr.bank;
+            }
+            AddressingMode::AbsoluteIndirectX => {
+                self.program_counter.set_low_byte(bus.read_and_tick(addr));
+                self.program_counter
+                    .set_high_byte(bus.read_and_tick(addr.wrapping_offset_add(1)));
+            }
+            _ => unreachable!(),
+        }
+    }
 }
