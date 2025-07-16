@@ -1,7 +1,7 @@
 use super::{cpu::Cpu, regsize::RegSize};
 use crate::{bus::Bus, utils::int_traits::ManipulateU16};
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug)]
 pub enum AddressingMode {
     Accumulator,
     Implied,
@@ -24,8 +24,6 @@ pub enum AddressingMode {
     AbsoluteIndirect,
     AbsoluteIndirectLong,
     AbsoluteIndirectX,
-    AbsoluteJMP,
-    AbsoluteLongJSL,
     StackRelative,
     StackRelIndirectY,
     StackPEI,
@@ -221,13 +219,20 @@ impl Cpu {
             AddressingMode::AbsoluteLongX => self
                 .absolute_long_address(bus)
                 .wrapping_add(u32::from(self.index_x)),
-            AddressingMode::AbsoluteIndirect => Address::new(self.get_imm(bus), 0),
+            AddressingMode::AbsoluteIndirect => {
+                let indirect = self.get_imm(bus);
+                Address::new(self.read_bank0(bus, indirect), 0)
+            }
             AddressingMode::AbsoluteIndirectX => {
                 bus.add_io_cycles(1);
                 Address::new(
                     self.get_imm::<u16, B>(bus).wrapping_add(self.index_x),
                     self.pbr,
                 )
+            }
+            AddressingMode::AbsoluteIndirectLong => {
+                let indirect = self.get_imm(bus);
+                self.indirect_long_address(bus, indirect)
             }
             AddressingMode::StackRelIndirectY => {
                 bus.add_io_cycles(1);
@@ -243,9 +248,6 @@ impl Cpu {
             | AddressingMode::Direct
             | AddressingMode::DirectX
             | AddressingMode::DirectY
-            | AddressingMode::AbsoluteIndirectLong
-            | AddressingMode::AbsoluteJMP
-            | AddressingMode::AbsoluteLongJSL
             | AddressingMode::StackRelative
             | AddressingMode::StackPEI
             | AddressingMode::BlockMove => unreachable!(),
@@ -259,11 +261,9 @@ impl Cpu {
                 let offset = self.get_imm::<u16, _>(bus) as i16;
                 T::from_u16(self.program_counter.wrapping_add(offset as u16))
             }
-            AddressingMode::Immediate
-            | AddressingMode::Relative
-            | AddressingMode::AbsoluteJMP
-            | AddressingMode::AbsoluteLongJSL
-            | AddressingMode::BlockMove => self.get_imm(bus),
+            AddressingMode::Immediate | AddressingMode::Relative | AddressingMode::BlockMove => {
+                self.get_imm(bus)
+            }
             AddressingMode::Direct
             | AddressingMode::DirectX
             | AddressingMode::DirectY
@@ -271,15 +271,7 @@ impl Cpu {
             | AddressingMode::StackPEI => self.read_from_direct_page(bus, mode).0,
             _ => {
                 let addr = self.decode_addressing_mode::<false, B>(bus, *mode);
-
-                if let AddressingMode::AbsoluteIndirectX = mode {
-                    T::from_u16(u16::from_le_bytes([
-                        bus.read_and_tick(addr),
-                        bus.read_and_tick(addr.wrapping_offset_add(1)),
-                    ]))
-                } else {
-                    self.read(bus, addr)
-                }
+                self.read(bus, addr)
             }
         }
     }

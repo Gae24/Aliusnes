@@ -234,43 +234,25 @@ impl<B: Bus> super::W65C816<B> {
     }
 
     pub fn jml(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        let addr = cpu.get_operand::<u16, B>(bus, &mode);
-        let pc = cpu.read_bank0(bus, addr);
-        let pbr = bus.read_and_tick(addr.wrapping_add(2).into());
-        cpu.program_counter = pc;
-        cpu.pbr = pbr;
+        cpu.do_jmp(bus, mode);
     }
 
     pub fn jmp(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        match mode {
-            AddressingMode::AbsoluteLong => {
-                let new_pc = cpu.get_operand::<u16, B>(bus, &AddressingMode::AbsoluteJMP);
-                let new_pbr = cpu.get_operand::<u8, B>(bus, &AddressingMode::AbsoluteJMP);
-                cpu.program_counter = new_pc;
-                cpu.pbr = new_pbr;
-            }
-            _ => {
-                cpu.program_counter = cpu.get_operand::<u16, B>(bus, &mode);
-            }
-        }
+        cpu.do_jmp(bus, mode);
     }
 
     pub fn jsl(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
         bus.add_io_cycles(1);
-        let new_pc = cpu.get_operand::<u16, B>(bus, &mode);
         do_push(cpu, bus, cpu.pbr);
-        let new_pbr = cpu.get_operand::<u8, B>(bus, &mode);
-        do_push(cpu, bus, cpu.program_counter.wrapping_sub(1));
-        cpu.program_counter = new_pc;
-        cpu.pbr = new_pbr;
+        do_push(cpu, bus, cpu.program_counter.wrapping_add(2));
+        cpu.do_jmp(bus, mode);
     }
 
     pub fn jsr(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
-        let new_pc = cpu.get_operand::<u16, B>(bus, &mode);
-        do_push(cpu, bus, cpu.program_counter.wrapping_sub(1));
-        cpu.program_counter = new_pc;
+        do_push(cpu, bus, cpu.program_counter.wrapping_add(1));
+        cpu.do_jmp(bus, mode);
 
-        if let AddressingMode::AbsoluteJMP = mode {
+        if let AddressingMode::Absolute = mode {
             bus.add_io_cycles(1);
         }
     }

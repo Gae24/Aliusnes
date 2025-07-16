@@ -95,7 +95,7 @@ pub(super) fn do_asl<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
 
 pub(super) fn do_bit<T: RegSize>(cpu: &mut Cpu, operand: T, mode: AddressingMode) {
     let result = T::from_u16(cpu.accumulator) & operand;
-    if mode == AddressingMode::Immediate {
+    if let AddressingMode::Immediate = mode {
         cpu.status.set_zero(result.is_zero());
     } else {
         cpu.status.set_negative(operand.is_negative());
