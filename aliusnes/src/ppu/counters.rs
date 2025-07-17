@@ -272,7 +272,7 @@ impl Ppu {
         result
     }
 
-    pub fn read_hv_status(&mut self) -> u8 {
+    pub fn read_hv_status(&self) -> u8 {
         self.counters.hv_status.0
     }
 

@@ -75,8 +75,6 @@ impl SystemBus {
         match bank {
             0x00..=0x3F | 0x80..=0xBF => match page.high_byte() {
                 0x00..=0x1F => return Some(self.wram.ram[page as usize & 0x1FFF]),
-                0x21 => {}
-                0x40..=0x43 => {}
                 _ => {}
             },
             0x7E..=0x7F => return Some(self.wram.ram[u32::from(addr) as usize & 0x1_FFFF]),
@@ -111,6 +109,8 @@ impl SystemBus {
                             )
                         }
                         0x4214..=0x4217 => self.math.read(page),
+                        // TODO joypad registers
+                        0x4218..=0x421F => Some(0),
                         0x4300..=0x437F => self.dma.read(page),
                         _ => {
                             println!("Tried to read at {page:#0x}");
