@@ -80,7 +80,7 @@ impl<B: Bus> W65C816<B> {
         let instr = opcode.function;
         let address_mode = opcode.meta.mode;
 
-        #[cfg(feature = "log")]
+        #[cfg(feature = "trace")]
         {
             use crate::w65c816::addressing::Address;
             let disasm = address_mode
