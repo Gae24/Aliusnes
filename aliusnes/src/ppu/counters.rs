@@ -59,6 +59,7 @@ pub struct Counters {
     stat78: Stat78,
     hv_status: HvStatus,
     in_irq: bool,
+    nmi_requested: bool,
 
     pub frame_ready: bool,
     pub last_scanline: usize,
@@ -93,6 +94,7 @@ impl Counters {
             stat78,
             hv_status: HvStatus(0),
             in_irq: false,
+            nmi_requested: false,
             frame_ready: false,
             last_scanline: 0,
             #[cfg(feature = "log")]
@@ -204,6 +206,10 @@ impl Counters {
                 self.hv_status.set_in_vblank(true);
                 self.rdnmi.set_in_nmi(true);
                 self.frame_ready = true;
+
+                if self.nmitimen.nmi_enabled() {
+                    self.nmi_requested = true;
+                }
             }
         }
         self.check_counters_timer_hit();
@@ -259,9 +265,6 @@ impl Ppu {
     pub fn write_nmitien(&mut self, val: u8) {
         let nmitimen = Nmitimen(val);
         let _joypad_enable = nmitimen.joypad_enable(); // todo when implementing joypad
-        self.nmi_requested = !self.counters.nmitimen.nmi_enabled()
-            && nmitimen.nmi_enabled()
-            && self.counters.rdnmi.in_nmi();
         self.counters.nmitimen = nmitimen;
         self.counters.check_counters_timer_hit();
     }
@@ -288,7 +291,15 @@ impl Ppu {
         self.ppu2_mdr
     }
 
-    pub fn is_in_irq(&self) -> bool {
-        self.counters.in_irq
+    pub fn nmi_requested(&mut self) -> bool {
+        let nmi_requested = self.counters.nmi_requested;
+        self.counters.nmi_requested = false;
+        nmi_requested
+    }
+
+    pub fn is_in_irq(&mut self) -> bool {
+        let in_irq = self.counters.in_irq;
+        self.counters.in_irq = false;
+        in_irq
     }
 }

@@ -45,11 +45,11 @@ impl Bus for TomHarteBus {
         }
     }
 
-    fn fired_nmi(&self) -> bool {
+    fn fired_nmi(&mut self) -> bool {
         false
     }
 
-    fn fired_irq(&self) -> bool {
+    fn fired_irq(&mut self) -> bool {
         false
     }
 }

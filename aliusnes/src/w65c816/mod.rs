@@ -62,13 +62,16 @@ impl<B: Bus> W65C816<B> {
         if self.cpu.stopped {
             return;
         }
-        if self.cpu.waiting_interrupt {
-            if bus.fired_nmi() {
+
+        if bus.fired_nmi() {
+            self.cpu.waiting_interrupt = false;
+            self.cpu.handle_interrupt(bus, Vector::Nmi);
+        } else if !self.cpu.status.irq_disable() && bus.fired_irq() {
+            self.cpu.waiting_interrupt = false;
+            self.cpu.handle_interrupt(bus, Vector::Irq);
+        } else if self.cpu.waiting_interrupt {
+            if self.cpu.status.irq_disable() {
                 self.cpu.waiting_interrupt = false;
-                self.cpu.handle_interrupt(bus, Vector::Nmi);
-            } else if !self.cpu.status.irq_disable() && bus.fired_irq() {
-                self.cpu.waiting_interrupt = false;
-                self.cpu.handle_interrupt(bus, Vector::Irq);
             } else {
                 return;
             }
