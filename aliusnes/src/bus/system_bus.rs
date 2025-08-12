@@ -73,13 +73,15 @@ impl SystemBus {
         let page = addr.offset;
 
         match bank {
-            0x00..=0x3F | 0x80..=0xBF => match page.high_byte() {
-                0x00..=0x1F => return Some(self.wram.ram[page as usize & 0x1FFF]),
-                _ => {}
-            },
+            0x00..=0x3F | 0x80..=0xBF => {
+                if let 0x00..=0x1F = page.high_byte() {
+                    return Some(self.wram.ram[page as usize & 0x1FFF]);
+                }
+            }
             0x7E..=0x7F => return Some(self.wram.ram[u32::from(addr) as usize & 0x1_FFFF]),
             _ => {}
         }
+
         self.cart.read(bank, page)
     }
 
@@ -225,11 +227,11 @@ impl Bus for SystemBus {
         self.cycles += cycles * 6;
     }
 
-    fn fired_nmi(&self) -> bool {
-        self.ppu.nmi_requested
+    fn fired_nmi(&mut self) -> bool {
+        self.ppu.nmi_requested()
     }
 
-    fn fired_irq(&self) -> bool {
+    fn fired_irq(&mut self) -> bool {
         self.ppu.is_in_irq()
     }
 }
