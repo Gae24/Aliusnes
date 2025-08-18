@@ -112,6 +112,10 @@ impl Ppu {
                 self.draw_background::<Bpp2, 4>(screen_y, BG2, &mut (*bg_data)[BG2 as usize]);
                 &[S3, H1, S2, H2, S1, L1, S0, L2]
             }
+            6 => {
+                self.draw_background::<Bpp4, 6>(screen_y, BG1, &mut (*bg_data)[BG1 as usize]);
+                &[S3, H1, S2, S1, L1, S0]
+            }
             _ => unimplemented!("mode {}", self.background.bg_mode.bg_mode()),
         }
     }

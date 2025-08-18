@@ -82,7 +82,7 @@ impl SystemBus {
             _ => {}
         }
 
-        self.cart.read(bank, page)
+        self.cart.read(bank.into(), page.into())
     }
 
     pub fn read<const DMA: bool>(&mut self, addr: Address) -> u8 {
@@ -130,7 +130,7 @@ impl SystemBus {
             return self.mdr;
         }
 
-        if let Some(val) = self.cart.read(bank, page) {
+        if let Some(val) = self.cart.read(bank.into(), page.into()) {
             self.mdr = val;
         }
         self.mdr
@@ -175,7 +175,7 @@ impl SystemBus {
             0x7E..=0x7F => return self.wram.ram[u32::from(addr) as usize & 0x1_FFFF] = data,
             _ => {}
         }
-        self.cart.write(bank, page, data);
+        self.cart.write(bank.into(), page.into(), data);
     }
 
     pub fn memory_access_cycles(&self, addr: &Address) -> u32 {
