@@ -94,16 +94,14 @@ impl Header {
     }
 
     pub fn guess_from_rom(rom: &[u8]) -> Option<Self> {
-        let header = rom[..]
-            .get(0x7FB0..0x8000)
-            .and_then(|header_bytes| Header::new(header_bytes, Mapper::LoROM))
+        rom[..]
+            .get(0x40_FFB0..0x41_0000)
+            .and_then(|header_bytes| Header::new(header_bytes, Mapper::ExHiROM))
             .or_else(|| {
                 rom[..]
-                    .get(0xFFB0..0x10000)
+                    .get(0xFFB0..0x1_0000)
                     .and_then(|header_bytes| Header::new(header_bytes, Mapper::HiROM))
             })
-            .or_else(|| Header::new(&rom[0x0040_FFB0..0x0041_0000], Mapper::ExHiROM))?;
-
-        Some(header)
+            .or_else(|| Header::new(&rom[0x7FB0..0x8000], Mapper::LoROM))
     }
 }
