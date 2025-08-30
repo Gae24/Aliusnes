@@ -9,6 +9,7 @@ pub mod bus;
 pub mod cart;
 pub mod emu;
 mod ppu;
+mod scheduler;
 mod utils;
 pub mod w65c816;
 

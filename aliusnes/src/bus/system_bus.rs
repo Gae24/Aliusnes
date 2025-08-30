@@ -1,15 +1,18 @@
-use crate::{cart::Cart, ppu::Ppu, utils::int_traits::ManipulateU16, w65c816::addressing::Address};
+use crate::{
+    cart::Cart, ppu::Ppu, scheduler::Scheduler, utils::int_traits::ManipulateU16,
+    w65c816::addressing::Address,
+};
 
 use super::{dma::Dma, math::Math, wram::Wram, Access, Bus};
 
 pub struct SystemBus {
     mdr: u8,
     fast_rom_enabled: bool,
-    cycles: usize,
     cart: Cart,
     pub dma: Dma,
     math: Math,
     pub ppu: Ppu,
+    pub scheduler: Scheduler,
     wram: Wram,
     dummy_apu: [u8; 4],
 }
@@ -19,8 +22,8 @@ impl SystemBus {
         Self {
             mdr: 0,
             fast_rom_enabled: false,
-            cycles: 0,
             ppu: Ppu::new(cart.model),
+            scheduler: Scheduler::new(),
             cart,
             dma: Dma::new(),
             math: Math::new(),
@@ -29,24 +32,13 @@ impl SystemBus {
         }
     }
 
-    pub fn tick(&mut self) {
-        //todo apu, joypad, hdma
-
-        let ticks = self.cycles;
-        self.cycles = 0;
-
-        for _ in 0..ticks {
-            self.ppu.tick();
-        }
-    }
-
     pub fn add_cycles(&mut self, cycles: usize) {
-        self.cycles += cycles;
+        self.scheduler.tick(cycles as u64);
     }
 
     pub fn read_b(&mut self, addr: u16) -> u8 {
         if let Some(val) = match addr.low_byte() {
-            0x34..=0x3F => self.ppu.read(addr),
+            0x34..=0x3F => self.ppu.read(addr, self.scheduler.cycles),
             0x40..=0x43 => {
                 let ch = ((addr - 0x2140) % 4) as usize;
 
@@ -59,7 +51,7 @@ impl SystemBus {
 
                 Some(value)
             }
-            0x80 => self.wram.read(addr),
+            0x80 => self.wram.read(addr, 0),
             _ => None,
         } {
             val
@@ -110,10 +102,10 @@ impl SystemBus {
                                     | (self.mdr & 0x3E),
                             )
                         }
-                        0x4214..=0x4217 => self.math.read(page),
+                        0x4214..=0x4217 => self.math.read(page, 0),
                         // TODO joypad registers
                         0x4218..=0x421F => Some(0),
-                        0x4300..=0x437F => self.dma.read(page),
+                        0x4300..=0x437F => self.dma.read(page, 0),
                         _ => {
                             println!("Tried to read at {page:#0x}");
                             None
@@ -214,17 +206,17 @@ impl Bus for SystemBus {
     }
 
     fn read_and_tick(&mut self, addr: Address) -> u8 {
-        self.cycles += self.memory_access_cycles(&addr) as usize;
+        self.scheduler.tick(self.memory_access_cycles(&addr) as u64);
         self.read::<false>(addr)
     }
 
     fn write_and_tick(&mut self, addr: Address, data: u8) {
-        self.cycles += self.memory_access_cycles(&addr) as usize;
+        self.scheduler.tick(self.memory_access_cycles(&addr) as u64);
         self.write::<false>(addr, data);
     }
 
     fn add_io_cycles(&mut self, cycles: usize) {
-        self.cycles += cycles * 6;
+        self.scheduler.tick((cycles * 6) as u64);
     }
 
     fn fired_nmi(&mut self) -> bool {
