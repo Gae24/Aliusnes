@@ -38,7 +38,7 @@ impl Wram {
 }
 
 impl Access for Wram {
-    fn read(&mut self, _addr: u16) -> Option<u8> {
+    fn read(&mut self, _addr: u16, _: u64) -> Option<u8> {
         let data = self.ram[usize::from(self.wm_addr)];
         let raw_addr = (u32::from(self.wm_addr) + 1) & 0x1_FFFF;
         self.wm_addr = Address::from(raw_addr);

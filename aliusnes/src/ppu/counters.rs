@@ -6,8 +6,6 @@ use crate::{
     utils::int_traits::ManipulateU16,
 };
 
-const HBLANK_START: u16 = 274;
-
 bitfield! {
     pub struct Nmitimen(pub u8) {
         joypad_enable: bool @ 0,
@@ -41,10 +39,9 @@ bitfield! {
 
 pub struct Counters {
     pub vertical_counter: usize,
-    vblank_start: usize,
-    vblank_end: usize,
-    elapsed_cycles: u16,
-    cycles_per_scanline: u16,
+    pub vblank_start: usize,
+    pub vblank_end: usize,
+    pub cycles_per_scanline: u16,
     pub frame_counter: u64,
 
     ophct_latch: bool,
@@ -59,10 +56,8 @@ pub struct Counters {
     stat78: Stat78,
     hv_status: HvStatus,
     in_irq: bool,
-    nmi_requested: bool,
+    pub nmi_requested: bool,
 
-    pub frame_ready: bool,
-    pub last_scanline: usize,
     #[cfg(feature = "log")]
     vblank_count: f32,
     #[cfg(feature = "log")]
@@ -80,7 +75,6 @@ impl Counters {
             vertical_counter: 0,
             vblank_start,
             vblank_end,
-            elapsed_cycles: 0,
             cycles_per_scanline: super::SCANLINE_CYCLES,
             frame_counter: 0,
             ophct_latch: false,
@@ -95,8 +89,6 @@ impl Counters {
             hv_status: HvStatus(0),
             in_irq: false,
             nmi_requested: false,
-            frame_ready: false,
-            last_scanline: 0,
             #[cfg(feature = "log")]
             vblank_count: 0.0,
             #[cfg(feature = "log")]
@@ -104,26 +96,31 @@ impl Counters {
         }
     }
 
-    fn h_dot(&self) -> u16 {
-        self.elapsed_cycles % (self.cycles_per_scanline / 4)
+    pub(crate) fn set_hblank(&mut self, in_hblank: bool) {
+        self.hv_status.set_in_hblank(in_hblank);
     }
 
-    pub fn software_latch(&mut self) {
+    pub(crate) fn h_dot(&self, time: u64) -> u16 {
+        let as_master_cycles = time % (self.cycles_per_scanline as u64);
+        (as_master_cycles / 4) as u16
+    }
+
+    pub(crate) fn software_latch(&mut self, time: u64) {
         if !self.stat78.counter_latch() {
             self.output_vertical_counter = self.vertical_counter as u16;
-            self.output_horizontal_counter = self.h_dot();
+            self.output_horizontal_counter = self.h_dot(time);
         }
         self.stat78.set_counter_latch(true);
     }
 
-    pub fn reset_latches(&mut self) {
+    pub(crate) fn reset_latches(&mut self) {
         self.ophct_latch = false;
         self.opvct_latch = false;
         self.stat78.set_counter_latch(false);
     }
 
-    fn check_counters_timer_hit(&mut self) {
-        let h_dot = self.h_dot();
+    pub(crate) fn check_counters_timer_hit(&mut self, time: u64) {
+        let h_dot = self.h_dot(time);
         self.in_irq = match self.nmitimen.hv_timer_mode() {
             0b00 => false,
             0b01 => h_dot == self.h_timer_target,
@@ -135,15 +132,10 @@ impl Counters {
         }
     }
 
-    pub fn entered_hblank(&self) -> bool {
-        self.h_dot() >= HBLANK_START
-    }
-
-    pub fn start_frame(&mut self, overscan: bool, interlacing: bool) {
+    pub(crate) fn start_frame(&mut self, overscan: bool, interlacing: bool) {
         self.frame_counter += 1;
         self.stat78.set_odd_frame(self.frame_counter & 1 == 1);
         self.vertical_counter = 0;
-        self.frame_ready = false;
         self.rdnmi.set_in_nmi(false);
         self.hv_status.set_in_vblank(false);
         self.vblank_start = if overscan { PAL_HEIGHT } else { NTSC_HEIGHT } + 1;
@@ -167,7 +159,7 @@ impl Counters {
         }
     }
 
-    pub fn start_scanline(&mut self, interlacing: bool) {
+    pub(crate) fn start_scanline(&mut self, interlacing: bool) {
         if self.vertical_counter == 311
             && self.stat78.odd_frame()
             && self.stat78.is_pal()
@@ -185,41 +177,13 @@ impl Counters {
         }
     }
 
-    pub fn update_status(&mut self, overscan: bool, interlacing: bool) {
-        self.elapsed_cycles += 1;
+    pub(crate) fn enter_vblank(&mut self) {
+        self.hv_status.set_in_vblank(true);
+        self.rdnmi.set_in_nmi(true);
 
-        if self.entered_hblank() && !self.hv_status.in_hblank() {
-            self.hv_status.set_in_hblank(true);
+        if self.nmitimen.nmi_enabled() {
+            self.nmi_requested = true;
         }
-
-        if self.elapsed_cycles >= self.cycles_per_scanline {
-            self.hv_status.set_in_hblank(false);
-            self.elapsed_cycles -= self.cycles_per_scanline;
-            self.vertical_counter += 1;
-            if self.vertical_counter == self.vblank_end {
-                self.start_frame(overscan, interlacing);
-            }
-
-            self.start_scanline(interlacing);
-
-            if self.vertical_counter == self.vblank_start {
-                self.hv_status.set_in_vblank(true);
-                self.rdnmi.set_in_nmi(true);
-                self.frame_ready = true;
-
-                if self.nmitimen.nmi_enabled() {
-                    self.nmi_requested = true;
-                }
-            }
-        }
-        self.check_counters_timer_hit();
-    }
-
-    pub fn in_hdraw(&self) -> bool {
-        self.last_scanline != self.vertical_counter
-            && !self.hv_status.in_hblank()
-            && !self.hv_status.in_vblank()
-            && self.vertical_counter > 0
     }
 }
 
@@ -266,7 +230,7 @@ impl Ppu {
         let nmitimen = Nmitimen(val);
         let _joypad_enable = nmitimen.joypad_enable(); // todo when implementing joypad
         self.counters.nmitimen = nmitimen;
-        self.counters.check_counters_timer_hit();
+        // self.counters.check_counters_timer_hit();
     }
 
     pub fn read_nmi_flag(&mut self) -> u8 {

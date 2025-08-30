@@ -55,19 +55,16 @@ impl EmuState {
             }
 
             if !paused {
-                emu.step();
+                emu.run_frame();
             }
+            let mut frame = Frame {
+                width: emu.frame_width(),
+                height: emu.frame_height(),
+                buffer: [[0; 3]; 61184],
+            };
+            frame.buffer.copy_from_slice(emu.frame());
 
-            if emu.frame_ready() {
-                let mut frame = Frame {
-                    width: emu.frame_width(),
-                    height: emu.frame_height(),
-                    buffer: [[0; 3]; 61184],
-                };
-                frame.buffer.copy_from_slice(emu.frame());
-
-                let _ = frame_tx.push(frame);
-            }
+            let _ = frame_tx.push(frame);
         }
     }
 }

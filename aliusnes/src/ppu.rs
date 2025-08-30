@@ -6,7 +6,12 @@ use self::{
     oam::{Oam, Objsel},
     vram::{VideoPortControl, Vram},
 };
-use crate::{bus::Access, cart::info::Model, utils::int_traits::ManipulateU16};
+use crate::{
+    bus::Access,
+    cart::info::Model,
+    scheduler::{Event, PpuEvent, Scheduler},
+    utils::int_traits::ManipulateU16,
+};
 
 mod background;
 mod color;
@@ -62,6 +67,7 @@ pub struct Ppu {
     set_ini: SetIni,
     pub screen_width: usize,
     pub screen_height: usize,
+    pub frame_ready: bool,
     pub frame_buffer: Box<[[u8; 3]; WIDTH * PAL_HEIGHT]>,
 }
 
@@ -87,19 +93,50 @@ impl Ppu {
             } else {
                 NTSC_HEIGHT
             },
+            frame_ready: false,
             frame_buffer: Box::new([[0; 3]; WIDTH * PAL_HEIGHT]),
         }
     }
 
-    pub fn tick(&mut self) {
-        self.counters.update_status(
-            self.set_ini.overscan_mode(),
-            self.set_ini.screen_interlacing(),
-        );
+    pub(crate) fn handle_event(&mut self, scheduler: &mut Scheduler, event: PpuEvent, time: u64) {
+        // TODO H=6, V=0    reload HDMA registers
+        // TODO H=10, V=225 reload OAMADD
+        match event {
+            PpuEvent::HDraw => {
+                if self.counters.vertical_counter.wrapping_sub(1) < self.screen_height {
+                    self.render_scanline(self.counters.vertical_counter);
+                }
+                scheduler.add_event(Event::Ppu(PpuEvent::HBlankStart), time + 1008);
+            }
+            // H = 274
+            PpuEvent::HBlankStart => {
+                self.counters.set_hblank(true);
+                scheduler.add_event(
+                    Event::Ppu(PpuEvent::NewScanline),
+                    time + (self.counters.cycles_per_scanline - 1096) as u64,
+                );
+            }
+            // H = 0
+            PpuEvent::NewScanline => {
+                self.counters.vertical_counter += 1;
+                self.counters.set_hblank(false);
 
-        if self.counters.in_hdraw() {
-            self.render_scanline(self.counters.vertical_counter);
-            self.counters.last_scanline = self.counters.vertical_counter;
+                if self.counters.vertical_counter == self.counters.vblank_end {
+                    self.counters.start_frame(
+                        self.set_ini.overscan_mode(),
+                        self.set_ini.screen_interlacing(),
+                    );
+                }
+                self.counters
+                    .start_scanline(self.set_ini.screen_interlacing());
+
+                if self.counters.vertical_counter == self.counters.vblank_start {
+                    self.counters.enter_vblank();
+                    self.frame_ready = true;
+                }
+                self.counters.check_counters_timer_hit(time);
+                scheduler.add_event(Event::Ppu(PpuEvent::HDraw), time + 88);
+            }
         }
     }
 
@@ -124,20 +161,16 @@ impl Ppu {
     pub fn frame_counter(&self) -> u64 {
         self.counters.frame_counter
     }
-
-    pub fn frame_ready(&self) -> bool {
-        self.counters.frame_ready
-    }
 }
 
 impl Access for Ppu {
-    fn read(&mut self, addr: u16) -> Option<u8> {
+    fn read(&mut self, addr: u16, time: u64) -> Option<u8> {
         match addr.low_byte() {
             0x34 => Some((self.mode7.do_multiplication()) as u8),
             0x35 => Some((self.mode7.do_multiplication() >> 8) as u8),
             0x36 => Some((self.mode7.do_multiplication() >> 16) as u8),
             0x37 => {
-                self.counters.software_latch();
+                self.counters.software_latch(time);
                 None
             }
             0x38 => {

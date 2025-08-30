@@ -40,7 +40,7 @@ impl Math {
 }
 
 impl Access for Math {
-    fn read(&mut self, addr: u16) -> Option<u8> {
+    fn read(&mut self, addr: u16, _: u64) -> Option<u8> {
         match addr {
             0x4214 => Some(self.quotient.low_byte()),
             0x4215 => Some(self.quotient.high_byte()),
