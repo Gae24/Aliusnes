@@ -26,7 +26,6 @@ pub enum AddressingMode {
     AbsoluteIndirectX,
     StackRelative,
     StackRelIndirectY,
-    StackPEI,
     BlockMove,
 }
 
@@ -240,17 +239,7 @@ impl Cpu {
                 let offset = self.read_bank0(bus, indirect);
                 Address::new(offset, self.dbr).wrapping_add(u32::from(self.index_y))
             }
-            AddressingMode::Accumulator
-            | AddressingMode::Implied
-            | AddressingMode::Immediate
-            | AddressingMode::Relative
-            | AddressingMode::RelativeLong
-            | AddressingMode::Direct
-            | AddressingMode::DirectX
-            | AddressingMode::DirectY
-            | AddressingMode::StackRelative
-            | AddressingMode::StackPEI
-            | AddressingMode::BlockMove => unreachable!(),
+            _ => unreachable!(),
         }
     }
 
@@ -267,8 +256,7 @@ impl Cpu {
             AddressingMode::Direct
             | AddressingMode::DirectX
             | AddressingMode::DirectY
-            | AddressingMode::StackRelative
-            | AddressingMode::StackPEI => self.read_from_direct_page(bus, mode).0,
+            | AddressingMode::StackRelative => self.read_from_direct_page(bus, mode).0,
             _ => {
                 let addr = self.decode_addressing_mode::<false, B>(bus, *mode);
                 self.read(bus, addr)
