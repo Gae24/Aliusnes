@@ -69,13 +69,21 @@ pub struct Ppu {
     pub screen_height: usize,
     pub frame_ready: bool,
     pub frame_buffer: Box<[[u8; 3]; WIDTH * PAL_HEIGHT]>,
+
+    vblank_start: usize,
+    vblank_end: usize,
 }
 
 impl Ppu {
     pub fn new(model: Model) -> Self {
         let stat78 = counters::Stat78(0)
             .with_ppu2_version(2)
-            .with_is_pal(model == Model::Pal);
+            .with_is_pal(matches!(model, Model::Pal));
+        let (screen_height, vblank_end) = match model {
+            Model::Ntsc => (NTSC_HEIGHT, NTSC_SCANLINES),
+            Model::Pal => (PAL_HEIGHT, PAL_SCANLINES),
+        };
+
         Self {
             background: Background::new(),
             color: Color::new(),
@@ -87,12 +95,10 @@ impl Ppu {
             ppu2_mdr: 0,
             ini_display: IniDisplay(0),
             set_ini: SetIni(0),
+            vblank_start: screen_height + 1,
+            vblank_end,
             screen_width: WIDTH,
-            screen_height: if model == Model::Pal {
-                PAL_HEIGHT
-            } else {
-                NTSC_HEIGHT
-            },
+            screen_height,
             frame_ready: false,
             frame_buffer: Box::new([[0; 3]; WIDTH * PAL_HEIGHT]),
         }
@@ -113,7 +119,7 @@ impl Ppu {
                 self.counters.set_hblank(true);
                 scheduler.add_event(
                     Event::Ppu(PpuEvent::NewScanline),
-                    time + (self.counters.cycles_per_scanline - 1096) as u64,
+                    time + self.counters.hblank_length() as u64,
                 );
             }
             // H = 0
@@ -121,16 +127,13 @@ impl Ppu {
                 self.counters.vertical_counter += 1;
                 self.counters.set_hblank(false);
 
-                if self.counters.vertical_counter == self.counters.vblank_end {
-                    self.counters.start_frame(
-                        self.set_ini.overscan_mode(),
-                        self.set_ini.screen_interlacing(),
-                    );
+                if self.counters.vertical_counter == self.vblank_end {
+                    self.update_vblank_period();
+                    self.counters.start_frame();
                 }
-                self.counters
-                    .start_scanline(self.set_ini.screen_interlacing());
+                self.update_scanline_lenght();
 
-                if self.counters.vertical_counter == self.counters.vblank_start {
+                if self.counters.vertical_counter == self.vblank_start {
                     self.counters.enter_vblank();
                     self.frame_ready = true;
                 }
@@ -156,10 +159,6 @@ impl Ppu {
             self.background.backgrounds[idx].enabled_on_main_screen = (data >> idx) & 1 != 0;
         }
         self.oam.enabled_on_main_screen = (data >> 4) & 1 != 0;
-    }
-
-    pub fn frame_counter(&self) -> u64 {
-        self.counters.frame_counter
     }
 }
 

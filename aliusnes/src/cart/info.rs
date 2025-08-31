@@ -23,7 +23,7 @@ pub struct Chipset {
     pub has_battery: bool,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy)]
 pub enum Model {
     Ntsc,
     Pal,
