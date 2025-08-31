@@ -39,10 +39,7 @@ bitfield! {
 
 pub struct Counters {
     pub vertical_counter: usize,
-    pub vblank_start: usize,
-    pub vblank_end: usize,
-    pub cycles_per_scanline: u16,
-    pub frame_counter: u64,
+    cycles_per_scanline: u16,
 
     ophct_latch: bool,
     opvct_latch: bool,
@@ -56,7 +53,7 @@ pub struct Counters {
     stat78: Stat78,
     hv_status: HvStatus,
     in_irq: bool,
-    pub nmi_requested: bool,
+    nmi_requested: bool,
 
     #[cfg(feature = "log")]
     vblank_count: f32,
@@ -66,17 +63,9 @@ pub struct Counters {
 
 impl Counters {
     pub fn new(stat78: Stat78) -> Self {
-        let (vblank_start, vblank_end) = if stat78.is_pal() {
-            (PAL_HEIGHT + 1, PAL_SCANLINES)
-        } else {
-            (NTSC_HEIGHT + 1, NTSC_SCANLINES)
-        };
         Self {
             vertical_counter: 0,
-            vblank_start,
-            vblank_end,
             cycles_per_scanline: super::SCANLINE_CYCLES,
-            frame_counter: 0,
             ophct_latch: false,
             opvct_latch: false,
             output_horizontal_counter: 0,
@@ -103,6 +92,10 @@ impl Counters {
     pub(crate) fn h_dot(&self, time: u64) -> u16 {
         let as_master_cycles = time % (self.cycles_per_scanline as u64);
         (as_master_cycles / 4) as u16
+    }
+
+    pub(super) fn hblank_length(&self) -> u16 {
+        self.cycles_per_scanline - 1096
     }
 
     pub(crate) fn software_latch(&mut self, time: u64) {
@@ -132,18 +125,11 @@ impl Counters {
         }
     }
 
-    pub(crate) fn start_frame(&mut self, overscan: bool, interlacing: bool) {
-        self.frame_counter += 1;
-        self.stat78.set_odd_frame(self.frame_counter & 1 == 1);
+    pub(crate) fn start_frame(&mut self) {
+        self.stat78.set_odd_frame(!self.stat78.odd_frame());
         self.vertical_counter = 0;
         self.rdnmi.set_in_nmi(false);
         self.hv_status.set_in_vblank(false);
-        self.vblank_start = if overscan { PAL_HEIGHT } else { NTSC_HEIGHT } + 1;
-        self.vblank_end = if self.stat78.is_pal() {
-            PAL_SCANLINES
-        } else {
-            NTSC_SCANLINES
-        } + usize::from(interlacing && !self.stat78.odd_frame());
 
         #[cfg(feature = "log")]
         {
@@ -156,24 +142,6 @@ impl Counters {
                 self.vblank_count = 0.0;
                 self.log_time = Instant::now();
             }
-        }
-    }
-
-    pub(crate) fn start_scanline(&mut self, interlacing: bool) {
-        if self.vertical_counter == 311
-            && self.stat78.odd_frame()
-            && self.stat78.is_pal()
-            && interlacing
-        {
-            self.cycles_per_scanline = SCANLINE_CYCLES + 4;
-        } else if self.vertical_counter == 240
-            && self.stat78.odd_frame()
-            && !self.stat78.is_pal()
-            && !interlacing
-        {
-            self.cycles_per_scanline = SCANLINE_CYCLES - 4;
-        } else {
-            self.cycles_per_scanline = SCANLINE_CYCLES;
         }
     }
 
@@ -265,5 +233,36 @@ impl Ppu {
         let in_irq = self.counters.in_irq;
         self.counters.in_irq = false;
         in_irq
+    }
+
+    pub(super) fn update_scanline_lenght(&mut self) {
+        let is_odd_frame = self.counters.stat78.odd_frame();
+        let is_pal = self.counters.stat78.is_pal();
+        let interlaced = self.set_ini.screen_interlacing();
+
+        match (
+            self.counters.vertical_counter,
+            is_odd_frame,
+            is_pal,
+            interlaced,
+        ) {
+            (311, true, true, true) => self.counters.cycles_per_scanline = SCANLINE_CYCLES + 4,
+            (240, true, false, false) => self.counters.cycles_per_scanline = SCANLINE_CYCLES - 4,
+            _ => self.counters.cycles_per_scanline = SCANLINE_CYCLES,
+        }
+    }
+
+    pub(super) fn update_vblank_period(&mut self) {
+        self.vblank_start = if self.set_ini.overscan_mode() {
+            PAL_HEIGHT
+        } else {
+            NTSC_HEIGHT
+        } + 1;
+        self.vblank_end =
+            if self.counters.stat78.is_pal() {
+                PAL_SCANLINES
+            } else {
+                NTSC_SCANLINES
+            } + usize::from(self.set_ini.screen_interlacing() && !self.counters.stat78.odd_frame());
     }
 }
