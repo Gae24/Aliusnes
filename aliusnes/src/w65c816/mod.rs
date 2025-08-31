@@ -329,7 +329,7 @@ pub const fn opcode_table<B: Bus>() -> [OpCode<B>; 256] {
         OpCode::new(Meta::new(0xd1, "CMP", IndirectY), W65C816::cmp),
         OpCode::new(Meta::new(0xd2, "CMP", Indirect), W65C816::cmp),
         OpCode::new(Meta::new(0xd3, "CMP", StackRelIndirectY), W65C816::cmp),
-        OpCode::new(Meta::new(0xd4, "PEI", StackPEI), W65C816::pei),
+        OpCode::new(Meta::new(0xd4, "PEI", Direct), W65C816::pei),
         OpCode::new(Meta::new(0xd5, "CMP", DirectX), W65C816::cmp),
         OpCode::new(Meta::new(0xd6, "DEC", DirectX), W65C816::dec),
         OpCode::new(Meta::new(0xd7, "CMP", IndirectLongY), W65C816::cmp),

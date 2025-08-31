@@ -29,7 +29,6 @@ impl AddressingMode {
             AddressingMode::AbsoluteIndirectX => 2,
             AddressingMode::StackRelative => 1,
             AddressingMode::StackRelIndirectY => 1,
-            AddressingMode::StackPEI => 1,
             AddressingMode::BlockMove => 1,
         }
     }
@@ -75,7 +74,6 @@ impl AddressingMode {
             AddressingMode::AbsoluteIndirectX => format!("(${:04X},X)", operand),
             AddressingMode::StackRelative => format!("${:02X},S", operand),
             AddressingMode::StackRelIndirectY => format!("(${:02X},S),Y", operand),
-            AddressingMode::StackPEI => format!("(${:02X})", operand),
             AddressingMode::BlockMove => {
                 format!("${:02X} ${:02X}", operand as u8, (operand >> 8) & 0xFF)
             }
