@@ -7,6 +7,7 @@ mod addressing;
 mod cpu;
 mod instructions;
 mod opcode;
+pub(super) mod timer;
 
 pub(crate) struct Spc700<B: Bus> {
     cpu: Cpu,

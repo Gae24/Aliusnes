@@ -1,9 +1,13 @@
-use crate::apu::spc700::Spc700;
+use crate::apu::{
+    dsp::Dsp,
+    spc700::{timer::Timer, Spc700},
+};
 use crate::bus::{Access, Bus};
 use crate::cart::info::Model;
 use crate::scheduler::{Event, Scheduler};
 use crate::w65c816::addressing::Address;
 
+mod dsp;
 pub mod spc700;
 
 #[cfg(feature = "apu")]
@@ -30,7 +34,10 @@ struct ApuBus {
     aram: [u8; 0x10000],
     apuio: [u8; 4],
     cpuio: [u8; 4],
+    bootrom_enabled: bool,
     cycles: u64,
+    dsp: Dsp,
+    timers: [Timer; 3],
 }
 
 impl Apu {
@@ -41,7 +48,10 @@ impl Apu {
                 aram: [0; 0x10000],
                 apuio: [0; 4],
                 cpuio: [0; 4],
+                bootrom_enabled: true,
                 cycles: 0,
+                dsp: Dsp::new(),
+                timers: [Timer::new(); 3],
             },
             model,
         }
@@ -88,6 +98,21 @@ impl Access for Apu {
 }
 
 impl ApuBus {
+    fn write_control(&mut self, data: u8) {
+        for (i, timer) in self.timers.iter_mut().enumerate() {
+            timer.set_enabled(data & (1 << i) != 0);
+        }
+
+        if (data & (1 << 4)) != 0 {
+            self.apuio[0..=1].fill(0);
+        }
+        if (data & (1 << 5)) != 0 {
+            self.apuio[2..=3].fill(0);
+        }
+
+        self.bootrom_enabled = (data & 0x80) != 0;
+    }
+
     fn read(&self, addr: u16) -> u8 {
         match addr {
             // write-only area
@@ -95,34 +120,29 @@ impl ApuBus {
                 println!("Attempted to read write-only registers, returning 0");
                 0
             }
-            // dsp registers
-            0x00F2 | 0x00F3 => {
-                println!("Attempted to read dsp registers, returning 0");
-                0
-            }
+            0x00F2 => self.dsp.read_dsp_addr(),
+            0x00F3 => self.dsp.read(),
             0x00F4..=0x00F7 => self.apuio[addr as usize & 3],
-            // timer registers
-            0x00FD..=0x00FF => {
-                println!("Attempted to read timer registers, returning 0");
-                0
-            }
+            0x00FD => self.timers[0].timer_output(),
+            0x00FE => self.timers[1].timer_output(),
+            0x00FF => self.timers[2].timer_output(),
+            0xFFC0..=0xFFFF if self.bootrom_enabled => IPL_ROM[addr as usize & 0x3F],
             _ => self.aram[addr as usize],
         }
     }
 
     fn write(&mut self, addr: u16, data: u8) {
         match addr {
-            0x00F0 => todo!(),
-            0x00F1 => todo!(),
-            // dsp registers
-            0x00F2 | 0x00F3 => println!("Attempted to write dsp registers"),
+            0x00F0 => println!("Tried to write TEST: {data:#04x}"),
+            0x00F1 => self.write_control(data),
+            0x00F2 => self.dsp.set_dsp_addr(data),
+            0x00F3 => self.dsp.write(data),
             0x00F4..=0x00F7 => {
                 self.cpuio[addr as usize & 3] = data;
             }
-            // timer registers
-            0x00FA..=0x00FC => {
-                println!("Attempted to write timer registers");
-            }
+            0x00FA => self.timers[0].set_timer_target(data),
+            0x00FB => self.timers[1].set_timer_target(data),
+            0x00FC => self.timers[2].set_timer_target(data),
             // read-only area
             0x00FD..=0x00FF => (),
             _ => self.aram[addr as usize] = data,
