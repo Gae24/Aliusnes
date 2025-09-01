@@ -9,6 +9,7 @@ pub enum PpuEvent {
 
 #[derive(Clone, Copy)]
 pub enum Event {
+    Apu,
     Ppu(PpuEvent),
 }
 
@@ -16,6 +17,7 @@ impl Event {
     fn index(&self) -> usize {
         match self {
             Event::Ppu(_) => 1,
+            Event::Apu => 2,
         }
     }
 }

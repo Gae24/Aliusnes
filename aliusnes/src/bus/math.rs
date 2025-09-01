@@ -50,7 +50,7 @@ impl Access for Math {
         }
     }
 
-    fn write(&mut self, addr: u16, data: u8) {
+    fn write(&mut self, addr: u16, data: u8, _: u64) {
         match addr {
             0x4202 => self.factor_a = data,
             0x4203 => {

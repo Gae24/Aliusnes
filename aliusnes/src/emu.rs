@@ -23,6 +23,7 @@ impl Emu {
         emu.bus
             .scheduler
             .add_event(Event::Ppu(PpuEvent::NewScanline), 0);
+        emu.bus.scheduler.add_event(Event::Apu, 0);
         emu
     }
 
@@ -45,6 +46,7 @@ impl Emu {
         while let Some((event, time)) = bus.scheduler.pop_event() {
             match event {
                 Event::Ppu(ppu_event) => bus.ppu.handle_event(&mut bus.scheduler, ppu_event, time),
+                Event::Apu => bus.apu.handle_event(&mut bus.scheduler, time),
             }
         }
     }
@@ -74,6 +76,7 @@ impl Emu {
                             .ppu
                             .handle_event(&mut self.bus.scheduler, ppu_event, time)
                     }
+                    Event::Apu => self.bus.apu.handle_event(&mut self.bus.scheduler, time),
                 }
             }
         }
