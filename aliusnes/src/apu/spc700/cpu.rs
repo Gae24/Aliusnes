@@ -31,7 +31,7 @@ impl Cpu {
             accumulator: 0x00,
             index_x: 0x00,
             index_y: 0x00,
-            program_counter: 0x00,
+            program_counter: 0xFFC0,
             stack_pointer: 0x00,
             status: Status(0),
             paused: false,

@@ -129,7 +129,7 @@ impl Access for Dma {
         }
     }
 
-    fn write(&mut self, addr: u16, data: u8) {
+    fn write(&mut self, addr: u16, data: u8, _: u64) {
         match addr {
             0x420B => self.enable_channels = data,
             0x420C => self.h_enable_channels = data,

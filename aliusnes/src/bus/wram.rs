@@ -45,7 +45,7 @@ impl Access for Wram {
         Some(data)
     }
 
-    fn write(&mut self, addr: u16, data: u8) {
+    fn write(&mut self, addr: u16, data: u8, _: u64) {
         match addr {
             0x2180 => self.write_to_wm_addr(data),
             0x2181 => self.wm_addl(data),

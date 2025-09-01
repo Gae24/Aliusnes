@@ -195,7 +195,7 @@ impl Access for Ppu {
         }
     }
 
-    fn write(&mut self, addr: u16, data: u8) {
+    fn write(&mut self, addr: u16, data: u8, _: u64) {
         let nibble = addr.low_byte() as usize;
         match nibble {
             0x00 => self.ini_display = IniDisplay(data),
