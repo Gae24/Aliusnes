@@ -2,10 +2,9 @@ use crate::apu::{
     dsp::Dsp,
     spc700::{timer::Timer, Spc700},
 };
-use crate::bus::{Access, Bus};
+use crate::bus::{Access, Address, Bus};
 use crate::cart::info::Model;
 use crate::scheduler::{Event, Scheduler};
-use crate::w65c816::addressing::Address;
 
 mod dsp;
 pub mod spc700;
