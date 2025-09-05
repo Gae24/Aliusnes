@@ -1,4 +1,4 @@
-use crate::{bus::Bus, w65c816::addressing::Address};
+use crate::bus::{Address, Bus};
 use serde::{Deserialize, Deserializer};
 use std::collections::HashMap;
 

@@ -1,5 +1,5 @@
-use super::Access;
-use crate::{utils::int_traits::ManipulateU16, w65c816::addressing::Address};
+use super::{Access, Address};
+use crate::utils::int_traits::ManipulateU16;
 
 pub struct Wram {
     pub ram: [u8; 0x20000],
