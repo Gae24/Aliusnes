@@ -173,14 +173,12 @@ mod tests {
     }
 
     impl OpcodeTest for CpuState {
-        type Proc = Cpu;
-
         fn test_path(name: &str) -> PathBuf {
             let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
             root_dir.join(format!("tests/65816/{name}.n.json.xz"))
         }
 
-        fn do_step(&mut self, other: &Self, cycles_len: usize) -> (Self::Proc, TomHarteBus, bool) {
+        fn step(&self, other: &Self, cycles_len: usize) -> (Self, Vec<Cycle>, bool) {
             let (mut w65c816, mut bus) = self.convert_state();
 
             let opcode = w65c816.peek_opcode(&bus);
@@ -198,7 +196,8 @@ mod tests {
                 false
             };
 
-            (w65c816.cpu, bus, skip_cycles)
+            let cycles = bus.cycles.clone();
+            (Self::from((w65c816.cpu, bus)), cycles, skip_cycles)
         }
 
         fn deserialize_cycles<'de, D: Deserializer<'de>>(

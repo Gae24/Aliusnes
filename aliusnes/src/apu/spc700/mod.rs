@@ -1,5 +1,5 @@
 use cpu::Cpu;
-use opcode::{opcode_table, Meta, OpCode};
+use opcode::{opcode_table, OpCode};
 
 use crate::bus::Bus;
 
@@ -28,23 +28,26 @@ impl<B: Bus> Spc700<B> {
         let instr = opcode.function;
         instr(&mut self.cpu, bus, opcode.meta.mode);
     }
-
-    pub(crate) fn peek_opcode(&self, bus: &B) -> Meta {
-        let op = bus
-            .peek_at(self.cpu.program_counter.into())
-            .unwrap_or_default();
-        self.instruction_set[op as usize].meta
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::apu::spc700::cpu::Status;
+    use crate::apu::spc700::opcode::Meta;
     use crate::utils::testbus::{deserialize_as_map, Cycle, TomHarteBus};
     use crate::utils::testrun::{run_test, OpcodeTest};
     use serde::{Deserialize, Deserializer};
     use std::{collections::HashMap, path::PathBuf};
+
+    impl<B: Bus> Spc700<B> {
+        fn peek_opcode(&self, bus: &B) -> Meta {
+            let op = bus
+                .peek_at(self.cpu.program_counter.into())
+                .unwrap_or_default();
+            self.instruction_set[op as usize].meta
+        }
+    }
 
     #[derive(Debug, PartialEq, Deserialize)]
     pub struct CpuState {
@@ -102,25 +105,20 @@ mod tests {
     }
 
     impl OpcodeTest for CpuState {
-        type Proc = Cpu;
-
         fn test_path(name: &str) -> std::path::PathBuf {
             let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
             root_dir.join(format!("tests/spc700/{name}.json.xz"))
         }
 
-        fn do_step(
-            &mut self,
-            _other: &Self,
-            _cycles_len: usize,
-        ) -> (Self::Proc, TomHarteBus, bool) {
+        fn step(&self, _other: &Self, _cycles_len: usize) -> (Self, Vec<Cycle>, bool) {
             let (mut spc700, mut bus) = self.convert_state();
             let opcode = spc700.peek_opcode(&bus);
             let skip_cycles = opcode.code == 0xFE;
 
             spc700.step(&mut bus);
 
-            (spc700.cpu, bus, skip_cycles)
+            let cycles = bus.cycles.clone();
+            (Self::from((spc700.cpu, bus)), cycles, skip_cycles)
         }
 
         fn deserialize_cycles<'de, D: Deserializer<'de>>(
@@ -129,16 +127,11 @@ mod tests {
             let v: Vec<(Option<u32>, Option<u8>, String)> = Deserialize::deserialize(deserializer)?;
             let mut cycles: Vec<Cycle> = v
                 .iter()
-                .map(|(addr, value, state)| {
-                    if state == "wait" {
-                        Cycle::Internal
-                    } else if state == "read" {
-                        Cycle::Read(addr.unwrap_or_default(), *value)
-                    } else if state == "write" {
-                        Cycle::Write(addr.unwrap_or_default(), value.unwrap_or_default())
-                    } else {
-                        panic!("Unknown state: {state}");
-                    }
+                .map(|(addr, value, state)| match state.as_str() {
+                    "wait" => Cycle::Internal,
+                    "read" => Cycle::Read(addr.unwrap_or_default(), *value),
+                    "write" => Cycle::Write(addr.unwrap_or_default(), value.unwrap_or_default()),
+                    _ => panic!("Unknown state: {state}"),
                 })
                 .collect();
             cycles.sort();
