@@ -32,7 +32,7 @@ impl Vector {
 }
 
 bitfield!(
-    pub struct Status(pub u8) {
+    pub(crate) struct Status(pub u8) {
         pub carry: bool @ 0,
         pub zero: bool @ 1,
         pub irq_disable: bool @ 2,
@@ -60,7 +60,7 @@ pub fn format_status(status: &Status) -> String {
     .collect()
 }
 
-pub struct Cpu {
+pub(crate) struct Cpu {
     pub accumulator: u16,
     pub index_x: u16,
     pub index_y: u16,
