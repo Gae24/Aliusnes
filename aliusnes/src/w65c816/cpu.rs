@@ -44,22 +44,6 @@ bitfield!(
     }
 );
 
-#[cfg(feature = "log")]
-pub fn format_status(status: &Status) -> String {
-    [
-        if status.negative() { 'N' } else { 'n' },
-        if status.overflow() { 'O' } else { 'o' },
-        if status.a_reg_size() { 'A' } else { 'a' },
-        if status.index_regs_size() { 'X' } else { 'x' },
-        if status.decimal() { 'D' } else { 'd' },
-        if status.irq_disable() { 'I' } else { 'i' },
-        if status.zero() { 'Z' } else { 'z' },
-        if status.carry() { 'C' } else { 'c' },
-    ]
-    .iter()
-    .collect()
-}
-
 pub(crate) struct Cpu {
     pub accumulator: u16,
     pub index_x: u16,
