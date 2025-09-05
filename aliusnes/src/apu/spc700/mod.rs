@@ -3,11 +3,11 @@ use cpu::Cpu;
 use crate::bus::Bus;
 
 mod addressing;
-pub mod cpu;
+mod cpu;
 mod instructions;
 
 #[derive(Clone, Copy)]
-pub struct Meta {
+pub(crate) struct Meta {
     pub code: u8,
     pub mnemonic: &'static str,
     pub mode: addressing::AddressingMode,
@@ -23,34 +23,31 @@ impl Meta {
     }
 }
 
-pub struct OpCode<B: Bus> {
+pub(crate) struct OpCode<B: Bus> {
     pub meta: Meta,
-    pub function: fn(&mut cpu::Cpu, &mut B, addressing::AddressingMode),
+    pub function: fn(&mut Cpu, &mut B, addressing::AddressingMode),
 }
 
 impl<B: Bus> OpCode<B> {
-    const fn new(
-        meta: Meta,
-        function: fn(&mut cpu::Cpu, &mut B, addressing::AddressingMode),
-    ) -> Self {
+    const fn new(meta: Meta, function: fn(&mut Cpu, &mut B, addressing::AddressingMode)) -> Self {
         OpCode { meta, function }
     }
 }
 
-pub struct Spc700<B: Bus> {
-    pub cpu: cpu::Cpu,
+pub(crate) struct Spc700<B: Bus> {
+    cpu: Cpu,
     instruction_set: [OpCode<B>; 256],
 }
 
 impl<B: Bus> Spc700<B> {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             cpu: Cpu::new(),
             instruction_set: opcode_table(),
         }
     }
 
-    pub fn step(&mut self, bus: &mut B) {
+    pub(crate) fn step(&mut self, bus: &mut B) {
         let op = self.cpu.get_imm::<B>(bus);
         let opcode = &self.instruction_set[op as usize];
 
@@ -58,7 +55,7 @@ impl<B: Bus> Spc700<B> {
         instr(&mut self.cpu, bus, opcode.meta.mode);
     }
 
-    pub fn peek_opcode(&self, bus: &B) -> Meta {
+    pub(crate) fn peek_opcode(&self, bus: &B) -> Meta {
         let op = bus
             .peek_at(self.cpu.program_counter.into())
             .unwrap_or_default();
