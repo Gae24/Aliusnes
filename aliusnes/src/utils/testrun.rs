@@ -1,4 +1,4 @@
-use crate::utils::testbus::{Cycle, TomHarteBus};
+use crate::utils::testbus::Cycle;
 use serde::{Deserialize, Deserializer};
 use std::{fs::File, io::BufReader};
 use xz2::read::XzDecoder;
@@ -35,30 +35,26 @@ impl<T: OpcodeTest> TestCase<T> {
 }
 
 pub(crate) fn run_test<T: OpcodeTest>(name: &str) {
-    for mut test_case in TestCase::<T>::iter_json(T::test_path(name)) {
-        let (proc, bus, skip_cycles) = test_case
+    for test_case in TestCase::<T>::iter_json(T::test_path(name)) {
+        let (result, mut cycles, skip_cycles) = test_case
             .initial
-            .do_step(&test_case.final_state, test_case.cycles.len());
+            .step(&test_case.final_state, test_case.cycles.len());
 
-        let mut cycles = bus.cycles.clone();
         cycles.sort();
 
-        let state = T::from((proc, bus));
-
-        let state_match = state == test_case.final_state;
+        let state_match = result == test_case.final_state;
         let cycles_match = cycles == test_case.cycles || skip_cycles;
 
         if state_match && cycles_match {
             continue;
         }
 
-        println!("Test {} failed", test_case.name,);
-
+        println!("Test {} failed", test_case.name);
         if !state_match {
             println!("Initial: {}", &test_case.initial);
             println!(
                 "Result: {}",
-                Comparison::new(&state, &test_case.final_state)
+                Comparison::new(&result, &test_case.final_state)
             );
         }
         if !cycles_match {
@@ -69,12 +65,10 @@ pub(crate) fn run_test<T: OpcodeTest>(name: &str) {
 }
 
 pub(crate) trait OpcodeTest:
-    Debug + Display + PartialEq + for<'de> Deserialize<'de> + From<(Self::Proc, TomHarteBus)>
+    Debug + Display + PartialEq + for<'de> Deserialize<'de>
 {
-    type Proc;
-
     fn test_path(name: &str) -> PathBuf;
-    fn do_step(&mut self, other: &Self, cycles_len: usize) -> (Self::Proc, TomHarteBus, bool);
+    fn step(&self, other: &Self, cycles_len: usize) -> (Self, Vec<Cycle>, bool);
     fn deserialize_cycles<'de, D: Deserializer<'de>>(
         deserializer: D,
     ) -> Result<Vec<Cycle>, D::Error>;
