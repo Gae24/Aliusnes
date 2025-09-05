@@ -27,7 +27,7 @@ impl Emu {
     }
 
     pub fn reset(&mut self) {
-        self.w65c816.cpu.reset(&mut self.bus);
+        self.w65c816.reset(&mut self.bus);
     }
 
     pub fn step(&mut self) {

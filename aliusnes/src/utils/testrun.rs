@@ -68,7 +68,7 @@ pub(crate) fn run_test<T: OpcodeTest>(name: &str) {
     }
 }
 
-pub trait OpcodeTest:
+pub(crate) trait OpcodeTest:
     Debug + Display + PartialEq + for<'de> Deserialize<'de> + From<(Self::Proc, TomHarteBus)>
 {
     type Proc;

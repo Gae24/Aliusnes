@@ -1,5 +1,5 @@
 use crate::bus::Bus;
-use cpu::Vector;
+use cpu::{Cpu, Vector};
 
 pub mod addressing;
 mod cpu;
@@ -9,10 +9,10 @@ mod opcode;
 mod regsize;
 
 #[derive(Clone, Copy)]
-pub struct Meta {
-    pub code: u8,
-    pub mnemonic: &'static str,
-    pub mode: addressing::AddressingMode,
+pub(crate) struct Meta {
+    code: u8,
+    mnemonic: &'static str,
+    mode: addressing::AddressingMode,
 }
 
 impl Meta {
@@ -25,40 +25,35 @@ impl Meta {
     }
 }
 
-pub struct OpCode<B: Bus> {
-    pub meta: Meta,
-    pub function: fn(&mut cpu::Cpu, &mut B, addressing::AddressingMode),
+pub(crate) struct OpCode<B: Bus> {
+    meta: Meta,
+    function: fn(&mut Cpu, &mut B, addressing::AddressingMode),
 }
 
 impl<B: Bus> OpCode<B> {
-    const fn new(
-        meta: Meta,
-        function: fn(&mut cpu::Cpu, &mut B, addressing::AddressingMode),
-    ) -> Self {
+    const fn new(meta: Meta, function: fn(&mut Cpu, &mut B, addressing::AddressingMode)) -> Self {
         OpCode { meta, function }
     }
 }
 
-pub struct W65C816<B: Bus> {
-    pub cpu: cpu::Cpu,
-    pub instruction_set: [OpCode<B>; 256],
-}
-
-impl<B: Bus> Default for W65C816<B> {
-    fn default() -> Self {
-        Self::new()
-    }
+pub(crate) struct W65C816<B: Bus> {
+    cpu: Cpu,
+    instruction_set: [OpCode<B>; 256],
 }
 
 impl<B: Bus> W65C816<B> {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
-            cpu: cpu::Cpu::new(),
+            cpu: Cpu::new(),
             instruction_set: opcode_table(),
         }
     }
 
-    pub fn step(&mut self, bus: &mut B) {
+    pub(crate) fn reset(&mut self, bus: &mut B) {
+        self.cpu.reset(bus);
+    }
+
+    pub(crate) fn step(&mut self, bus: &mut B) {
         if self.cpu.stopped {
             return;
         }
@@ -107,14 +102,14 @@ impl<B: Bus> W65C816<B> {
         instr(&mut self.cpu, bus, address_mode);
     }
 
-    pub fn peek_opcode(&self, bus: &B) -> Meta {
+    fn peek_opcode(&self, bus: &B) -> Meta {
         let addr = addressing::Address::new(self.cpu.program_counter, self.cpu.pbr);
         let op = bus.peek_at(addr).unwrap_or_default();
         self.instruction_set[op as usize].meta
     }
 }
 
-pub const fn opcode_table<B: Bus>() -> [OpCode<B>; 256] {
+const fn opcode_table<B: Bus>() -> [OpCode<B>; 256] {
     use addressing::AddressingMode::*;
     [
         OpCode::new(Meta::new(0x00, "BRK", Immediate), W65C816::brk),
