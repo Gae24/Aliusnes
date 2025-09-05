@@ -1,50 +1,34 @@
 use heck::ToSnakeCase;
-use std::{
-    env,
-    fs::File,
-    io::Write,
-    path::{Path, PathBuf},
-};
-
-enum Proc {
-    W65816,
-    Spc700,
-}
+use std::{env, fs::File, io::Write};
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=tests");
-    generate_tomharte_opcode_test(Proc::W65816);
-    generate_tomharte_opcode_test(Proc::Spc700);
+    generate_tomharte_opcode_test("tomharte_65816.rs");
+    generate_tomharte_opcode_test("tomharte_spc700.rs");
 
-    let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let base_path = root_dir.join("tests/krom/");
-    let mut file = File::create(Path::new(&env::var_os("OUT_DIR").unwrap()).join("krom_test.rs"))
-        .expect("File creation failed");
+    let base_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/krom/");
+    let mut file = create_file_in_out_dir("krom_test.rs");
 
     visit_dirs(&base_path, &mut file).unwrap();
 }
 
-fn generate_tomharte_opcode_test(proc: Proc) {
-    let (file_name, interface) = match proc {
-        Proc::W65816 => ("tomharte_65816.rs", "CpuState"),
-        Proc::Spc700 => ("tomharte_spc700.rs", "Spc700State"),
-    };
-
-    let mut file = File::create(Path::new(&env::var_os("OUT_DIR").unwrap()).join(file_name))
-        .expect("File creation failed");
+fn generate_tomharte_opcode_test(file_name: &'static str) {
+    let mut file = create_file_in_out_dir(file_name);
 
     for i in 0..256 {
         let test_name = format!("test_{i:02x}");
-        let test_body = match proc {
-            Proc::W65816 => format!("run_test::<{interface}>(\"{i:02x}.n\");"),
-            Proc::Spc700 => format!("run_test::<{interface}>(\"{i:02x}\");"),
-        };
+        let test_body = format!("run_test::<CpuState>(\"{i:02x}\");");
         let test = format!("#[test]\nfn {test_name}() {{\n\t{test_body}\n}}\n\n");
 
         file.write_all(test.as_bytes())
             .expect("Write to file failed");
     }
+}
+
+fn create_file_in_out_dir(file_name: &'static str) -> File {
+    let file_path = std::path::Path::new(&env::var_os("OUT_DIR").unwrap()).join(file_name);
+    File::create(file_path).expect("File creation failed")
 }
 
 fn generate_krom_test(file: &mut File, path: &str, name: &str) {
@@ -59,7 +43,7 @@ fn generate_krom_test(file: &mut File, path: &str, name: &str) {
         .expect("Write to file failed");
 }
 
-fn visit_dirs(dir: &Path, file: &mut File) -> std::io::Result<()> {
+fn visit_dirs(dir: &std::path::Path, file: &mut File) -> std::io::Result<()> {
     if dir.is_dir() {
         let mut has_subdir = false;
         for entry in dir.read_dir()? {

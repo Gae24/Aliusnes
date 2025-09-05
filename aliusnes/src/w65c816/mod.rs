@@ -177,7 +177,7 @@ mod tests {
 
         fn test_path(name: &str) -> PathBuf {
             let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-            root_dir.join(format!("tests/65816/{name}.json.xz"))
+            root_dir.join(format!("tests/65816/{name}.n.json.xz"))
         }
 
         fn do_step(&mut self, other: &Self, cycles_len: usize) -> (Self::Proc, TomHarteBus, bool) {
