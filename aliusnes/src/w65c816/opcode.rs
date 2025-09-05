@@ -1,5 +1,5 @@
 #[cfg(feature = "trace")]
-use crate::w65c816::addressing::Address;
+use crate::bus::Address;
 use crate::{
     bus::Bus,
     w65c816::{addressing::AddressingMode, Cpu, W65C816},

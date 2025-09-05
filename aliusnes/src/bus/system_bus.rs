@@ -1,9 +1,6 @@
-use crate::{
-    cart::Cart, ppu::Ppu, scheduler::Scheduler, utils::int_traits::ManipulateU16,
-    w65c816::addressing::Address,
-};
+use crate::{cart::Cart, ppu::Ppu, scheduler::Scheduler, utils::int_traits::ManipulateU16};
 
-use super::{dma::Dma, math::Math, wram::Wram, Access, Bus};
+use super::{dma::Dma, math::Math, wram::Wram, Access, Address, Bus};
 
 pub struct SystemBus {
     mdr: u8,
@@ -60,24 +57,7 @@ impl SystemBus {
         }
     }
 
-    fn peek(&self, addr: Address) -> Option<u8> {
-        let bank = addr.bank;
-        let page = addr.offset;
-
-        match bank {
-            0x00..=0x3F | 0x80..=0xBF => {
-                if let 0x00..=0x1F = page.high_byte() {
-                    return Some(self.wram.ram[page as usize & 0x1FFF]);
-                }
-            }
-            0x7E..=0x7F => return Some(self.wram.ram[u32::from(addr) as usize & 0x1_FFFF]),
-            _ => {}
-        }
-
-        self.cart.read(bank.into(), page.into())
-    }
-
-    pub fn read<const DMA: bool>(&mut self, addr: Address) -> u8 {
+    pub(crate) fn read<const DMA: bool>(&mut self, addr: Address) -> u8 {
         let bank = addr.bank;
         let page = addr.offset;
 
@@ -140,7 +120,7 @@ impl SystemBus {
         }
     }
 
-    pub fn write<const DMA: bool>(&mut self, addr: Address, data: u8) {
+    pub(crate) fn write<const DMA: bool>(&mut self, addr: Address, data: u8) {
         self.mdr = data;
         let bank = addr.bank;
         let page = addr.offset;
@@ -170,7 +150,7 @@ impl SystemBus {
         self.cart.write(bank.into(), page.into(), data);
     }
 
-    pub fn memory_access_cycles(&self, addr: &Address) -> u32 {
+    pub(crate) fn memory_access_cycles(&self, addr: &Address) -> u32 {
         const FAST: u32 = 6;
         const SLOW: u32 = 8;
         const XSLOW: u32 = 12;
@@ -202,7 +182,19 @@ impl SystemBus {
 
 impl Bus for SystemBus {
     fn peek_at(&self, addr: Address) -> Option<u8> {
-        self.peek(addr)
+        let bank = addr.bank;
+        let page = addr.offset;
+
+        match bank {
+            0x00..=0x3F | 0x80..=0xBF => {
+                if let 0x00..=0x1F = page.high_byte() {
+                    return Some(self.wram.ram[page as usize & 0x1FFF]);
+                }
+            }
+            0x7E..=0x7F => return Some(self.wram.ram[u32::from(addr) as usize & 0x1_FFFF]),
+            _ => {}
+        }
+        self.cart.read(bank.into(), page.into())
     }
 
     fn read_and_tick(&mut self, addr: Address) -> u8 {

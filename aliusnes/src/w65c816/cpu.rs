@@ -1,9 +1,8 @@
-use super::{
-    addressing::{Address, AddressingMode},
-    functions::do_push,
-    regsize::RegSize,
+use super::{addressing::AddressingMode, functions::do_push, regsize::RegSize};
+use crate::{
+    bus::{Address, Bus},
+    utils::int_traits::ManipulateU16,
 };
-use crate::{bus::Bus, utils::int_traits::ManipulateU16};
 
 pub enum Vector {
     Cop,

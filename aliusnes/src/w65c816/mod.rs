@@ -2,7 +2,7 @@ use crate::bus::Bus;
 use cpu::{Cpu, Vector};
 use opcode::{opcode_table, OpCode};
 
-pub mod addressing;
+mod addressing;
 mod cpu;
 mod functions;
 mod instructions;
@@ -53,7 +53,7 @@ impl<B: Bus> W65C816<B> {
 
         #[cfg(feature = "trace")]
         {
-            use crate::w65c816::addressing::Address;
+            use crate::bus::Address;
             let address = Address::new(self.cpu.program_counter, self.cpu.pbr);
             let opcode = opcode.meta.disasm_opcode(bus, address);
 
@@ -78,6 +78,7 @@ impl<B: Bus> W65C816<B> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bus::Address;
     use crate::utils::testbus::{deserialize_as_map, Cycle, TomHarteBus};
     use crate::utils::testrun::{run_test, OpcodeTest};
     use crate::w65c816::cpu::{Cpu, Status};
@@ -87,7 +88,7 @@ mod tests {
 
     impl<B: Bus> W65C816<B> {
         fn peek_opcode(&self, bus: &B) -> Meta {
-            let addr = addressing::Address::new(self.cpu.program_counter, self.cpu.pbr);
+            let addr = Address::new(self.cpu.program_counter, self.cpu.pbr);
             let op = bus.peek_at(addr).unwrap_or_default();
             self.instruction_set[op as usize].meta
         }

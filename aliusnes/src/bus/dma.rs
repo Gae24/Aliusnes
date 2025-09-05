@@ -1,6 +1,6 @@
-use crate::{utils::int_traits::ManipulateU16, w65c816::addressing::Address};
+use crate::utils::int_traits::ManipulateU16;
 
-use super::{system_bus::SystemBus, Access};
+use super::{system_bus::SystemBus, Access, Address};
 
 bitfield! {
     #[derive(Copy, Clone)]
