@@ -1,21 +1,14 @@
-mod utils;
+use crate::utils::testbus::{Cycle, TomHarteBus};
+use serde::{Deserialize, Deserializer};
+use std::{fs::File, io::BufReader};
+use xz2::read::XzDecoder;
+
+use pretty_assertions::Comparison;
 
 use std::{
     fmt::{Debug, Display},
-    fs::File,
-    io::BufReader,
     path::PathBuf,
 };
-
-use pretty_assertions::Comparison;
-use serde::{Deserialize, Deserializer};
-use utils::test_bus::{Cycle, TomHarteBus};
-use xz2::read::XzDecoder;
-
-mod spc700 {
-    use crate::{run_test, utils::cpu_state::Spc700State};
-    include!(concat!(env!("OUT_DIR"), "/tomharte_spc700.rs"));
-}
 
 #[derive(Deserialize)]
 struct TestCase<T> {
