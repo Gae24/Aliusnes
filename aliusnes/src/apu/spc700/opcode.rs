@@ -5,8 +5,10 @@ use crate::{
 
 #[derive(Clone, Copy)]
 pub(crate) struct Meta {
-    pub code: u8,
+    #[allow(dead_code)]
     pub mnemonic: &'static str,
+    #[allow(dead_code)]
+    pub code: u8,
     pub mode: AddressingMode,
 }
 

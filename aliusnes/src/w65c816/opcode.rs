@@ -7,7 +7,9 @@ use crate::{
 
 #[derive(Clone, Copy)]
 pub(crate) struct Meta {
+    #[allow(dead_code)]
     pub code: u8,
+    #[allow(dead_code)]
     mnemonic: &'static str,
     pub mode: AddressingMode,
 }
