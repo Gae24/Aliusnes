@@ -7,6 +7,7 @@ use crate::{
 pub enum Vector {
     Cop,
     Brk,
+    #[allow(dead_code)]
     Abort,
     Nmi,
     Irq,
