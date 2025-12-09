@@ -20,7 +20,7 @@ impl App {
             playing: true,
             texture: cc.egui_ctx.load_texture(
                 "Framebuffer",
-                egui::ColorImage::new([512, 478], egui::Color32::TRANSPARENT),
+                egui::ColorImage::filled([512, 478], egui::Color32::TRANSPARENT),
                 Default::default(),
             ),
         }
@@ -50,7 +50,7 @@ impl eframe::App for App {
         });
         egui::CentralPanel::default().show(ctx, |ui| {
             if let Ok(frame) = self.emu_state.frame_rx.pop() {
-                let mut image = ColorImage::new([frame.width, frame.height], Color32::TRANSPARENT);
+                let mut image = ColorImage::filled([frame.width, frame.height], Color32::TRANSPARENT);
 
                 for y in 0..image.height() {
                     for x in 0..image.width() {
