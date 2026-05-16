@@ -28,8 +28,8 @@ impl App {
 }
 
 impl eframe::App for App {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::SidePanel::left("my_left_panel").show(ctx, |ui| {
+    fn ui(&mut self, ui: &mut egui::Ui, _: &mut eframe::Frame) {
+        egui::Panel::left("my_left_panel").show_inside(ui, |ui| {
             ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
                 if ui.button("Step").clicked() {
                     self.emu_state.send_message(Message::Step);
@@ -48,9 +48,11 @@ impl eframe::App for App {
             });
             ui.label("CPU disasm");
         });
-        egui::CentralPanel::default().show(ctx, |ui| {
+
+        egui::CentralPanel::default().show_inside(ui, |ui| {
             if let Ok(frame) = self.emu_state.frame_rx.pop() {
-                let mut image = ColorImage::filled([frame.width, frame.height], Color32::TRANSPARENT);
+                let mut image =
+                    ColorImage::filled([frame.width, frame.height], Color32::TRANSPARENT);
 
                 for y in 0..image.height() {
                     for x in 0..image.width() {
@@ -67,6 +69,6 @@ impl eframe::App for App {
                 .paint_at(ui, whole_rect);
         });
 
-        ctx.request_repaint();
+        ui.request_repaint();
     }
 }
