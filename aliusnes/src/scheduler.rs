@@ -13,7 +13,7 @@ pub enum Event {
 }
 
 impl Event {
-    fn index(&self) -> usize {
+    fn index(self) -> usize {
         match self {
             Event::Ppu(_) => 1,
         }

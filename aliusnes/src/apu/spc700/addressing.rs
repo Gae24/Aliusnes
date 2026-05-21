@@ -42,7 +42,7 @@ pub enum AddressingMode {
 }
 
 impl AddressingMode {
-    pub const fn is_register_access(&self) -> bool {
+    pub const fn is_register_access(self) -> bool {
         matches!(self, Self::Accumulator | Self::X | Self::Y | Self::Psw)
     }
 }
@@ -112,14 +112,14 @@ impl Cpu {
                 self.index_x = self.index_x.wrapping_add(1);
                 page
             }
-            AddressingMode::Implied => unreachable!(),
-            AddressingMode::Immediate => unreachable!(),
-            AddressingMode::AbsoluteBooleanBit => unreachable!(),
-            AddressingMode::Accumulator => unreachable!(),
-            AddressingMode::X => unreachable!(),
-            AddressingMode::Y => unreachable!(),
-            AddressingMode::Sp => unreachable!(),
-            AddressingMode::Psw => unreachable!(),
+            AddressingMode::Implied
+            | AddressingMode::Immediate
+            | AddressingMode::AbsoluteBooleanBit
+            | AddressingMode::Accumulator
+            | AddressingMode::X
+            | AddressingMode::Y
+            | AddressingMode::Sp
+            | AddressingMode::Psw => unreachable!(),
         }
     }
 

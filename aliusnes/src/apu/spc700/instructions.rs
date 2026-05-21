@@ -39,7 +39,7 @@ impl<B: Bus> Spc700<B> {
             let res = a & b;
             cpu.set_nz(res);
             res
-        })
+        });
     }
 
     pub fn asl(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
@@ -214,7 +214,7 @@ impl<B: Bus> Spc700<B> {
             cpu.status.set_negative(res >> 15 != 0);
             cpu.status.set_zero(res == 0);
             res
-        })
+        });
     }
 
     pub fn dec(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
@@ -236,14 +236,14 @@ impl<B: Bus> Spc700<B> {
             .set_half_carry(cpu.index_y & 0xF >= cpu.index_x & 0xF);
         cpu.status.set_overflow(cpu.index_y >= cpu.index_x);
         let ya = cpu.ya();
-        let x = cpu.index_x as u16;
-        if (cpu.index_y as u16) < x << 1 {
+        let x = u16::from(cpu.index_x);
+        if (u16::from(cpu.index_y)) < x << 1 {
             cpu.accumulator = (ya / x) as u8;
             cpu.index_y = (ya % x) as u8;
         } else {
             cpu.accumulator = (255 - (ya - (x << 9)) / (256 - x)) as u8;
             cpu.index_y = (x + (ya - (x << 9)) % (256 - x)) as u8;
-        };
+        }
         cpu.set_nz(cpu.accumulator);
         cpu.idle(bus);
         bus.add_io_cycles(9);
@@ -266,7 +266,7 @@ impl<B: Bus> Spc700<B> {
             let res = a ^ b;
             cpu.set_nz(res);
             res
-        })
+        });
     }
 
     pub fn inc(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
@@ -283,7 +283,7 @@ impl<B: Bus> Spc700<B> {
             cpu.status.set_negative(res >> 15 != 0);
             cpu.status.set_zero(res == 0);
             res
-        })
+        });
     }
 
     pub fn jmp(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
@@ -370,7 +370,7 @@ impl<B: Bus> Spc700<B> {
     }
 
     pub fn mul(cpu: &mut Cpu, bus: &mut B, _mode: AddressingMode) {
-        let result = cpu.index_y as u16 * cpu.accumulator as u16;
+        let result = u16::from(cpu.index_y) * u16::from(cpu.accumulator);
         cpu.accumulator = result.low_byte();
         cpu.index_y = result.high_byte();
         cpu.set_nz(cpu.index_y);
@@ -398,7 +398,7 @@ impl<B: Bus> Spc700<B> {
             let res = a | b;
             cpu.set_nz(res);
             res
-        })
+        });
     }
 
     pub fn or1<const INVERSE: bool>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
@@ -535,7 +535,7 @@ impl<B: Bus> Spc700<B> {
         cpu.do_push(bus, cpu.program_counter.high_byte());
         cpu.do_push(bus, cpu.program_counter.low_byte());
 
-        let vector_addr = 0xFFDE - 2 * INDEX as u16;
+        let vector_addr = 0xFFDE - 2 * u16::from(INDEX);
         cpu.program_counter = cpu.read_16(bus, vector_addr);
     }
 

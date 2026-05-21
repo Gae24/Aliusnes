@@ -14,15 +14,15 @@ impl Address {
         Self { bank, offset }
     }
 
-    pub fn wrapping_offset_add(&self, rhs: u16) -> Self {
+    pub fn wrapping_offset_add(self, rhs: u16) -> Self {
         Self {
             bank: self.bank,
             offset: self.offset.wrapping_add(rhs),
         }
     }
 
-    pub fn wrapping_add(&self, rhs: u32) -> Self {
-        (u32::from(*self).wrapping_add(rhs)).into()
+    pub fn wrapping_add(self, rhs: u32) -> Self {
+        (u32::from(self).wrapping_add(rhs)).into()
     }
 }
 

@@ -33,14 +33,14 @@ pub enum AddressingMode {
 }
 
 impl Cpu {
-    pub fn read_bank0<B: Bus>(&mut self, bus: &mut B, page: u16) -> u16 {
+    pub fn read_bank0<B: Bus>(bus: &mut B, page: u16) -> u16 {
         u16::from_le_bytes([
             bus.read_and_tick(page.into()),
             bus.read_and_tick(page.wrapping_add(1).into()),
         ])
     }
 
-    pub fn write_bank0<B: Bus>(&mut self, bus: &mut B, page: u16, data: u16) {
+    pub fn write_bank0<B: Bus>(bus: &mut B, page: u16, data: u16) {
         bus.write_and_tick(page.into(), data.low_byte());
         bus.write_and_tick(page.wrapping_add(1).into(), data.high_byte());
     }
@@ -83,9 +83,9 @@ impl Cpu {
         self.direct_offset(bus).wrapping_add(index)
     }
 
-    fn indirect_long_address<B: Bus>(&mut self, bus: &mut B, indirect: u16) -> Address {
+    fn indirect_long_address<B: Bus>(bus: &mut B, indirect: u16) -> Address {
         let addr = Address::new(indirect.wrapping_add(2), 0);
-        Address::new(self.read_bank0(bus, indirect), bus.read_and_tick(addr))
+        Address::new(Cpu::read_bank0(bus, indirect), bus.read_and_tick(addr))
     }
 
     fn absolute_address<B: Bus>(&mut self, bus: &mut B) -> Address {
@@ -110,18 +110,18 @@ impl Cpu {
         match mode {
             AddressingMode::Indirect => {
                 let indirect = self.direct_offset(bus);
-                let offset = self.read_bank0(bus, indirect);
+                let offset = Cpu::read_bank0(bus, indirect);
                 Address::new(offset, self.dbr)
             }
             AddressingMode::IndirectX => {
                 bus.add_io_cycles(1);
                 let indirect = self.direct_offset(bus).wrapping_add(self.index_x);
-                let offset = self.read_bank0(bus, indirect);
+                let offset = Cpu::read_bank0(bus, indirect);
                 Address::new(offset, self.dbr)
             }
             AddressingMode::IndirectY => {
                 let indirect = self.direct_offset(bus);
-                let offset = self.read_bank0(bus, indirect);
+                let offset = Cpu::read_bank0(bus, indirect);
                 let unindexed = Address::new(offset, self.dbr);
                 let indexed = unindexed.wrapping_add(u32::from(self.index_y));
                 if self.detect_penalty_cycle::<WRITE>(
@@ -134,12 +134,11 @@ impl Cpu {
             }
             AddressingMode::IndirectLong => {
                 let indirect = self.direct_offset(bus);
-                self.indirect_long_address(bus, indirect)
+                Cpu::indirect_long_address(bus, indirect)
             }
             AddressingMode::IndirectLongY => {
                 let indirect = self.direct_offset(bus);
-                self.indirect_long_address(bus, indirect)
-                    .wrapping_add(u32::from(self.index_y))
+                Cpu::indirect_long_address(bus, indirect).wrapping_add(u32::from(self.index_y))
             }
             AddressingMode::Absolute => self.absolute_address(bus),
             AddressingMode::AbsoluteX => {
@@ -170,7 +169,7 @@ impl Cpu {
                 .wrapping_add(u32::from(self.index_x)),
             AddressingMode::AbsoluteIndirect => {
                 let indirect = self.get_imm(bus);
-                Address::new(self.read_bank0(bus, indirect), 0)
+                Address::new(Cpu::read_bank0(bus, indirect), 0)
             }
             AddressingMode::AbsoluteIndirectX => {
                 bus.add_io_cycles(1);
@@ -181,19 +180,19 @@ impl Cpu {
             }
             AddressingMode::AbsoluteIndirectLong => {
                 let indirect = self.get_imm(bus);
-                self.indirect_long_address(bus, indirect)
+                Cpu::indirect_long_address(bus, indirect)
             }
             AddressingMode::StackRelIndirectY => {
                 bus.add_io_cycles(1);
                 let indirect = self.stack_relative_address(bus);
-                let offset = self.read_bank0(bus, indirect);
+                let offset = Cpu::read_bank0(bus, indirect);
                 Address::new(offset, self.dbr).wrapping_add(u32::from(self.index_y))
             }
             _ => unreachable!(),
         }
     }
 
-    pub fn get_operand<T: RegSize, B: Bus>(&mut self, bus: &mut B, mode: &AddressingMode) -> T {
+    pub fn get_operand<T: RegSize, B: Bus>(&mut self, bus: &mut B, mode: AddressingMode) -> T {
         match mode {
             AddressingMode::RelativeLong => {
                 bus.add_io_cycles(1);
@@ -208,13 +207,13 @@ impl Cpu {
             | AddressingMode::DirectY
             | AddressingMode::StackRelative => self.read_from_direct_page(bus, mode).0,
             _ => {
-                let addr = self.decode_addressing_mode::<false, B>(bus, *mode);
-                self.read(bus, addr)
+                let addr = self.decode_addressing_mode::<false, B>(bus, mode);
+                Cpu::read(bus, addr)
             }
         }
     }
 
-    pub fn direct_page_address<B: Bus>(&mut self, bus: &mut B, mode: &AddressingMode) -> u16 {
+    pub fn direct_page_address<B: Bus>(&mut self, bus: &mut B, mode: AddressingMode) -> u16 {
         match mode {
             AddressingMode::DirectX => self.direct_page_indexed(bus, self.index_x),
             AddressingMode::DirectY => self.direct_page_indexed(bus, self.index_y),
@@ -226,11 +225,11 @@ impl Cpu {
     pub fn read_from_direct_page<T: RegSize, B: Bus>(
         &mut self,
         bus: &mut B,
-        mode: &AddressingMode,
+        mode: AddressingMode,
     ) -> (T, u16) {
         let page = self.direct_page_address(bus, mode);
         if T::IS_U16 {
-            (T::from_u16(self.read_bank0(bus, page)), page)
+            (T::from_u16(Cpu::read_bank0(bus, page)), page)
         } else {
             (T::from_u8(bus.read_and_tick(page.into())), page)
         }
