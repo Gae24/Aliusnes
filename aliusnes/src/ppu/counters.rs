@@ -90,7 +90,7 @@ impl Counters {
     }
 
     pub(crate) fn h_dot(&self, time: u64) -> u16 {
-        let as_master_cycles = time % (self.cycles_per_scanline as u64);
+        let as_master_cycles = time % u64::from(self.cycles_per_scanline);
         (as_master_cycles / 4) as u16
     }
 

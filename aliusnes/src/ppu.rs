@@ -119,7 +119,7 @@ impl Ppu {
                 self.counters.set_hblank(true);
                 scheduler.add_event(
                     Event::Ppu(PpuEvent::NewScanline),
-                    time + self.counters.hblank_length() as u64,
+                    time + u64::from(self.counters.hblank_length()),
                 );
             }
             // H = 0
@@ -229,7 +229,7 @@ impl Access for Ppu {
             0x2C => self.main_screen_layer_enable(data),
             0x30 => self.color.cgwsel = Cgwsel(data),
             0x31 => self.color.cgadsub = Cgadsub(data),
-            0x32 => self.color.color_data_write(ColorData(data)),
+            0x32 => self.color.color_data_write(&ColorData(data)),
             0x33 => self.set_ini_write(SetIni(data)),
             _ => println!("Tried to write at {addr:#0x} val: {data:#04x}"),
         }

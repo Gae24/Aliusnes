@@ -138,7 +138,7 @@ impl Color {
         }
     }
 
-    pub fn color_data_write(&mut self, color_data: ColorData) {
+    pub fn color_data_write(&mut self, color_data: &ColorData) {
         if color_data.write_to_red_channel() {
             self.fixed_color = (u16::from(color_data.val()) & 0x1F) | (self.fixed_color & !0x1F);
         }

@@ -104,7 +104,7 @@ pub(super) fn do_bit<T: RegSize>(cpu: &mut Cpu, operand: T, mode: AddressingMode
 }
 
 pub(super) fn do_block_move<T: RegSize, B: Bus>(cpu: &mut Cpu, bus: &mut B, op: fn(T, T) -> T) {
-    let banks = cpu.get_operand::<u16, B>(bus, &AddressingMode::BlockMove);
+    let banks = cpu.get_operand::<u16, B>(bus, AddressingMode::BlockMove);
     let src_bank = banks.high_byte();
     cpu.dbr = banks.low_byte();
     let src = Address::new(cpu.index_x, src_bank);
@@ -123,7 +123,7 @@ pub(super) fn do_block_move<T: RegSize, B: Bus>(cpu: &mut Cpu, bus: &mut B, op: 
 }
 
 pub(super) fn do_branch<B: Bus>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode, cond: bool) {
-    let offset = cpu.get_operand::<u8, B>(bus, &mode) as i8;
+    let offset = cpu.get_operand::<u8, B>(bus, mode) as i8;
     if cond {
         bus.add_io_cycles(1);
         cpu.program_counter = cpu.program_counter.wrapping_add(offset as u16);
@@ -167,7 +167,7 @@ pub(super) fn do_lsr<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
 pub(super) fn do_push<T: RegSize, B: Bus>(cpu: &mut Cpu, bus: &mut B, value: T) {
     if T::IS_U16 {
         cpu.stack_pointer = cpu.stack_pointer.wrapping_sub(2);
-        cpu.write_bank0(bus, cpu.stack_pointer.wrapping_add(1), value.as_u16());
+        Cpu::write_bank0(bus, cpu.stack_pointer.wrapping_add(1), value.as_u16());
     } else {
         cpu.stack_pointer = cpu.stack_pointer.wrapping_sub(1);
         bus.write_and_tick(cpu.stack_pointer.wrapping_add(1).into(), value.as_u8());
@@ -176,7 +176,7 @@ pub(super) fn do_push<T: RegSize, B: Bus>(cpu: &mut Cpu, bus: &mut B, value: T) 
 
 pub(super) fn do_pull<T: RegSize, B: Bus>(cpu: &mut Cpu, bus: &mut B) -> T {
     if T::IS_U16 {
-        let value = cpu.read_bank0(bus, cpu.stack_pointer.wrapping_add(1));
+        let value = Cpu::read_bank0(bus, cpu.stack_pointer.wrapping_add(1));
         cpu.stack_pointer = cpu.stack_pointer.wrapping_add(2);
         T::from_u16(value)
     } else {
@@ -279,16 +279,16 @@ pub(super) fn do_store<T: RegSize, B: Bus>(
         | AddressingMode::DirectX
         | AddressingMode::DirectY
         | AddressingMode::StackRelative => {
-            let addr = cpu.direct_page_address(bus, &mode);
+            let addr = cpu.direct_page_address(bus, mode);
             if T::IS_U16 {
-                cpu.write_bank0(bus, addr, val.as_u16());
+                Cpu::write_bank0(bus, addr, val.as_u16());
             } else {
                 bus.write_and_tick(Address::new(addr, 0), val.as_u8());
             }
         }
         _ => {
             let addr = cpu.decode_addressing_mode::<true, B>(bus, mode);
-            cpu.write(bus, addr, val);
+            Cpu::write(bus, addr, val);
         }
     }
 }

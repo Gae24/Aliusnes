@@ -72,7 +72,7 @@ impl Emu {
                     Event::Ppu(ppu_event) => {
                         self.bus
                             .ppu
-                            .handle_event(&mut self.bus.scheduler, ppu_event, time)
+                            .handle_event(&mut self.bus.scheduler, ppu_event, time);
                     }
                 }
             }

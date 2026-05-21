@@ -135,7 +135,7 @@ impl Cpu {
         self.status.set_decimal(false);
         self.status.set_irq_disable(true);
         self.pbr = 0;
-        self.program_counter = self.read_bank0(bus, Vector::Reset.get_addr(self.emulation_mode));
+        self.program_counter = Cpu::read_bank0(bus, Vector::Reset.get_addr(self.emulation_mode));
     }
 
     pub fn handle_interrupt<B: Bus>(&mut self, bus: &mut B, interrupt: Vector) {
@@ -147,10 +147,10 @@ impl Cpu {
         self.status.set_decimal(false);
         self.status.set_irq_disable(true);
         self.pbr = 0;
-        self.program_counter = self.read_bank0(bus, interrupt.get_addr(self.emulation_mode));
+        self.program_counter = Cpu::read_bank0(bus, interrupt.get_addr(self.emulation_mode));
     }
 
-    pub fn read<B: Bus, T: RegSize>(&mut self, bus: &mut B, addr: Address) -> T {
+    pub fn read<B: Bus, T: RegSize>(bus: &mut B, addr: Address) -> T {
         if T::IS_U16 {
             let value = u16::from_le_bytes([
                 bus.read_and_tick(addr),
@@ -162,7 +162,7 @@ impl Cpu {
         }
     }
 
-    pub fn write<B: Bus, T: RegSize>(&mut self, bus: &mut B, addr: Address, data: T) {
+    pub fn write<B: Bus, T: RegSize>(bus: &mut B, addr: Address, data: T) {
         if T::IS_U16 {
             bus.write_and_tick(addr, data.as_u16().low_byte());
             bus.write_and_tick(addr.wrapping_add(1), data.as_u16().high_byte());
@@ -174,7 +174,7 @@ impl Cpu {
     pub fn do_rmw<T: RegSize, B: Bus>(
         &mut self,
         bus: &mut B,
-        mode: &AddressingMode,
+        mode: AddressingMode,
         f: fn(&mut Cpu, T) -> T,
     ) {
         match mode {
@@ -189,16 +189,16 @@ impl Cpu {
                 let (data, page) = self.read_from_direct_page::<T, B>(bus, mode);
                 let result = f(self, data);
                 if T::IS_U16 {
-                    self.write_bank0(bus, page, result.as_u16());
+                    Cpu::write_bank0(bus, page, result.as_u16());
                 } else {
                     bus.write_and_tick(page.into(), result.as_u8());
                 }
             }
             _ => {
-                let addr = self.decode_addressing_mode::<true, B>(bus, *mode);
-                let data = self.read(bus, addr);
+                let addr = self.decode_addressing_mode::<true, B>(bus, mode);
+                let data = Cpu::read(bus, addr);
                 let result = f(self, data);
-                self.write(bus, addr, result);
+                Cpu::write(bus, addr, result);
             }
         }
     }

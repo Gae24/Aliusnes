@@ -19,8 +19,8 @@ enum Layer {
     Object(u8),
 }
 
-use BackgroundId::*;
-use Layer::*;
+use BackgroundId::{BG1, BG2, BG3, BG4};
+use Layer::{Background, Object};
 
 const S0: Layer = Object(0);
 const S1: Layer = Object(1);

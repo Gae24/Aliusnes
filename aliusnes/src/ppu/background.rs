@@ -39,7 +39,7 @@ pub struct Bg {
 }
 
 impl Bg {
-    pub fn tile_map_addr(&self, tile_x: usize, tile_y: usize) -> usize {
+    pub fn tile_map_addr(self, tile_x: usize, tile_y: usize) -> usize {
         let tilemap_idx = match (self.bg_sc.h_tilemap_count(), self.bg_sc.v_tilemap_count()) {
             (true, true) => (tile_x / 32) % 2 + ((tile_y / 32) % 2) * 2,
             (true, false) => (tile_x / 32) % 2,

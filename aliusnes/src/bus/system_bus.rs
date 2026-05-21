@@ -150,7 +150,7 @@ impl SystemBus {
         self.cart.write(bank.into(), page.into(), data);
     }
 
-    pub(crate) fn memory_access_cycles(&self, addr: &Address) -> u32 {
+    pub(crate) fn memory_access_cycles(&self, addr: Address) -> u32 {
         const FAST: u32 = 6;
         const SLOW: u32 = 8;
         const XSLOW: u32 = 12;
@@ -198,12 +198,14 @@ impl Bus for SystemBus {
     }
 
     fn read_and_tick(&mut self, addr: Address) -> u8 {
-        self.scheduler.tick(self.memory_access_cycles(&addr) as u64);
+        self.scheduler
+            .tick(u64::from(self.memory_access_cycles(addr)));
         self.read::<false>(addr)
     }
 
     fn write_and_tick(&mut self, addr: Address, data: u8) {
-        self.scheduler.tick(self.memory_access_cycles(&addr) as u64);
+        self.scheduler
+            .tick(u64::from(self.memory_access_cycles(addr)));
         self.write::<false>(addr, data);
     }
 
