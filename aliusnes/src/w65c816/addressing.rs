@@ -1,8 +1,7 @@
-use super::{cpu::Cpu, regsize::RegSize};
-use crate::{
-    bus::{Address, Bus},
-    utils::int_traits::ManipulateU16,
-};
+use crate::bus::{Address, Bus};
+use crate::utils::int_traits::ManipulateU16;
+use crate::w65c816::cpu::Cpu;
+use crate::w65c816::regsize::RegSize;
 
 #[derive(Clone, Copy, Debug)]
 pub enum AddressingMode {
@@ -112,13 +111,13 @@ impl Cpu {
                 let indirect = self.direct_offset(bus);
                 let offset = Cpu::read_bank0(bus, indirect);
                 Address::new(offset, self.dbr)
-            }
+            },
             AddressingMode::IndirectX => {
                 bus.add_io_cycles(1);
                 let indirect = self.direct_offset(bus).wrapping_add(self.index_x);
                 let offset = Cpu::read_bank0(bus, indirect);
                 Address::new(offset, self.dbr)
-            }
+            },
             AddressingMode::IndirectY => {
                 let indirect = self.direct_offset(bus);
                 let offset = Cpu::read_bank0(bus, indirect);
@@ -131,15 +130,15 @@ impl Cpu {
                     bus.add_io_cycles(1);
                 }
                 indexed
-            }
+            },
             AddressingMode::IndirectLong => {
                 let indirect = self.direct_offset(bus);
                 Cpu::indirect_long_address(bus, indirect)
-            }
+            },
             AddressingMode::IndirectLongY => {
                 let indirect = self.direct_offset(bus);
                 Cpu::indirect_long_address(bus, indirect).wrapping_add(u32::from(self.index_y))
-            }
+            },
             AddressingMode::Absolute => self.absolute_address(bus),
             AddressingMode::AbsoluteX => {
                 let unindexed = self.absolute_address(bus);
@@ -151,7 +150,7 @@ impl Cpu {
                     bus.add_io_cycles(1);
                 }
                 indexed
-            }
+            },
             AddressingMode::AbsoluteY => {
                 let unindexed = self.absolute_address(bus);
                 let indexed = unindexed.wrapping_add(u32::from(self.index_y));
@@ -162,7 +161,7 @@ impl Cpu {
                     bus.add_io_cycles(1);
                 }
                 indexed
-            }
+            },
             AddressingMode::AbsoluteLong => self.absolute_long_address(bus),
             AddressingMode::AbsoluteLongX => self
                 .absolute_long_address(bus)
@@ -170,24 +169,24 @@ impl Cpu {
             AddressingMode::AbsoluteIndirect => {
                 let indirect = self.get_imm(bus);
                 Address::new(Cpu::read_bank0(bus, indirect), 0)
-            }
+            },
             AddressingMode::AbsoluteIndirectX => {
                 bus.add_io_cycles(1);
                 Address::new(
                     self.get_imm::<u16, B>(bus).wrapping_add(self.index_x),
                     self.pbr,
                 )
-            }
+            },
             AddressingMode::AbsoluteIndirectLong => {
                 let indirect = self.get_imm(bus);
                 Cpu::indirect_long_address(bus, indirect)
-            }
+            },
             AddressingMode::StackRelIndirectY => {
                 bus.add_io_cycles(1);
                 let indirect = self.stack_relative_address(bus);
                 let offset = Cpu::read_bank0(bus, indirect);
                 Address::new(offset, self.dbr).wrapping_add(u32::from(self.index_y))
-            }
+            },
             _ => unreachable!(),
         }
     }
@@ -198,10 +197,10 @@ impl Cpu {
                 bus.add_io_cycles(1);
                 let offset = self.get_imm::<u16, _>(bus) as i16;
                 T::from_u16(self.program_counter.wrapping_add(offset as u16))
-            }
+            },
             AddressingMode::Immediate | AddressingMode::Relative | AddressingMode::BlockMove => {
                 self.get_imm(bus)
-            }
+            },
             AddressingMode::Direct
             | AddressingMode::DirectX
             | AddressingMode::DirectY
@@ -209,7 +208,7 @@ impl Cpu {
             _ => {
                 let addr = self.decode_addressing_mode::<false, B>(bus, mode);
                 Cpu::read(bus, addr)
-            }
+            },
         }
     }
 

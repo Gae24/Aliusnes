@@ -1,9 +1,8 @@
 #[cfg(feature = "trace")]
 use crate::bus::Address;
-use crate::{
-    bus::Bus,
-    w65c816::{addressing::AddressingMode, Cpu, W65C816},
-};
+use crate::bus::Bus;
+use crate::w65c816::addressing::AddressingMode;
+use crate::w65c816::{Cpu, W65C816};
 
 #[derive(Clone, Copy)]
 pub(crate) struct Meta {
@@ -66,7 +65,7 @@ impl Meta {
             AddressingMode::StackRelative => format!("{} ${:02X},S", self.mnemonic, operand),
             AddressingMode::StackRelIndirectY => {
                 format!("{} (${:02X},S),Y", self.mnemonic, operand)
-            }
+            },
             AddressingMode::BlockMove => {
                 format!(
                     "{} ${:02X} ${:02X}",
@@ -74,7 +73,7 @@ impl Meta {
                     operand as u8,
                     (operand >> 8) & 0xFF
                 )
-            }
+            },
         }
     }
 }
@@ -123,7 +122,7 @@ impl AddressingMode {
 }
 
 pub(crate) const fn opcode_table<B: Bus>() -> [OpCode<B>; 256] {
-    use super::addressing::AddressingMode::*;
+    use crate::w65c816::addressing::AddressingMode::*;
     [
         OpCode::new(Meta::new(0x00, "BRK", Immediate), W65C816::brk),
         OpCode::new(Meta::new(0x01, "ORA", IndirectX), W65C816::ora),

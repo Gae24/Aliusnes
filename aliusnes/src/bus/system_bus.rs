@@ -1,6 +1,11 @@
-use crate::{cart::Cart, ppu::Ppu, scheduler::Scheduler, utils::int_traits::ManipulateU16};
-
-use super::{dma::Dma, math::Math, wram::Wram, Access, Address, Bus};
+use crate::bus::dma::Dma;
+use crate::bus::math::Math;
+use crate::bus::wram::Wram;
+use crate::bus::{Access, Address, Bus};
+use crate::cart::Cart;
+use crate::ppu::Ppu;
+use crate::scheduler::Scheduler;
+use crate::utils::int_traits::ManipulateU16;
 
 pub struct SystemBus {
     mdr: u8,
@@ -47,7 +52,7 @@ impl SystemBus {
                 };
 
                 Some(value)
-            }
+            },
             0x80 => self.wram.read(addr, 0),
             _ => None,
         } {
@@ -81,7 +86,7 @@ impl SystemBus {
                                     | u8::from(joypad_autoread_status)
                                     | (self.mdr & 0x3E),
                             )
-                        }
+                        },
                         0x4214..=0x4217 => self.math.read(page, 0),
                         // TODO joypad registers
                         0x4218..=0x421F => Some(0),
@@ -89,9 +94,9 @@ impl SystemBus {
                         _ => {
                             println!("Tried to read at {page:#0x}");
                             None
-                        }
+                        },
                     }
-                }
+                },
                 _ => None,
             },
 
@@ -114,7 +119,7 @@ impl SystemBus {
             0x40..=0x43 => {
                 let ch = ((addr - 0x2140) % 4) as usize;
                 self.dummy_apu[ch] = data;
-            }
+            },
             0x80..=0x83 => self.wram.write(addr, data),
             _ => println!("Tried to write at {addr:#0x} val: {data:#04x}"),
         }
@@ -139,13 +144,13 @@ impl SystemBus {
                         0x420B | 0x420C | 0x4300..=0x437f => self.dma.write(page, data),
                         0x420D => self.fast_rom_enabled = data & 1 != 0,
                         _ => println!("Tried to write at {page:#0x} val: {data:#04x}"),
-                    }
-                }
-                _ => {}
+                    };
+                },
+                _ => {},
             },
 
             0x7E..=0x7F => return self.wram.ram[u32::from(addr) as usize & 0x1_FFFF] = data,
-            _ => {}
+            _ => {},
         }
         self.cart.write(bank.into(), page.into(), data);
     }
@@ -163,7 +168,7 @@ impl SystemBus {
                 } else {
                     SLOW
                 }
-            }
+            },
             _ => match addr.offset {
                 0x0000..=0x1FFF | 0x6000..=0x7FFF => SLOW,
                 0x2000..=0x3FFF | 0x4200..=0x5FFF => FAST,
@@ -174,7 +179,7 @@ impl SystemBus {
                     } else {
                         SLOW
                     }
-                }
+                },
             },
         }
     }
@@ -190,9 +195,9 @@ impl Bus for SystemBus {
                 if let 0x00..=0x1F = page.high_byte() {
                     return Some(self.wram.ram[page as usize & 0x1FFF]);
                 }
-            }
+            },
             0x7E..=0x7F => return Some(self.wram.ram[u32::from(addr) as usize & 0x1_FFFF]),
-            _ => {}
+            _ => {},
         }
         self.cart.read(bank.into(), page.into())
     }

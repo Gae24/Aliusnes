@@ -2,16 +2,17 @@
 #![feature(generic_const_exprs)]
 #![feature(adt_const_params)]
 
-use cart::{header::Header, Cart};
+use crate::cart::Cart;
+use crate::cart::header::Header;
 
-pub mod apu;
-pub mod bus;
+mod apu;
+mod bus;
 pub mod cart;
 pub mod emu;
 mod ppu;
 mod scheduler;
 mod utils;
-pub mod w65c816;
+mod w65c816;
 
 #[macro_use]
 extern crate proc_bitfield;

@@ -18,8 +18,10 @@ impl Mapper {
 }
 
 pub struct Chipset {
+    #[expect(dead_code)]
     pub has_coprocessor: bool,
     pub has_ram: bool,
+    #[expect(dead_code)]
     pub has_battery: bool,
 }
 
@@ -49,6 +51,7 @@ pub enum Region {
     Canada,
     Brazil,
     Australia,
+    #[expect(dead_code)]
     Unknown(u8),
 }
 

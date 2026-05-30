@@ -1,9 +1,8 @@
-use crate::{
-    bus::{dma::Dma, system_bus::SystemBus},
-    cart::Cart,
-    scheduler::{Event, PpuEvent},
-    w65c816::W65C816,
-};
+use crate::bus::dma::Dma;
+use crate::bus::system_bus::SystemBus;
+use crate::cart::Cart;
+use crate::scheduler::{Event, PpuEvent};
+use crate::w65c816::W65C816;
 
 pub struct Emu {
     w65c816: W65C816<SystemBus>,
@@ -73,7 +72,7 @@ impl Emu {
                         self.bus
                             .ppu
                             .handle_event(&mut self.bus.scheduler, ppu_event, time);
-                    }
+                    },
                 }
             }
         }

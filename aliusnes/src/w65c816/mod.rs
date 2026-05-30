@@ -1,6 +1,6 @@
 use crate::bus::Bus;
-use cpu::{Cpu, Vector};
-use opcode::{opcode_table, OpCode};
+use crate::w65c816::cpu::{Cpu, Vector};
+use crate::w65c816::opcode::{OpCode, opcode_table};
 
 mod addressing;
 mod cpu;
@@ -77,14 +77,17 @@ impl<B: Bus> W65C816<B> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+
+    use serde::{Deserialize, Deserializer};
+
     use super::*;
     use crate::bus::Address;
-    use crate::utils::testbus::{deserialize_as_map, Cycle, TomHarteBus};
-    use crate::utils::testrun::{run_test, OpcodeTest};
+    use crate::utils::testbus::{Cycle, TomHarteBus, deserialize_as_map};
+    use crate::utils::testrun::{OpcodeTest, run_test};
     use crate::w65c816::cpu::{Cpu, Status};
     use crate::w65c816::opcode::Meta;
-    use serde::{Deserialize, Deserializer};
-    use std::{collections::HashMap, path::PathBuf};
 
     impl<B: Bus> W65C816<B> {
         fn peek_opcode(&self, bus: &B) -> Meta {
@@ -156,20 +159,20 @@ mod tests {
     impl std::fmt::Display for CpuState {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             write!(
-            f,
-            "pc:{:04X} s:{:04X} p:{:02X} a:{:04X} x:{:04X} y:{:04X} dbr:{:02X} d:{:04X} pbr:{:02X} e:{:01X} \n\t  ram:{:02X?}",
-            self.pc,
-            self.s,
-            self.p,
-            self.a,
-            self.x,
-            self.y,
-            self.dbr,
-            self.d,
-            self.pbr,
-            self.e,
-            self.ram
-        )
+                f,
+                "pc:{:04X} s:{:04X} p:{:02X} a:{:04X} x:{:04X} y:{:04X} dbr:{:02X} d:{:04X} pbr:{:02X} e:{:01X} \n\t  ram:{:02X?}",
+                self.pc,
+                self.s,
+                self.p,
+                self.a,
+                self.x,
+                self.y,
+                self.dbr,
+                self.d,
+                self.pbr,
+                self.e,
+                self.ram
+            )
         }
     }
 

@@ -138,13 +138,13 @@ impl Cpu {
 
                 let result = (data & !(1 << bit_pos)) | (modified_bit << bit_pos);
                 bus.write_and_tick(page.into(), result);
-            }
+            },
             _ => {
                 let page = self.decode_addressing_mode(bus, mode);
                 let data = bus.read_and_tick(page.into());
                 let result = f(self, data);
                 bus.write_and_tick(page.into(), result);
-            }
+            },
         }
     }
 

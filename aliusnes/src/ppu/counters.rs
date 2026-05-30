@@ -1,10 +1,8 @@
 #[cfg(feature = "log")]
 use std::time::Instant;
 
-use crate::{
-    ppu::{Ppu, NTSC_HEIGHT, NTSC_SCANLINES, PAL_HEIGHT, PAL_SCANLINES, SCANLINE_CYCLES},
-    utils::int_traits::ManipulateU16,
-};
+use crate::ppu::{NTSC_HEIGHT, NTSC_SCANLINES, PAL_HEIGHT, PAL_SCANLINES, Ppu, SCANLINE_CYCLES};
+use crate::utils::int_traits::ManipulateU16;
 
 bitfield! {
     pub struct Nmitimen(pub u8) {
@@ -120,7 +118,7 @@ impl Counters {
             0b10 => self.vertical_counter as u16 == self.v_timer_target && h_dot == 0,
             0b11 => {
                 self.vertical_counter as u16 == self.v_timer_target && h_dot == self.h_timer_target
-            }
+            },
             _ => unreachable!(),
         }
     }

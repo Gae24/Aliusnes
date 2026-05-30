@@ -1,17 +1,13 @@
-use self::{
-    background::{Background, BgMode, Mosaic},
-    color::{Cgadsub, Cgwsel, Color, ColorData},
-    counters::Counters,
-    mode7::Mode7,
-    oam::{Oam, Objsel},
-    vram::{VideoPortControl, Vram},
-};
-use crate::{
-    bus::Access,
-    cart::info::Model,
-    scheduler::{Event, PpuEvent, Scheduler},
-    utils::int_traits::ManipulateU16,
-};
+use crate::bus::Access;
+use crate::cart::info::Model;
+use crate::ppu::background::{Background, BgMode, Mosaic};
+use crate::ppu::color::{Cgadsub, Cgwsel, Color, ColorData};
+use crate::ppu::counters::Counters;
+use crate::ppu::mode7::Mode7;
+use crate::ppu::oam::{Oam, Objsel};
+use crate::ppu::vram::{VideoPortControl, Vram};
+use crate::scheduler::{Event, PpuEvent, Scheduler};
+use crate::utils::int_traits::ManipulateU16;
 
 mod background;
 mod color;
@@ -113,7 +109,7 @@ impl Ppu {
                     self.render_scanline(self.counters.vertical_counter);
                 }
                 scheduler.add_event(Event::Ppu(PpuEvent::HBlankStart), time + 1008);
-            }
+            },
             // H = 274
             PpuEvent::HBlankStart => {
                 self.counters.set_hblank(true);
@@ -121,7 +117,7 @@ impl Ppu {
                     Event::Ppu(PpuEvent::NewScanline),
                     time + u64::from(self.counters.hblank_length()),
                 );
-            }
+            },
             // H = 0
             PpuEvent::NewScanline => {
                 self.counters.vertical_counter += 1;
@@ -139,7 +135,7 @@ impl Ppu {
                 }
                 self.counters.check_counters_timer_hit(time);
                 scheduler.add_event(Event::Ppu(PpuEvent::HDraw), time + 88);
-            }
+            },
         }
     }
 
@@ -171,19 +167,19 @@ impl Access for Ppu {
             0x37 => {
                 self.counters.software_latch(time);
                 None
-            }
+            },
             0x38 => {
                 self.ppu1_mdr = self.oam.oa_addr_read();
                 Some(self.ppu1_mdr)
-            }
+            },
             0x39 => {
                 self.ppu1_mdr = self.vram.vm_addl_read();
                 Some(self.ppu1_mdr)
-            }
+            },
             0x3A => {
                 self.ppu1_mdr = self.vram.vm_addh_read();
                 Some(self.ppu1_mdr)
-            }
+            },
             0x3B => Some(self.cg_addr_read()),
             0x3C => Some(self.ophct_read()),
             0x3D => Some(self.opvct_read()),
@@ -191,7 +187,7 @@ impl Access for Ppu {
             _ => {
                 println!("Tried to read at {addr:#0x}");
                 Some(self.ppu1_mdr)
-            }
+            },
         }
     }
 
@@ -212,11 +208,11 @@ impl Access for Ppu {
             0x0D | 0x0F | 0x11 | 0x13 => {
                 self.background
                     .set_bg_h_scroll_offset(nibble, u16::from(data));
-            }
+            },
             0x0E | 0x10 | 0x12 | 0x14 => {
                 self.background
                     .set_bg_v_scroll_offset(nibble, u16::from(data));
-            }
+            },
             0x15 => self.vram.video_port_control = VideoPortControl(data),
             0x16 => self.vram.vm_addl(data),
             0x17 => self.vram.vm_addh(data),

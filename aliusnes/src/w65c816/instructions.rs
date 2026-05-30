@@ -1,12 +1,11 @@
-use super::{
-    addressing::AddressingMode,
-    cpu::{Cpu, Vector},
-    functions::{
-        do_asl, do_bin_adc, do_bit, do_block_move, do_branch, do_cmp, do_dec, do_dec_adc,
-        do_dec_sbc, do_inc, do_lsr, do_pull, do_push, do_rol, do_ror, do_store, do_trb, do_tsb,
-    },
+use crate::bus::Bus;
+use crate::utils::int_traits::ManipulateU16;
+use crate::w65c816::addressing::AddressingMode;
+use crate::w65c816::cpu::{Cpu, Vector};
+use crate::w65c816::functions::{
+    do_asl, do_bin_adc, do_bit, do_block_move, do_branch, do_cmp, do_dec, do_dec_adc, do_dec_sbc,
+    do_inc, do_lsr, do_pull, do_push, do_rol, do_ror, do_store, do_trb, do_tsb,
 };
-use crate::{bus::Bus, utils::int_traits::ManipulateU16};
 
 impl<B: Bus> super::W65C816<B> {
     pub fn adc(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {

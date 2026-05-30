@@ -1,4 +1,4 @@
-use super::Access;
+use crate::bus::Access;
 use crate::utils::int_traits::ManipulateU16;
 
 // In hardware multiplication takes 8 cycles,
@@ -56,13 +56,13 @@ impl Access for Math {
             0x4203 => {
                 self.factor_b = data;
                 self.do_multiplication();
-            }
+            },
             0x4204 => self.dividend.set_low_byte(data),
             0x4205 => self.dividend.set_high_byte(data),
             0x4206 => {
                 self.divisor = data;
                 self.do_division();
-            }
+            },
             _ => unreachable!(),
         }
     }

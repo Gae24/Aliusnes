@@ -1,9 +1,5 @@
-use crate::ppu::tile::Bpp8;
-
-use super::{
-    tile::{BitPlane, Bpp2, Bpp4, TileMapEntry},
-    Ppu, WIDTH,
-};
+use crate::ppu::tile::{BitPlane, Bpp2, Bpp4, Bpp8, TileMapEntry};
+use crate::ppu::{Ppu, WIDTH};
 
 #[derive(Clone, Copy)]
 enum BackgroundId {
@@ -72,8 +68,8 @@ impl Ppu {
                                 self.rgb555_to_rgb888(*pixel);
                         }
                     }
-                }
-                Object(_layer_priority) => {}
+                },
+                Object(_layer_priority) => {},
             }
         }
     }
@@ -86,7 +82,7 @@ impl Ppu {
                 self.draw_background::<Bpp2, 0>(screen_y, BG3, &mut (bg_data)[BG3 as usize]);
                 self.draw_background::<Bpp2, 0>(screen_y, BG4, &mut (bg_data)[BG4 as usize]);
                 &[S3, H1, H2, S2, L1, L2, S1, H3, H4, S0, L3, L4]
-            }
+            },
             1 => {
                 self.draw_background::<Bpp4, 1>(screen_y, BG1, &mut (*bg_data)[BG1 as usize]);
                 self.draw_background::<Bpp4, 1>(screen_y, BG2, &mut (*bg_data)[BG2 as usize]);
@@ -96,26 +92,26 @@ impl Ppu {
                 } else {
                     &[S3, H1, H2, S2, L1, L2, S1, H3, S0, L3]
                 }
-            }
+            },
             2 => {
                 self.draw_background::<Bpp4, 2>(screen_y, BG1, &mut (*bg_data)[BG1 as usize]);
                 self.draw_background::<Bpp4, 2>(screen_y, BG2, &mut (*bg_data)[BG2 as usize]);
                 &[S3, H1, S2, H2, S1, L1, S0, L2]
-            }
+            },
             3 => {
                 self.draw_background::<Bpp8, 3>(screen_y, BG1, &mut (*bg_data)[BG1 as usize]);
                 self.draw_background::<Bpp4, 3>(screen_y, BG2, &mut (*bg_data)[BG2 as usize]);
                 &[S3, H1, S2, H2, S1, L1, S0, L2]
-            }
+            },
             4 => {
                 self.draw_background::<Bpp8, 4>(screen_y, BG1, &mut (*bg_data)[BG1 as usize]);
                 self.draw_background::<Bpp2, 4>(screen_y, BG2, &mut (*bg_data)[BG2 as usize]);
                 &[S3, H1, S2, H2, S1, L1, S0, L2]
-            }
+            },
             6 => {
                 self.draw_background::<Bpp4, 6>(screen_y, BG1, &mut (*bg_data)[BG1 as usize]);
                 &[S3, H1, S2, S1, L1, S0]
-            }
+            },
             _ => unimplemented!("mode {}", self.background.bg_mode.bg_mode()),
         }
     }

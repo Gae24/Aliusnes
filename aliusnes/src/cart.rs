@@ -1,8 +1,8 @@
-pub mod header;
-pub mod info;
+pub(crate) mod header;
+pub(crate) mod info;
 
-use header::Header;
-use info::{Mapper, Model};
+use crate::cart::header::Header;
+use crate::cart::info::{Mapper, Model};
 
 pub struct Cart {
     header: Header,
@@ -14,7 +14,7 @@ pub struct Cart {
 }
 
 impl Cart {
-    pub fn new(header: Header, rom: &[u8], ram: Vec<u8>) -> Self {
+    pub(crate) fn new(header: Header, rom: &[u8], ram: Vec<u8>) -> Self {
         Cart {
             rom_mask: rom_mask(rom.len()),
             ram_mask: (header.ram_size - 1) as usize,
@@ -25,7 +25,7 @@ impl Cart {
         }
     }
 
-    pub fn read(&self, bank: usize, addr: usize) -> Option<u8> {
+    pub(crate) fn read(&self, bank: usize, addr: usize) -> Option<u8> {
         match self.header.mapper {
             Mapper::LoROM => self.read_lorom(bank, addr),
             Mapper::HiROM => self.read_hirom(bank, addr),
@@ -35,7 +35,7 @@ impl Cart {
         }
     }
 
-    pub fn write(&mut self, bank: usize, addr: usize, val: u8) {
+    pub(crate) fn write(&mut self, bank: usize, addr: usize, val: u8) {
         match self.header.mapper {
             Mapper::LoROM => self.write_lorom(bank, addr, val),
             Mapper::HiROM => self.write_hirom(bank, addr, val),
@@ -45,7 +45,7 @@ impl Cart {
         }
     }
 
-    pub fn read_lorom(&self, mut bank: usize, addr: usize) -> Option<u8> {
+    pub(crate) fn read_lorom(&self, mut bank: usize, addr: usize) -> Option<u8> {
         if ((0x70..0x7E).contains(&bank) || bank >= 0xF0)
             && (self.rom_mask < 0x200000 || addr < 0x8000)
             && self.header.chipset.has_ram
@@ -60,7 +60,7 @@ impl Cart {
         None
     }
 
-    pub fn write_lorom(&mut self, bank: usize, addr: usize, val: u8) {
+    pub(crate) fn write_lorom(&mut self, bank: usize, addr: usize, val: u8) {
         if ((0x70..0x7E).contains(&bank) || bank >= 0xF0)
             && addr < 0x8000
             && self.header.chipset.has_ram
@@ -69,7 +69,7 @@ impl Cart {
         }
     }
 
-    pub fn read_hirom(&self, mut bank: usize, addr: usize) -> Option<u8> {
+    pub(crate) fn read_hirom(&self, mut bank: usize, addr: usize) -> Option<u8> {
         bank &= 0x7F;
         if bank < 0x40 && (0x6000..0x8000).contains(&addr) && self.header.chipset.has_ram {
             return Some(self.ram[(((bank & 0x3F) << 13) | (addr & 0x1FFF)) & (self.ram_mask)]);
@@ -81,7 +81,7 @@ impl Cart {
         None
     }
 
-    pub fn write_hirom(&mut self, mut bank: usize, addr: usize, val: u8) {
+    pub(crate) fn write_hirom(&mut self, mut bank: usize, addr: usize, val: u8) {
         bank &= 0x7F;
         if bank < 0x40 && (0x6000..0x8000).contains(&addr) && self.header.chipset.has_ram {
             self.ram[(((bank & 0x3F) << 13) | (addr & 0x1FFF)) & self.ram_mask] = val;

@@ -1,4 +1,5 @@
-use super::{tile::BitPlane, Ppu};
+use crate::ppu::Ppu;
+use crate::ppu::tile::BitPlane;
 use crate::utils::int_traits::ManipulateU16;
 
 bitfield! {
@@ -134,7 +135,7 @@ impl Color {
                 self.cgram[self.cg_addr as usize] = u16::from(byte) | (u16::from(data) << 8);
                 self.cg_addr = self.cg_addr.wrapping_add(1);
                 self.latch = None;
-            }
+            },
         }
     }
 

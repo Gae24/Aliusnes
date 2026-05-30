@@ -1,7 +1,6 @@
-use crate::{
-    apu::spc700::{addressing::AddressingMode, Cpu, Spc700},
-    bus::Bus,
-};
+use crate::apu::spc700::addressing::AddressingMode;
+use crate::apu::spc700::{Cpu, Spc700};
+use crate::bus::Bus;
 
 #[derive(Clone, Copy)]
 pub(crate) struct Meta {
@@ -33,7 +32,7 @@ impl<B: Bus> OpCode<B> {
 
 #[rustfmt::skip]
 pub(crate) const fn opcode_table<B: Bus>() -> [OpCode<B>; 256] {
-    use super::addressing::AddressingMode::*;
+    use crate::apu::spc700::addressing::AddressingMode::*;
     [
         OpCode::new(Meta::new(0x00, "NOP", Implied), Spc700::nop),
         OpCode::new(Meta::new(0x01, "TCALL", Implied), Spc700::tcall::<0>),

@@ -1,5 +1,7 @@
-use crate::{apu::spc700::Cpu, bus::Bus};
 use std::marker::ConstParamTy;
+
+use crate::apu::spc700::Cpu;
+use crate::bus::Bus;
 
 #[derive(ConstParamTy, PartialEq, Eq, Clone, Copy)]
 pub enum AddressingMode {
@@ -66,52 +68,52 @@ impl Cpu {
         match mode {
             AddressingMode::DirectPage => {
                 u16::from_le_bytes([self.get_imm(bus), self.status.direct_page().into()])
-            }
+            },
             AddressingMode::Absolute => self.abs(bus),
             AddressingMode::IndirectX => {
                 // An extra discarded read is performed in indirect addressing
                 let _ = bus.read_and_tick(self.program_counter.into());
 
                 self.direct_page(self.index_x)
-            }
+            },
             AddressingMode::IndirectY => self.direct_page(self.index_y),
             AddressingMode::XIndirect => {
                 bus.add_io_cycles(1);
                 let offset = self.get_imm(bus).wrapping_add(self.index_x);
                 self.word_from_direct_page(bus, offset)
-            }
+            },
             AddressingMode::DirectX => {
                 bus.add_io_cycles(1);
                 let offset = self.get_imm(bus).wrapping_add(self.index_x);
                 self.direct_page(offset)
-            }
+            },
             AddressingMode::AbsoluteX => {
                 bus.add_io_cycles(1);
                 self.abs(bus).wrapping_add(self.index_x.into())
-            }
+            },
             AddressingMode::AbsoluteY => {
                 bus.add_io_cycles(1);
                 self.abs(bus).wrapping_add(self.index_y.into())
-            }
+            },
             AddressingMode::DirectPageIndirectY => {
                 bus.add_io_cycles(1);
 
                 let offset = self.get_imm(bus);
                 let page = self.word_from_direct_page(bus, offset);
                 page.wrapping_add(self.index_y.into())
-            }
+            },
             AddressingMode::DirectY => {
                 bus.add_io_cycles(1);
                 let offset = self.get_imm(bus).wrapping_add(self.index_y);
                 self.direct_page(offset)
-            }
+            },
             AddressingMode::DirectXPostIncrement => {
                 let _ = bus.read_and_tick(self.program_counter.into());
                 bus.add_io_cycles(1);
                 let page = self.direct_page(self.index_x);
                 self.index_x = self.index_x.wrapping_add(1);
                 page
-            }
+            },
             AddressingMode::Implied
             | AddressingMode::Immediate
             | AddressingMode::AbsoluteBooleanBit
@@ -136,11 +138,11 @@ impl Cpu {
                 let val = bus.read_and_tick((addr_bit & 0x1FFF).into());
 
                 val & 1 << (addr_bit >> 13)
-            }
+            },
             _ => {
                 let page = self.decode_addressing_mode(bus, mode);
                 bus.read_and_tick(page.into())
-            }
+            },
         }
     }
 }

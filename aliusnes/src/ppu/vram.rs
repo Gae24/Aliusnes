@@ -1,4 +1,4 @@
-use super::tile::BitPlane;
+use crate::ppu::tile::BitPlane;
 use crate::utils::int_traits::ManipulateU16;
 
 bitfield! {

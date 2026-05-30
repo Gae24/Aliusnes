@@ -1,6 +1,8 @@
-use crate::bus::{Address, Bus};
-use serde::{Deserialize, Deserializer};
 use std::collections::HashMap;
+
+use serde::{Deserialize, Deserializer};
+
+use crate::bus::{Address, Bus};
 
 pub(crate) fn deserialize_as_map<'de, D: Deserializer<'de>>(
     deserializer: D,

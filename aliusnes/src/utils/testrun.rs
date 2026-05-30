@@ -1,14 +1,13 @@
-use crate::utils::testbus::Cycle;
-use serde::{Deserialize, Deserializer};
-use std::{fs::File, io::BufReader};
-use xz2::read::XzDecoder;
+use std::fmt::{Debug, Display};
+use std::fs::File;
+use std::io::BufReader;
+use std::path::PathBuf;
 
 use pretty_assertions::Comparison;
+use serde::{Deserialize, Deserializer};
+use xz2::read::XzDecoder;
 
-use std::{
-    fmt::{Debug, Display},
-    path::PathBuf,
-};
+use crate::utils::testbus::Cycle;
 
 #[derive(Deserialize)]
 struct TestCase<T> {

@@ -1,12 +1,8 @@
-use crate::{
-    apu::spc700::{
-        addressing::AddressingMode,
-        cpu::{Cpu, Status},
-        Spc700,
-    },
-    bus::Bus,
-    utils::int_traits::ManipulateU16,
-};
+use crate::apu::spc700::Spc700;
+use crate::apu::spc700::addressing::AddressingMode;
+use crate::apu::spc700::cpu::{Cpu, Status};
+use crate::bus::Bus;
+use crate::utils::int_traits::ManipulateU16;
 
 impl<B: Bus> Spc700<B> {
     pub fn adc<const DEST: AddressingMode>(cpu: &mut Cpu, bus: &mut B, mode: AddressingMode) {
@@ -314,7 +310,7 @@ impl<B: Bus> Spc700<B> {
             AddressingMode::Sp => {
                 let _ = bus.read_and_tick(cpu.program_counter.into());
                 cpu.stack_pointer = operand;
-            }
+            },
             AddressingMode::Psw => cpu.status = Status(operand),
             _ => {
                 let page = cpu.decode_addressing_mode(bus, DEST);
@@ -324,7 +320,7 @@ impl<B: Bus> Spc700<B> {
                     let _ = bus.read_and_tick(page.into());
                 }
                 bus.write_and_tick(page.into(), operand);
-            }
+            },
         }
 
         if matches!(mode, AddressingMode::Sp) {
