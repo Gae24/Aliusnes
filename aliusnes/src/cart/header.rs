@@ -1,21 +1,26 @@
 use std::str::from_utf8;
 
-use super::info::{Chipset, Mapper, Region};
+use crate::cart::info::{Chipset, Mapper, Region};
 
 pub struct Header {
+    #[expect(dead_code)]
     pub title: String,
+    #[expect(dead_code)]
     pub fast_rom: bool,
     pub mapper: Mapper,
     pub chipset: Chipset,
+    #[expect(dead_code)]
     pub rom_size: u32,
     pub ram_size: u32,
     pub country: Region,
+    #[expect(dead_code)]
     pub dev_id: u8,
+    #[expect(dead_code)]
     pub version: u8,
 }
 
 impl Header {
-    pub fn new(bytes: &[u8], expected_mapper: Mapper) -> Option<Self> {
+    fn new(bytes: &[u8], expected_mapper: Mapper) -> Option<Self> {
         let title = from_utf8(&bytes[0x10..0x25]).ok()?.trim_end().to_string();
 
         let raw_mapper = bytes[0x25];

@@ -1,5 +1,8 @@
+use std::env;
+use std::fs::File;
+use std::io::Write;
+
 use heck::ToSnakeCase;
-use std::{env, fs::File, io::Write};
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");

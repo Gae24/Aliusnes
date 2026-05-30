@@ -1,6 +1,5 @@
-use cpu::Cpu;
-use opcode::{opcode_table, OpCode};
-
+use crate::apu::spc700::cpu::Cpu;
+use crate::apu::spc700::opcode::{OpCode, opcode_table};
 use crate::bus::Bus;
 
 mod addressing;
@@ -32,13 +31,16 @@ impl<B: Bus> Spc700<B> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+
+    use serde::{Deserialize, Deserializer};
+
     use super::*;
     use crate::apu::spc700::cpu::Status;
     use crate::apu::spc700::opcode::Meta;
-    use crate::utils::testbus::{deserialize_as_map, Cycle, TomHarteBus};
-    use crate::utils::testrun::{run_test, OpcodeTest};
-    use serde::{Deserialize, Deserializer};
-    use std::{collections::HashMap, path::PathBuf};
+    use crate::utils::testbus::{Cycle, TomHarteBus, deserialize_as_map};
+    use crate::utils::testrun::{OpcodeTest, run_test};
 
     impl<B: Bus> Spc700<B> {
         fn peek_opcode(&self, bus: &B) -> Meta {

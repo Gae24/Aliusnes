@@ -1,9 +1,8 @@
-use std::{
-    sync::mpsc::{channel, Receiver, Sender},
-    thread,
-};
+use std::sync::mpsc::{Receiver, Sender, channel};
+use std::thread;
 
-use aliusnes::{cart::Cart, emu::Emu};
+use aliusnes::cart::Cart;
+use aliusnes::emu::Emu;
 
 pub enum Message {
     Pause,
@@ -50,7 +49,7 @@ impl EmuState {
                     Message::Step => {
                         paused = true;
                         emu.step();
-                    }
+                    },
                 }
             }
 

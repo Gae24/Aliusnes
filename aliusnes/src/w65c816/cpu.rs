@@ -1,8 +1,8 @@
-use super::{addressing::AddressingMode, functions::do_push, regsize::RegSize};
-use crate::{
-    bus::{Address, Bus},
-    utils::int_traits::ManipulateU16,
-};
+use crate::bus::{Address, Bus};
+use crate::utils::int_traits::ManipulateU16;
+use crate::w65c816::addressing::AddressingMode;
+use crate::w65c816::functions::do_push;
+use crate::w65c816::regsize::RegSize;
 
 pub enum Vector {
     Cop,
@@ -181,7 +181,7 @@ impl Cpu {
             AddressingMode::Accumulator => {
                 let result = f(self, T::from_u16(self.accumulator));
                 self.set_accumulator(result);
-            }
+            },
             AddressingMode::Direct
             | AddressingMode::DirectX
             | AddressingMode::DirectY
@@ -193,13 +193,13 @@ impl Cpu {
                 } else {
                     bus.write_and_tick(page.into(), result.as_u8());
                 }
-            }
+            },
             _ => {
                 let addr = self.decode_addressing_mode::<true, B>(bus, mode);
                 let data = Cpu::read(bus, addr);
                 let result = f(self, data);
                 Cpu::write(bus, addr, result);
-            }
+            },
         }
     }
 
@@ -209,16 +209,16 @@ impl Cpu {
         match mode {
             AddressingMode::Absolute | AddressingMode::AbsoluteIndirect => {
                 self.program_counter = addr.offset;
-            }
+            },
             AddressingMode::AbsoluteLong | AddressingMode::AbsoluteIndirectLong => {
                 self.program_counter = addr.offset;
                 self.pbr = addr.bank;
-            }
+            },
             AddressingMode::AbsoluteIndirectX => {
                 self.program_counter.set_low_byte(bus.read_and_tick(addr));
                 self.program_counter
                     .set_high_byte(bus.read_and_tick(addr.wrapping_offset_add(1)));
-            }
+            },
             _ => unreachable!(),
         }
     }

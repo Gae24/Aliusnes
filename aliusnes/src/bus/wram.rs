@@ -1,4 +1,4 @@
-use super::{Access, Address};
+use crate::bus::{Access, Address};
 use crate::utils::int_traits::ManipulateU16;
 
 pub struct Wram {

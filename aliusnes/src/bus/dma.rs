@@ -1,6 +1,6 @@
+use crate::bus::system_bus::SystemBus;
+use crate::bus::{Access, Address};
 use crate::utils::int_traits::ManipulateU16;
-
-use super::{system_bus::SystemBus, Access, Address};
 
 bitfield! {
     #[derive(Copy, Clone)]
@@ -148,9 +148,9 @@ impl Access for Dma {
                     0x9 => channel.h_curr_addr.set_high_byte(data),
                     0xA => channel.h_reload_or_scanline_count = data,
                     0xB | 0xF => channel.unused = data,
-                    _ => {}
+                    _ => {},
                 }
-            }
+            },
         }
     }
 }

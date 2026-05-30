@@ -1,8 +1,8 @@
-use super::{addressing::AddressingMode, cpu::Cpu, regsize::RegSize};
-use crate::{
-    bus::{Address, Bus},
-    utils::int_traits::ManipulateU16,
-};
+use crate::bus::{Address, Bus};
+use crate::utils::int_traits::ManipulateU16;
+use crate::w65c816::addressing::AddressingMode;
+use crate::w65c816::cpu::Cpu;
+use crate::w65c816::regsize::RegSize;
 
 pub(super) fn do_bin_adc<T: RegSize>(cpu: &mut Cpu, operand: T) {
     if T::IS_U16 {
@@ -285,11 +285,11 @@ pub(super) fn do_store<T: RegSize, B: Bus>(
             } else {
                 bus.write_and_tick(Address::new(addr, 0), val.as_u8());
             }
-        }
+        },
         _ => {
             let addr = cpu.decode_addressing_mode::<true, B>(bus, mode);
             Cpu::write(bus, addr, val);
-        }
+        },
     }
 }
 

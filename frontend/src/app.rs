@@ -1,10 +1,8 @@
-use crate::emu_state::EmuState;
-use crate::emu_state::Message;
 use aliusnes::cart::Cart;
-use eframe::{
-    egui::{self, Color32, ColorImage},
-    CreationContext,
-};
+use eframe::CreationContext;
+use eframe::egui::{self, Color32, ColorImage};
+
+use crate::emu_state::{EmuState, Message};
 
 pub struct App {
     emu_state: EmuState,
