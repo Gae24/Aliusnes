@@ -1,7 +1,6 @@
 use crate::bus::{Address, Bus};
 use crate::utils::int_traits::ManipulateU16;
 use crate::w65c816::addressing::AddressingMode;
-use crate::w65c816::functions::do_push;
 use crate::w65c816::regsize::RegSize;
 
 pub enum Vector {
@@ -140,10 +139,10 @@ impl Cpu {
 
     pub fn handle_interrupt<B: Bus>(&mut self, bus: &mut B, interrupt: Vector) {
         if !self.emulation_mode {
-            do_push(self, bus, self.pbr);
+            self.do_push(bus, self.pbr);
         }
-        do_push(self, bus, self.program_counter);
-        do_push(self, bus, self.status.0);
+        self.do_push(bus, self.program_counter);
+        self.do_push(bus, self.status.0);
         self.status.set_decimal(false);
         self.status.set_irq_disable(true);
         self.pbr = 0;
@@ -162,12 +161,25 @@ impl Cpu {
         }
     }
 
-    pub fn write<B: Bus, T: RegSize>(bus: &mut B, addr: Address, data: T) {
+    pub fn do_push<T: RegSize, B: Bus>(&mut self, bus: &mut B, value: T) {
         if T::IS_U16 {
-            bus.write_and_tick(addr, data.as_u16().low_byte());
-            bus.write_and_tick(addr.wrapping_add(1), data.as_u16().high_byte());
+            self.stack_pointer = self.stack_pointer.wrapping_sub(2);
+            write_bank0(bus, self.stack_pointer.wrapping_add(1), value.as_u16());
         } else {
-            bus.write_and_tick(addr, data.as_u8());
+            self.stack_pointer = self.stack_pointer.wrapping_sub(1);
+            bus.write_and_tick(self.stack_pointer.wrapping_add(1).into(), value.as_u8());
+        }
+    }
+
+    pub fn do_pull<T: RegSize, B: Bus>(&mut self, bus: &mut B) -> T {
+        if T::IS_U16 {
+            let value = Cpu::read_bank0(bus, self.stack_pointer.wrapping_add(1));
+            self.stack_pointer = self.stack_pointer.wrapping_add(2);
+            T::from_u16(value)
+        } else {
+            let value = bus.read_and_tick(self.stack_pointer.wrapping_add(1).into());
+            self.stack_pointer = self.stack_pointer.wrapping_add(1);
+            T::from_u8(value)
         }
     }
 
@@ -189,7 +201,7 @@ impl Cpu {
                 let (data, page) = self.read_from_direct_page::<T, B>(bus, mode);
                 let result = f(self, data);
                 if T::IS_U16 {
-                    Cpu::write_bank0(bus, page, result.as_u16());
+                    write_bank0(bus, page, result.as_u16());
                 } else {
                     bus.write_and_tick(page.into(), result.as_u8());
                 }
@@ -198,7 +210,27 @@ impl Cpu {
                 let addr = self.decode_addressing_mode::<true, B>(bus, mode);
                 let data = Cpu::read(bus, addr);
                 let result = f(self, data);
-                Cpu::write(bus, addr, result);
+                write(bus, addr, result);
+            },
+        }
+    }
+
+    pub fn do_store<T: RegSize, B: Bus>(&mut self, bus: &mut B, mode: AddressingMode, val: T) {
+        match mode {
+            AddressingMode::Direct
+            | AddressingMode::DirectX
+            | AddressingMode::DirectY
+            | AddressingMode::StackRelative => {
+                let addr = self.direct_page_address(bus, mode);
+                if T::IS_U16 {
+                    write_bank0(bus, addr, val.as_u16());
+                } else {
+                    bus.write_and_tick(Address::new(addr, 0), val.as_u8());
+                }
+            },
+            _ => {
+                let addr = self.decode_addressing_mode::<true, B>(bus, mode);
+                write(bus, addr, val);
             },
         }
     }
@@ -222,4 +254,18 @@ impl Cpu {
             _ => unreachable!(),
         }
     }
+}
+
+fn write<B: Bus, T: RegSize>(bus: &mut B, addr: Address, data: T) {
+    if T::IS_U16 {
+        bus.write_and_tick(addr, data.as_u16().low_byte());
+        bus.write_and_tick(addr.wrapping_add(1), data.as_u16().high_byte());
+    } else {
+        bus.write_and_tick(addr, data.as_u8());
+    }
+}
+
+fn write_bank0<B: Bus>(bus: &mut B, page: u16, data: u16) {
+    bus.write_and_tick(page.into(), data.low_byte());
+    bus.write_and_tick(page.wrapping_add(1).into(), data.high_byte());
 }

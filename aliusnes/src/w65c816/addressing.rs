@@ -39,11 +39,6 @@ impl Cpu {
         ])
     }
 
-    pub fn write_bank0<B: Bus>(bus: &mut B, page: u16, data: u16) {
-        bus.write_and_tick(page.into(), data.low_byte());
-        bus.write_and_tick(page.wrapping_add(1).into(), data.high_byte());
-    }
-
     pub fn get_imm<T: RegSize, B: Bus>(&mut self, bus: &mut B) -> T {
         let addr = Address::new(self.program_counter, self.pbr);
         if T::IS_U16 {

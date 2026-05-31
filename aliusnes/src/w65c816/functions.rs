@@ -164,28 +164,6 @@ pub(super) fn do_lsr<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
     }
 }
 
-pub(super) fn do_push<T: RegSize, B: Bus>(cpu: &mut Cpu, bus: &mut B, value: T) {
-    if T::IS_U16 {
-        cpu.stack_pointer = cpu.stack_pointer.wrapping_sub(2);
-        Cpu::write_bank0(bus, cpu.stack_pointer.wrapping_add(1), value.as_u16());
-    } else {
-        cpu.stack_pointer = cpu.stack_pointer.wrapping_sub(1);
-        bus.write_and_tick(cpu.stack_pointer.wrapping_add(1).into(), value.as_u8());
-    }
-}
-
-pub(super) fn do_pull<T: RegSize, B: Bus>(cpu: &mut Cpu, bus: &mut B) -> T {
-    if T::IS_U16 {
-        let value = Cpu::read_bank0(bus, cpu.stack_pointer.wrapping_add(1));
-        cpu.stack_pointer = cpu.stack_pointer.wrapping_add(2);
-        T::from_u16(value)
-    } else {
-        let value = bus.read_and_tick(cpu.stack_pointer.wrapping_add(1).into());
-        cpu.stack_pointer = cpu.stack_pointer.wrapping_add(1);
-        T::from_u8(value)
-    }
-}
-
 pub(super) fn do_rol<T: RegSize>(cpu: &mut Cpu, operand: T) -> T {
     if T::IS_U16 {
         let operand = operand.as_u16();
@@ -265,31 +243,6 @@ pub(super) fn do_dec_sbc<T: RegSize>(cpu: &mut Cpu, operand: T) {
         let result = result as u8;
         cpu.set_nz(result);
         cpu.set_accumulator(result);
-    }
-}
-
-pub(super) fn do_store<T: RegSize, B: Bus>(
-    cpu: &mut Cpu,
-    bus: &mut B,
-    mode: AddressingMode,
-    val: T,
-) {
-    match mode {
-        AddressingMode::Direct
-        | AddressingMode::DirectX
-        | AddressingMode::DirectY
-        | AddressingMode::StackRelative => {
-            let addr = cpu.direct_page_address(bus, mode);
-            if T::IS_U16 {
-                Cpu::write_bank0(bus, addr, val.as_u16());
-            } else {
-                bus.write_and_tick(Address::new(addr, 0), val.as_u8());
-            }
-        },
-        _ => {
-            let addr = cpu.decode_addressing_mode::<true, B>(bus, mode);
-            Cpu::write(bus, addr, val);
-        },
     }
 }
 
