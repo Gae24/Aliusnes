@@ -2,14 +2,14 @@ use crate::bus::{Access, Address};
 use crate::utils::int_traits::ManipulateU16;
 
 pub struct Wram {
-    pub ram: [u8; 0x20000],
+    pub ram: Box<[u8; 0x20000]>,
     wm_addr: Address,
 }
 
 impl Wram {
     pub fn new() -> Self {
         Self {
-            ram: [0; 0x20000],
+            ram: vec![0; 0x20000].into_boxed_slice().try_into().unwrap(),
             wm_addr: Address::new(0, 0),
         }
     }

@@ -11,7 +11,7 @@ bitfield! {
 }
 
 pub struct Vram {
-    ram: [u16; 0x8000],
+    ram: Box<[u16; 0x8000]>,
     pub video_port_control: VideoPortControl,
     vm_addr: u16,
     read_latch: u16,
@@ -20,7 +20,7 @@ pub struct Vram {
 impl Vram {
     pub fn new() -> Self {
         Self {
-            ram: [0; 0x8000],
+            ram: vec![0; 0x8000].into_boxed_slice().try_into().unwrap(),
             video_port_control: VideoPortControl(0),
             vm_addr: 0x00,
             read_latch: 0x00,
